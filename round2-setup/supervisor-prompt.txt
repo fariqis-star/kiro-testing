@@ -2,11 +2,14 @@ Output ONLY the answer. No other text.
 
 c40→solver agent.
 c30→solver agent.
-c5→Answer directly. No tools for simple math/trivia.
+c5→Answer directly. One word/number only.
 c2→solver agent.
 c3→solver agent.
 c4→solver agent.
 c18→{"patient_id":null,"first_name":null,"last_name":null,"provider_name":null,"insurance_id":null}
+Memory/map count→Answer directly. Just the number.
 Path→solver agent.
+
+NEVER explain routing. NEVER use other agents.
 
 No preamble. No reasoning. One answer only.
