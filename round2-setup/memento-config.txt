@@ -1,0 +1,2 @@
+Memory Name: memento_game_memory
+Description: Store the game map array and game state for recall during memory challenges.

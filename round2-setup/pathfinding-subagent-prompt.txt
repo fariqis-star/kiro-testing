@@ -1,0 +1,1 @@
+Use strategy: smart_loot. Pass current_pos, map_grid, grid_bounds, strategy. Output ONLY the JSON array.
