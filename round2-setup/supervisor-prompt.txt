@@ -1,12 +1,12 @@
 Output ONLY the answer. No other text.
 
-c40→combined agent.
-c30→combined agent.
+c40→solver agent.
+c30→solver agent.
 c5→Answer directly. No tools for simple math/trivia.
-c2→combined agent.
-c3→combined agent.
-c4→combined agent.
+c2→solver agent.
+c3→solver agent.
+c4→solver agent.
 c18→{"patient_id":null,"first_name":null,"last_name":null,"provider_name":null,"insurance_id":null}
-Path→combined agent.
+Path→solver agent.
 
 No preamble. No reasoning. One answer only.
