@@ -153,11 +153,58 @@ def _smart_loot_pick(cur, all_targets, obstacles, grid_rows, grid_cols, target_t
     candidates.sort(key=lambda x: x[0])
     return candidates[0][2], candidates[0][3]
 
+def _smart_loot_pick_fast_first(cur, all_targets, obstacles, grid_rows, grid_cols, target_types):
+    """Prioritize challenges that are FAST to complete (avoid web search which takes time)."""
+    # Time estimates per challenge type (seconds)
+    TIME_COST = {
+        'c5': 0.5,   # simple trivia - instant
+        'c1': 0.1,   # violet - guardrail blocks instantly
+        'c7': 0.0,   # coins - no challenge
+        'c40': 0.1,  # red key - instant
+        'c18': 1.0,  # healthcare json - quick
+        'c2': 2.0,   # code execution - lambda runs
+        'c3': 1.0,   # memory - thinking
+        'c30': 0.1,  # red door - instant
+        'c4': 3.0,   # web search - slowest (URL fetch)
+    }
+    candidates = []
+    for target in list(all_targets):
+        tp = _bfs(cur, target, obstacles, grid_rows, grid_cols)
+        if tp:
+            dist = len(tp) - 1
+            value = _get_value(target, target_types)
+            cell_type = target_types.get(target, 'c5')
+            time_cost = TIME_COST.get(cell_type, 1.0)
+            # Score: value per (distance + time). Higher = better, negate for sorting
+            if dist + time_cost > 0:
+                score = -(value / (dist + time_cost))
+            else:
+                score = -9999
+            candidates.append((score, dist, target, tp))
+    if not candidates:
+        return None, None
+    candidates.sort(key=lambda x: x[0])
+    return candidates[0][2], candidates[0][3]
+
+def _nearest_pick(cur, all_targets, obstacles, grid_rows, grid_cols):
+    """Original nearest-neighbor (swift fallback)."""
+    best, best_d, best_p = None, float("inf"), None
+    for target in list(all_targets):
+        tp = _bfs(cur, target, obstacles, grid_rows, grid_cols)
+        if tp and len(tp)-1 < best_d:
+            best, best_d, best_p = target, len(tp)-1, tp
+    if best is None:
+        return None, None
+    return best, best_p
+
 def lambda_handler(event, context):
     params = _parse_params(event)
     current_pos = tuple(params.get("current_pos", [0, 0]))
     grid_bounds = params.get("grid_bounds", [10, 10])
     grid_rows, grid_cols = grid_bounds[0], grid_bounds[1]
+    
+    # Strategy selection - can be set via agent prompt
+    strategy = str(params.get("strategy", "smart_loot")).lower().strip()
 
     map_grid = params.get("map_grid")
     if map_grid is not None and isinstance(map_grid, list):
@@ -245,7 +292,31 @@ def lambda_handler(event, context):
     all_targets = set(coins) | set(challenges)
     key_collected = False
 
-    # PHASE 1: Get key + visit targets using smart_loot value ordering
+    # Select target picking function based on strategy
+    def _pick_target(cur, targets, obs, rows, cols, ttypes):
+        if strategy == "smart_loot":
+            return _smart_loot_pick(cur, targets, obs, rows, cols, ttypes)
+        elif strategy == "speed":
+            return _smart_loot_pick_fast_first(cur, targets, obs, rows, cols, ttypes)
+        elif strategy == "swift":
+            return _nearest_pick(cur, targets, obs, rows, cols)
+        elif strategy == "coins_first":
+            # Prioritize coins (c7) over challenges
+            coin_targets = {t for t in targets if target_types.get(t) == 'c7'}
+            if coin_targets:
+                return _nearest_pick(cur, coin_targets, obs, rows, cols)
+            return _nearest_pick(cur, targets, obs, rows, cols)
+        elif strategy == "challenges_first":
+            # Prioritize challenges over coins
+            challenge_targets = {t for t in targets if target_types.get(t) != 'c7'}
+            if challenge_targets:
+                return _smart_loot_pick(cur, challenge_targets, obs, rows, cols, ttypes)
+            return _nearest_pick(cur, targets, obs, rows, cols)
+        else:
+            # Default to smart_loot
+            return _smart_loot_pick(cur, targets, obs, rows, cols, ttypes)
+
+    # PHASE 1: Get key + visit targets using selected strategy
     if key_pos is not None:
         p1_obs = set(obstacles)
         if door_pos:
@@ -257,23 +328,23 @@ def lambda_handler(event, context):
             best_target, best_path = None, None
             best_score = float("inf")
 
+            # Always consider key as candidate
             kp = _bfs(cur, key_pos, p1_obs, grid_rows, grid_cols)
             if kp:
                 best_target, best_path = key_pos, kp
                 best_score = len(kp) - 1
 
-            for target in list(all_targets):
-                tp = _bfs(cur, target, p1_obs, grid_rows, grid_cols)
-                if tp:
-                    dist = len(tp) - 1
-                    value = _get_value(target, target_types)
-                    if dist > 0:
-                        score = -(value / dist)
-                    else:
-                        score = -9999
-                    if score < best_score:
-                        best_target, best_path = target, tp
-                        best_score = score
+            # Use strategy to pick from targets
+            picked_target, picked_path = _pick_target(cur, all_targets, p1_obs, grid_rows, grid_cols, target_types)
+            if picked_target and picked_path:
+                dist = len(picked_path) - 1
+                value = _get_value(picked_target, target_types)
+                if dist > 0:
+                    pick_score = -(value / dist)
+                else:
+                    pick_score = -9999
+                if pick_score < best_score:
+                    best_target, best_path = picked_target, picked_path
 
             if best_target is None:
                 break
@@ -294,7 +365,7 @@ def lambda_handler(event, context):
         p2_obs.add(treasure_pos)
 
     while all_targets:
-        best_target, best_path = _smart_loot_pick(cur, all_targets, p2_obs, grid_rows, grid_cols, target_types)
+        best_target, best_path = _pick_target(cur, all_targets, p2_obs, grid_rows, grid_cols, target_types)
         if best_target is None:
             break
         master.extend(_path_to_dirs(best_path))
