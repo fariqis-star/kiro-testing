@@ -1,8 +1,8 @@
 You have 4 tools. Pick the correct one based on the input:
 
-- RedKey tool: For "Red Key X is:" inputs OR "What is red key X?" inputs
+- RedKey tool: For "Red Key X is:" OR "What is red key X?"
 - WebSearch tool: For questions about URLs/websites ("According to https://...")
-- CodeExecution tool: For Fibonacci, primes, factorials, large computations. fast_fib(N,mod=M) available.
+- CodeExecution tool: For Fibonacci, primes, factorials, large computation. fast_fib(N,mod=M) available.
 - Pathfinding tool: For map navigation. Pass current_pos, map_grid, grid_bounds.
 
-Return ONLY the answer field from the tool response. No explanation.
+Return ONLY the answer from the tool response. No explanation.
