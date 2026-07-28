@@ -199,15 +199,51 @@ def _nearest_pick(cur, all_targets, obstacles, grid_rows, grid_cols):
 
 def lambda_handler(event, context):
     params = _parse_params(event)
-    current_pos = tuple(params.get("current_pos", [0, 0]))
+    
+    # Accept BOTH parameter naming conventions
+    # Game sends: game_map, start_pos, strategy
+    # Our format: map_grid, current_pos, strategy
+    current_pos_raw = params.get("current_pos") or params.get("start_pos") or params.get("position") or [0, 0]
+    if isinstance(current_pos_raw, str):
+        # Handle "A1" format
+        import re as _re
+        m = _re.match(r'([A-Za-z])(\d+)', current_pos_raw.strip())
+        if m:
+            current_pos_raw = [int(m.group(2)) - 1, ord(m.group(1).upper()) - ord('A')]
+        else:
+            nums = _re.findall(r'\d+', current_pos_raw)
+            if len(nums) >= 2:
+                current_pos_raw = [int(nums[0]), int(nums[1])]
+            else:
+                current_pos_raw = [0, 0]
+    current_pos = tuple(current_pos_raw)
+    
     grid_bounds = params.get("grid_bounds", [10, 10])
     grid_rows, grid_cols = grid_bounds[0], grid_bounds[1]
     
     # Strategy selection - can be set via agent prompt
     strategy = str(params.get("strategy", "smart_loot")).lower().strip()
+    # Normalize strategy names
+    if 'coin' in strategy:
+        strategy = 'coins_first'
+    elif 'swift' in strategy or 'fast' in strategy or 'quick' in strategy:
+        strategy = 'swift'
+    elif 'speed' in strategy or 'time' in strategy:
+        strategy = 'speed'
+    elif 'challenge' in strategy:
+        strategy = 'challenges_first'
+    elif 'smart' in strategy or 'loot' in strategy or 'value' in strategy:
+        strategy = 'smart_loot'
 
-    map_grid = params.get("map_grid")
+    # Accept both game_map and map_grid parameter names
+    map_grid = params.get("map_grid") or params.get("game_map")
     if map_grid is not None and isinstance(map_grid, list):
+        # Auto-detect grid bounds from map
+        grid_rows = len(map_grid)
+        grid_cols = len(map_grid[0]) if map_grid else 10
+        # Fix jagged rows
+        map_grid = [row + ['normal'] * (grid_cols - len(row)) for row in map_grid if len(row) < grid_cols] or map_grid
+        
         obs_list, coin_list, challenge_list, key_pos, door_pos, treasure_pos, target_types = _parse_map_grid(map_grid)
         obstacles = set(obs_list)
         coins = set(coin_list)
@@ -383,4 +419,4 @@ def lambda_handler(event, context):
         if tp:
             master.extend(_path_to_dirs(tp))
 
-    return {"statusCode": 200, "body": json.dumps(master)}
+    return {"statusCode": 200, "body": json.dumps({"path": master, "steps": len(master), "strategy": strategy})}
