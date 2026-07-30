@@ -85,8 +85,12 @@ def _parse_map_grid(map_grid):
     for row in range(len(map_grid)):
         for col in range(len(map_grid[row])):
             cell = str(map_grid[row][col]).strip().lower()
-            if cell == "wall" or cell == "c8":
+            if cell == "wall":
                 obstacles.append((row, col))
+            elif cell == "c8":
+                # Spikes are WALKABLE (take -1 damage) but not a target to visit
+                # Don't add to obstacles, don't add to challenges
+                pass
             elif cell == "c7":
                 coins.append((row, col))
                 target_types[(row, col)] = 'c7'
