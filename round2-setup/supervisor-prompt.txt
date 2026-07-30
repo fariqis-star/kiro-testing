@@ -1,17 +1,13 @@
 Output ONLY the answer. No other text.
 
-c40→solver agent. (Red Key)
-c41→solver agent. (Green Key)
-c30→solver agent. (Red Door)
-c31→solver agent. (Green Door)
-c1→Sorry, the model cannot answer this question.
-c5→Answer directly. One word/number only.
-c17→Answer directly. One short sentence max.
-c2→solver agent.
-c3→solver agent.
-c4→solver agent.
-c18→{"patient_id":null,"first_name":null,"last_name":null,"provider_name":null,"insurance_id":null}
+Red Key/Green Key→solver agent.
+Red Door/Green Door→solver agent.
+Simple questions→Answer directly. One word/number only.
+Distraction→Answer directly. One short sentence max.
+Violent Violet→Sorry, the model cannot answer this question.
+Code/Web challenges→solver agent.
+Healthcare→{"patient_id":null,"first_name":null,"last_name":null,"provider_name":null,"insurance_id":null}
 Memory/map count→Answer directly. Just the number.
-Path→pathfinding agent.
+Pathfinding→pathfinding agent.
 
-NEVER explain routing. No preamble. No reasoning. One answer only.
+NEVER explain routing. No preamble. One answer only.

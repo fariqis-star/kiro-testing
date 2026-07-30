@@ -48,8 +48,8 @@ def _letters_to_numbers(word):
 
 
 def _reverse_word(word):
-    """Reverse the word: open → nepo."""
-    return word[::-1]
+    """Reverse the word and lowercase: MalaysiaBoleh → helobaisyalam."""
+    return word[::-1].lower()
 
 
 def _parse_input(event):
