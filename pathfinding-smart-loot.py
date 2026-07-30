@@ -365,31 +365,26 @@ def lambda_handler(event, context):
         else:
             return _smart_loot_pick(cur, targets, obs, rows, cols, ttypes)
 
-    # Collect all keys: both red and green keys must be collected before their doors
-    keys_to_collect = []
+    # Collect keys SEQUENTIALLY — Red Key first, then unblock Red Door, then Green Key
+    # This handles maps where Green Key is behind Red Door
+    
+    # Step 1: Get Red Key (block ALL doors + treasure)
     if key_pos is not None:
-        keys_to_collect.append(('red', key_pos, door_pos))
-    if key_pos_green is not None:
-        keys_to_collect.append(('green', key_pos_green, door_pos_green))
+        p1_obs = set(obstacles)
+        if door_pos:
+            p1_obs.add(door_pos)
+        if door_pos_green:
+            p1_obs.add(door_pos_green)
+        if treasure_pos:
+            p1_obs.add(treasure_pos)
 
-    # PHASE 1: Get ALL keys + visit targets along the way
-    # ALL doors AND Treasure are BLOCKED
-    p1_obs = set(obstacles)
-    if door_pos:
-        p1_obs.add(door_pos)
-    if door_pos_green:
-        p1_obs.add(door_pos_green)
-    if treasure_pos:
-        p1_obs.add(treasure_pos)
-
-    for key_color, kpos, dpos in keys_to_collect:
-        while cur != kpos:
+        while cur != key_pos:
             best_target, best_path = None, None
             best_score = float("inf")
 
-            kp = _bfs(cur, kpos, p1_obs, grid_rows, grid_cols)
+            kp = _bfs(cur, key_pos, p1_obs, grid_rows, grid_cols)
             if kp:
-                best_target, best_path = kpos, kp
+                best_target, best_path = key_pos, kp
                 best_score = len(kp) - 1
 
             picked_target, picked_path = _pick_target(cur, all_targets, p1_obs, grid_rows, grid_cols, target_types)
@@ -411,11 +406,49 @@ def lambda_handler(event, context):
                 all_targets.discard(pos)
             cur = best_path[-1]
 
-        if cur == kpos:
-            if key_color == 'red':
-                key_collected = True
-            else:
-                key_green_collected = True
+        if cur == key_pos:
+            key_collected = True
+
+    # Step 2: Get Green Key (Red Door now UNBLOCKED, block Green Door + treasure)
+    if key_pos_green is not None:
+        p2_key_obs = set(obstacles)
+        if door_pos and not key_collected:
+            p2_key_obs.add(door_pos)
+        if door_pos_green:
+            p2_key_obs.add(door_pos_green)
+        if treasure_pos:
+            p2_key_obs.add(treasure_pos)
+
+        while cur != key_pos_green:
+            best_target, best_path = None, None
+            best_score = float("inf")
+
+            kp = _bfs(cur, key_pos_green, p2_key_obs, grid_rows, grid_cols)
+            if kp:
+                best_target, best_path = key_pos_green, kp
+                best_score = len(kp) - 1
+
+            picked_target, picked_path = _pick_target(cur, all_targets, p2_key_obs, grid_rows, grid_cols, target_types)
+            if picked_target and picked_path:
+                dist = len(picked_path) - 1
+                value = _get_value(picked_target, target_types)
+                if dist > 0:
+                    pick_score = -(value / dist)
+                else:
+                    pick_score = -9999
+                if pick_score < best_score:
+                    best_target, best_path = picked_target, picked_path
+
+            if best_target is None:
+                break
+
+            master.extend(_path_to_dirs(best_path))
+            for pos in best_path[1:]:
+                all_targets.discard(pos)
+            cur = best_path[-1]
+
+        if cur == key_pos_green:
+            key_green_collected = True
 
     # PHASE 2: Sweep remaining targets with smart_loot
     p2_obs = set(obstacles)
