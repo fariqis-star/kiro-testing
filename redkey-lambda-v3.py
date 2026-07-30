@@ -113,7 +113,7 @@ def lambda_handler(event, context):
     text_str = str(text)
 
     # STORE: "Red Key X is: [word]" or "Green Key X is: [word]"
-    store_match = re.search(r'(?:Red|Green)\s*[Kk]ey\s*(\d+)\s*is[:\s]+(\w+)', text_str, re.IGNORECASE)
+    store_match = re.search(r'(?:Red|Green)\s*[Kk]ey\s*(\d+)\s*is[:\s]+(.+)', text_str, re.IGNORECASE)
     if store_match:
         key_num = store_match.group(1)
         key_value = store_match.group(2).strip()
