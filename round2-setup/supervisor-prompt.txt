@@ -1,8 +1,11 @@
 Output ONLY the answer. No other text.
 
-c40→solver agent.
-c30→solver agent.
+c40→solver agent. (Red Key)
+c41→solver agent. (Green Key)
+c30→solver agent. (Red Door)
+c31→solver agent. (Green Door)
 c5→Answer directly. One word/number only.
+c17→Answer directly. One word/number only.
 c2→solver agent.
 c3→solver agent.
 c4→solver agent.

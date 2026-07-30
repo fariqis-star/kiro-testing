@@ -25,9 +25,12 @@ TARGET_VALUES = {
     'c5': 250,
     'c1': 400,
     'c7': 250,
+    'c17': 50,
     'c18': 500,
     'c40': 50,
+    'c41': 50,
     'c30': 1000,
+    'c31': 1000,
 }
 
 def _bfs(start, goal, obstacles, grid_rows, grid_cols):
@@ -75,7 +78,9 @@ def _parse_map_grid(map_grid):
     challenges = []
     target_types = {}
     key_pos = None
+    key_pos_green = None
     door_pos = None
+    door_pos_green = None
     treasure_pos = None
     for row in range(len(map_grid)):
         for col in range(len(map_grid[row])):
@@ -85,18 +90,24 @@ def _parse_map_grid(map_grid):
             elif cell == "c7":
                 coins.append((row, col))
                 target_types[(row, col)] = 'c7'
-            elif "c40" in cell or "key" in cell:
+            elif cell == "c40" or ("c40" in cell) or cell == "key":
                 key_pos = (row, col)
                 target_types[(row, col)] = 'c40'
-            elif "c30" in cell or "door" in cell:
+            elif cell == "c41":
+                key_pos_green = (row, col)
+                target_types[(row, col)] = 'c41'
+            elif cell == "c30" or ("c30" in cell) or cell == "door":
                 door_pos = (row, col)
                 target_types[(row, col)] = 'c30'
+            elif cell == "c31":
+                door_pos_green = (row, col)
+                target_types[(row, col)] = 'c31'
             elif cell == "treasure":
                 treasure_pos = (row, col)
             elif cell.startswith("c") and cell != "normal":
                 challenges.append((row, col))
                 target_types[(row, col)] = cell
-    return obstacles, coins, challenges, key_pos, door_pos, treasure_pos, target_types
+    return obstacles, coins, challenges, key_pos, key_pos_green, door_pos, door_pos_green, treasure_pos, target_types
 
 def _find_dead_ends(obstacles, grid_rows, grid_cols, known_cells):
     dead_ends = []
@@ -244,7 +255,7 @@ def lambda_handler(event, context):
         # Fix jagged rows
         map_grid = [row + ['normal'] * (grid_cols - len(row)) for row in map_grid if len(row) < grid_cols] or map_grid
         
-        obs_list, coin_list, challenge_list, key_pos, door_pos, treasure_pos, target_types = _parse_map_grid(map_grid)
+        obs_list, coin_list, challenge_list, key_pos, key_pos_green, door_pos, door_pos_green, treasure_pos, target_types = _parse_map_grid(map_grid)
         obstacles = set(obs_list)
         coins = set(coin_list)
         challenges = set(challenge_list)
@@ -327,8 +338,9 @@ def lambda_handler(event, context):
     master = []
     all_targets = set(coins) | set(challenges)
     key_collected = False
+    key_green_collected = False
 
-    # Select target picking function based on strategy
+    # Strategy selector
     def _pick_target(cur, targets, obs, rows, cols, ttypes):
         if strategy == "smart_loot":
             return _smart_loot_pick(cur, targets, obs, rows, cols, ttypes)
@@ -337,40 +349,45 @@ def lambda_handler(event, context):
         elif strategy == "swift":
             return _nearest_pick(cur, targets, obs, rows, cols)
         elif strategy == "coins_first":
-            # Prioritize coins (c7) over challenges
             coin_targets = {t for t in targets if target_types.get(t) == 'c7'}
             if coin_targets:
                 return _nearest_pick(cur, coin_targets, obs, rows, cols)
             return _nearest_pick(cur, targets, obs, rows, cols)
         elif strategy == "challenges_first":
-            # Prioritize challenges over coins
             challenge_targets = {t for t in targets if target_types.get(t) != 'c7'}
             if challenge_targets:
                 return _smart_loot_pick(cur, challenge_targets, obs, rows, cols, ttypes)
             return _nearest_pick(cur, targets, obs, rows, cols)
         else:
-            # Default to smart_loot
             return _smart_loot_pick(cur, targets, obs, rows, cols, ttypes)
 
-    # PHASE 1: Get key + visit targets using selected strategy
+    # Collect all keys: both red and green keys must be collected before their doors
+    keys_to_collect = []
     if key_pos is not None:
-        p1_obs = set(obstacles)
-        if door_pos:
-            p1_obs.add(door_pos)
-        if treasure_pos:
-            p1_obs.add(treasure_pos)
+        keys_to_collect.append(('red', key_pos, door_pos))
+    if key_pos_green is not None:
+        keys_to_collect.append(('green', key_pos_green, door_pos_green))
 
-        while cur != key_pos:
+    # PHASE 1: Get ALL keys + visit targets along the way
+    # ALL doors AND Treasure are BLOCKED
+    p1_obs = set(obstacles)
+    if door_pos:
+        p1_obs.add(door_pos)
+    if door_pos_green:
+        p1_obs.add(door_pos_green)
+    if treasure_pos:
+        p1_obs.add(treasure_pos)
+
+    for key_color, kpos, dpos in keys_to_collect:
+        while cur != kpos:
             best_target, best_path = None, None
             best_score = float("inf")
 
-            # Always consider key as candidate
-            kp = _bfs(cur, key_pos, p1_obs, grid_rows, grid_cols)
+            kp = _bfs(cur, kpos, p1_obs, grid_rows, grid_cols)
             if kp:
-                best_target, best_path = key_pos, kp
+                best_target, best_path = kpos, kp
                 best_score = len(kp) - 1
 
-            # Use strategy to pick from targets
             picked_target, picked_path = _pick_target(cur, all_targets, p1_obs, grid_rows, grid_cols, target_types)
             if picked_target and picked_path:
                 dist = len(picked_path) - 1
@@ -390,13 +407,18 @@ def lambda_handler(event, context):
                 all_targets.discard(pos)
             cur = best_path[-1]
 
-        if cur == key_pos:
-            key_collected = True
+        if cur == kpos:
+            if key_color == 'red':
+                key_collected = True
+            else:
+                key_green_collected = True
 
     # PHASE 2: Sweep remaining targets with smart_loot
     p2_obs = set(obstacles)
     if door_pos and not key_collected:
         p2_obs.add(door_pos)
+    if door_pos_green and not key_green_collected:
+        p2_obs.add(door_pos_green)
     if treasure_pos:
         p2_obs.add(treasure_pos)
 
@@ -413,6 +435,8 @@ def lambda_handler(event, context):
     p3_obs = set(obstacles)
     if door_pos and not key_collected:
         p3_obs.add(door_pos)
+    if door_pos_green and not key_green_collected:
+        p3_obs.add(door_pos_green)
 
     if cur != treasure_pos:
         tp = _bfs(cur, treasure_pos, p3_obs, grid_rows, grid_cols)
