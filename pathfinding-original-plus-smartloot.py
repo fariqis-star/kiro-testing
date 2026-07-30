@@ -33,6 +33,21 @@ def _parse_start(pos):
 
 
 def _bfs(game_map, rows, cols, start, goal):
+    """BFS - tries to avoid spikes first, falls back to allowing them."""
+    # First try without spikes
+    queue = deque([(start[0], start[1], [])])
+    visited = {(start[0], start[1])}
+    while queue:
+        r, c, path = queue.popleft()
+        if (r, c) == goal:
+            return path
+        for dr, dc, move in DIRECTIONS:
+            nr, nc = r + dr, c + dc
+            if 0 <= nr < rows and 0 <= nc < cols and game_map[nr][nc] != 'wall' and game_map[nr][nc] != 'c8' and (nr, nc) not in visited:
+                visited.add((nr, nc))
+                queue.append((nr, nc, path + [move]))
+
+    # If no path without spikes, allow spikes
     queue = deque([(start[0], start[1], [])])
     visited = {(start[0], start[1])}
     while queue:
@@ -48,7 +63,21 @@ def _bfs(game_map, rows, cols, start, goal):
 
 
 def _bfs_blocked(game_map, rows, cols, start, goal, blocked_set):
-    """BFS that avoids walls AND any positions in blocked_set. NEVER modifies game_map."""
+    """BFS that avoids walls AND blocked positions. Prefers non-spike paths."""
+    # First try without spikes
+    queue = deque([(start[0], start[1], [])])
+    visited = {(start[0], start[1])}
+    while queue:
+        r, c, path = queue.popleft()
+        if (r, c) == goal:
+            return path
+        for dr, dc, move in DIRECTIONS:
+            nr, nc = r + dr, c + dc
+            if 0 <= nr < rows and 0 <= nc < cols and game_map[nr][nc] != 'wall' and game_map[nr][nc] != 'c8' and (nr, nc) not in visited and (nr, nc) not in blocked_set:
+                visited.add((nr, nc))
+                queue.append((nr, nc, path + [move]))
+
+    # If no path without spikes, allow spikes
     queue = deque([(start[0], start[1], [])])
     visited = {(start[0], start[1])}
     while queue:

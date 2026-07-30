@@ -133,8 +133,8 @@ def lambda_handler(event, context):
         storage_key = f"red_{key_num}"
         if storage_key in KEY_STORAGE:
             value = KEY_STORAGE[storage_key]
-            reversed_value = _reverse_word(value)
-            return {"statusCode": 200, "body": json.dumps({"answer": reversed_value})}
+            # Return ORIGINAL value (game accepts raw key value)
+            return {"statusCode": 200, "body": json.dumps({"answer": value})}
         return {"statusCode": 200, "body": json.dumps({"answer": "unknown"})}
 
     # RETRIEVE GREEN DOOR: "What is green key X?"
@@ -144,8 +144,8 @@ def lambda_handler(event, context):
         storage_key = f"green_{key_num}"
         if storage_key in KEY_STORAGE:
             value = KEY_STORAGE[storage_key]
-            numbers = _letters_to_numbers(value)
-            return {"statusCode": 200, "body": json.dumps({"answer": numbers})}
+            # Return ORIGINAL value (game accepts raw key value)
+            return {"statusCode": 200, "body": json.dumps({"answer": value})}
         return {"statusCode": 200, "body": json.dumps({"answer": "unknown"})}
 
     # FALLBACK: Generic key detection
