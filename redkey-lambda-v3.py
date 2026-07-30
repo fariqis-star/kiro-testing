@@ -116,7 +116,7 @@ def lambda_handler(event, context):
     store_match = re.search(r'(?:Red|Green)\s*[Kk]ey\s*(\d+)\s*is[:\s]+(\w+)', text_str, re.IGNORECASE)
     if store_match:
         key_num = store_match.group(1)
-        key_value = store_match.group(2).strip().lower()
+        key_value = store_match.group(2).strip()
         # Detect color
         color = "red"
         if re.search(r'[Gg]reen', text_str):
