@@ -108,7 +108,7 @@ def lambda_handler(event, context):
     text = _parse_input(event)
 
     if not text:
-        return {"statusCode": 200, "body": json.dumps({"answer": "Thanks"})}
+        return {"statusCode": 200, "body": json.dumps({"answer": "sknahT"})}
 
     text_str = str(text)
 
@@ -124,7 +124,7 @@ def lambda_handler(event, context):
         storage_key = f"{color}_{key_num}"
         KEY_STORAGE[storage_key] = key_value
         _save_storage()
-        return {"statusCode": 200, "body": json.dumps({"answer": "Thanks"})}
+        return {"statusCode": 200, "body": json.dumps({"answer": "sknahT"})}
 
     # RETRIEVE RED DOOR: "What is red key X?"
     red_retrieve = re.search(r'[Ww]hat\s+is\s+[Rr]ed\s*[Kk]ey\s*(\d+)', text_str)
@@ -155,7 +155,7 @@ def lambda_handler(event, context):
         last_word = words[-1].strip().lower().rstrip('.!?')
         KEY_STORAGE["generic_1"] = last_word
         _save_storage()
-        return {"statusCode": 200, "body": json.dumps({"answer": "Thanks"})}
+        return {"statusCode": 200, "body": json.dumps({"answer": "sknahT"})}
 
     if re.search(r'[Ww]hat\s+is.*[Kk]ey', text_str):
         # Try to retrieve and reverse (default to red door behavior)
@@ -170,4 +170,4 @@ def lambda_handler(event, context):
             return {"statusCode": 200, "body": json.dumps({"answer": _reverse_word(KEY_STORAGE["generic_1"])})}
 
     # Default
-    return {"statusCode": 200, "body": json.dumps({"answer": "Thanks"})}
+    return {"statusCode": 200, "body": json.dumps({"answer": "sknahT"})}
