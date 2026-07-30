@@ -72,6 +72,19 @@ def lambda_handler(event, context):
         if game_map and (start_pos[0] < 0 or start_pos[1] < 0 or start_pos[0] >= len(game_map) or start_pos[1] >= len(game_map[0])):
             start_pos = (0, 0)
 
+        # AUTO-DETECT START: If start_pos is (0,0) but map has 'start' cell elsewhere, use that
+        rows_check = len(game_map) if game_map else 0
+        cols_check = len(game_map[0]) if game_map and game_map[0] else 0
+        if start_pos == (0, 0) and rows_check > 0 and cols_check > 0:
+            if game_map[0][0] != 'start':
+                for sr in range(rows_check):
+                    for sc in range(cols_check):
+                        if game_map[sr][sc] == 'start':
+                            start_pos = (sr, sc)
+                            break
+                    if start_pos != (0, 0):
+                        break
+
         # Normalize strategy name
         strategy = str(body.get('strategy', 'smart_loot')).lower().strip()
         if 'coin' in strategy:
@@ -290,6 +303,8 @@ def smart_loot_path(game_map, rows, cols, start, treasure):
     # Phase 3: Visit remaining targets by value/distance
     # Keep treasure blocked
     if treasure in orig_cells:
+        board[treasure[0]][treasure[1]] = 'wall'
+    elif board[treasure[0]][treasure[1]] != 'wall':
         board[treasure[0]][treasure[1]] = 'wall'
 
     while all_targets:
