@@ -480,4 +480,4 @@ def lambda_handler(event, context):
         if tp:
             master.extend(_path_to_dirs(tp))
 
-    return {"statusCode": 200, "body": json.dumps({"path": master, "steps": len(master), "strategy": strategy})}
+    return {"statusCode": 200, "body": json.dumps(master)}
