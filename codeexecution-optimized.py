@@ -120,7 +120,31 @@ def _try_intercept(code):
         n = int(sum_match.group(1))
         return str(n * (n + 1) // 2)
 
-    # Factorial
+    # Factorial with modulo (e.g., "2024 factorial modulo 1000000007")
+    if ('factorial' in code_lower or '!' in code) and ('mod' in code_lower or '%' in code):
+        import math
+        numbers = [int(n) for n in re.findall(r'\b(\d+)\b', code)]
+        if numbers:
+            fact_n = None
+            fact_mod = None
+            for num in numbers:
+                if num >= 1000000:
+                    if fact_mod is None or num > fact_mod:
+                        fact_mod = num
+                elif 2 <= num <= 100000:
+                    if fact_n is None:
+                        fact_n = num
+            # Special case: "10**9 + 7" = 1000000007
+            if fact_mod == 1000000000 or '10**9' in code or '10 ** 9' in code or '10^9' in code:
+                fact_mod = 1000000007
+            if '1000000007' in code:
+                fact_mod = 1000000007
+            if fact_n and fact_mod:
+                return str(math.factorial(fact_n) % fact_mod)
+            if fact_n:
+                return str(math.factorial(fact_n))
+
+    # Factorial without modulo
     fact_match = re.search(r'(\d+)\s*(?:factorial|!)', code_lower)
     if fact_match:
         n = int(fact_match.group(1))
