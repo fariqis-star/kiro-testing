@@ -2,9 +2,9 @@
 AWS Lambda - Key/Door tool for Bedrock Agent Game v3 (Round 2).
 
 Handles BOTH Red Key/Door AND Green Key/Door:
-- Red Key (c40): store value, return "Thanks"
+- Red Key (c40): store value, return "Terima Kasih"
 - Red Door (c30): return stored value reversed (spelled backward)
-- Green Key (c41): store value, return "Thanks"
+- Green Key (c41): store value, return "Terima Kasih"
 - Green Door (c31): return stored value as letter-to-number conversion (a=1, b=2... z=26)
 
 Uses /tmp file + global variable for persistence within warm Lambda instance.
@@ -108,7 +108,7 @@ def lambda_handler(event, context):
     text = _parse_input(event)
 
     if not text:
-        return {"statusCode": 200, "body": json.dumps({"answer": "Thanks"})}
+        return {"statusCode": 200, "body": json.dumps({"answer": "Terima Kasih"})}
 
     text_str = str(text)
 
@@ -124,7 +124,7 @@ def lambda_handler(event, context):
         storage_key = f"{color}_{key_num}"
         KEY_STORAGE[storage_key] = key_value
         _save_storage()
-        return {"statusCode": 200, "body": json.dumps({"answer": "Thanks"})}
+        return {"statusCode": 200, "body": json.dumps({"answer": "Terima Kasih"})}
 
     # RETRIEVE RED DOOR: "What is red key X?"
     red_retrieve = re.search(r'[Ww]hat\s+is\s+[Rr]ed\s*[Kk]ey\s*(\d+)', text_str)
@@ -155,7 +155,7 @@ def lambda_handler(event, context):
         last_word = words[-1].strip().lower().rstrip('.!?')
         KEY_STORAGE["generic_1"] = last_word
         _save_storage()
-        return {"statusCode": 200, "body": json.dumps({"answer": "Thanks"})}
+        return {"statusCode": 200, "body": json.dumps({"answer": "Terima Kasih"})}
 
     if re.search(r'[Ww]hat\s+is.*[Kk]ey', text_str):
         # Try to retrieve and reverse (default to red door behavior)
@@ -170,4 +170,4 @@ def lambda_handler(event, context):
             return {"statusCode": 200, "body": json.dumps({"answer": _reverse_word(KEY_STORAGE["generic_1"])})}
 
     # Default
-    return {"statusCode": 200, "body": json.dumps({"answer": "Thanks"})}
+    return {"statusCode": 200, "body": json.dumps({"answer": "Terima Kasih"})}
