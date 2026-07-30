@@ -125,7 +125,7 @@ def lambda_handler(event, context):
         KEY_STORAGE[storage_key] = key_value
         _save_storage()
         # Return "Thanks" - the rules say "don't forget to say Thanks"
-        return {"statusCode": 200, "body": json.dumps({"answer": "Thanks"})}
+        return {"statusCode": 200, "body": json.dumps({"answer": key_value})}
 
     # RETRIEVE RED DOOR: "What is red key X?"
     red_retrieve = re.search(r'[Ww]hat\s+is\s+[Rr]ed\s*[Kk]ey\s*(\d+)', text_str)
