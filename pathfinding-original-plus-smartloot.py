@@ -32,6 +32,12 @@ def _parse_start(pos):
     return (0, 0)
 
 
+def _is_spike(cell):
+    """Check if a cell is a spike trap (various possible labels)."""
+    c = cell.lower()
+    return c == 'c8' or 'spike' in c or 'trap' in c
+
+
 def _bfs(game_map, rows, cols, start, goal):
     """BFS - tries to avoid spikes first, falls back to allowing them."""
     # First try without spikes
@@ -43,7 +49,7 @@ def _bfs(game_map, rows, cols, start, goal):
             return path
         for dr, dc, move in DIRECTIONS:
             nr, nc = r + dr, c + dc
-            if 0 <= nr < rows and 0 <= nc < cols and game_map[nr][nc] != 'wall' and game_map[nr][nc] != 'c8' and (nr, nc) not in visited:
+            if 0 <= nr < rows and 0 <= nc < cols and game_map[nr][nc] != 'wall' and not _is_spike(game_map[nr][nc]) and (nr, nc) not in visited:
                 visited.add((nr, nc))
                 queue.append((nr, nc, path + [move]))
 
@@ -63,7 +69,7 @@ def _bfs(game_map, rows, cols, start, goal):
 
 
 def _bfs_blocked(game_map, rows, cols, start, goal, blocked_set):
-    """BFS that avoids walls AND blocked positions. Prefers non-spike paths."""
+    """BFS that avoids walls, spikes, AND blocked positions."""
     # First try without spikes
     queue = deque([(start[0], start[1], [])])
     visited = {(start[0], start[1])}
@@ -73,7 +79,7 @@ def _bfs_blocked(game_map, rows, cols, start, goal, blocked_set):
             return path
         for dr, dc, move in DIRECTIONS:
             nr, nc = r + dr, c + dc
-            if 0 <= nr < rows and 0 <= nc < cols and game_map[nr][nc] != 'wall' and game_map[nr][nc] != 'c8' and (nr, nc) not in visited and (nr, nc) not in blocked_set:
+            if 0 <= nr < rows and 0 <= nc < cols and game_map[nr][nc] != 'wall' and not _is_spike(game_map[nr][nc]) and (nr, nc) not in visited and (nr, nc) not in blocked_set:
                 visited.add((nr, nc))
                 queue.append((nr, nc, path + [move]))
 
