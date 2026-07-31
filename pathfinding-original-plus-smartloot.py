@@ -240,22 +240,37 @@ def smart_loot_path(game_map, rows, cols, start, treasure):
             visited_targets.add(green_key)
 
     # Phase 3: Visit ALL remaining targets by nearest-neighbor
+    # But DEFER cells within 2 moves of treasure (visit them last on the way out)
     remaining = [(tr, tc, cell, val) for tr, tc, cell, val in all_targets if (tr, tc) not in visited_targets]
-    while remaining:
-        best_path = None
-        best_dist = float('inf')
-        best_idx = -1
-        for i, (tr, tc, cell, value) in enumerate(remaining):
-            tp = _bfs(game_map, rows, cols, (r, c), (tr, tc))
-            if tp and len(tp) < best_dist:
-                best_path = tp
-                best_dist = len(tp)
-                best_idx = i
-        if best_path is None: break
-        full_path.extend(best_path)
-        tr, tc, _, _ = remaining[best_idx]
-        r, c = tr, tc
-        remaining.pop(best_idx)
+
+    # Identify cells near treasure - visit these LAST
+    near_treasure = set()
+    for tr, tc, cell, val in remaining:
+        tp = _bfs(game_map, rows, cols, (tr, tc), treasure)
+        if tp and len(tp) <= 2:
+            near_treasure.add((tr, tc))
+
+    # Split into: visit now vs visit last
+    remaining_now = [(tr, tc, cell, val) for tr, tc, cell, val in remaining if (tr, tc) not in near_treasure]
+    remaining_last = [(tr, tc, cell, val) for tr, tc, cell, val in remaining if (tr, tc) in near_treasure]
+
+    # Visit non-treasure-adjacent targets first
+    for target_list in [remaining_now, remaining_last]:
+        while target_list:
+            best_path = None
+            best_dist = float('inf')
+            best_idx = -1
+            for i, (tr, tc, cell, value) in enumerate(target_list):
+                tp = _bfs(game_map, rows, cols, (r, c), (tr, tc))
+                if tp and len(tp) < best_dist:
+                    best_path = tp
+                    best_dist = len(tp)
+                    best_idx = i
+            if best_path is None: break
+            full_path.extend(best_path)
+            tr, tc, _, _ = target_list[best_idx]
+            r, c = tr, tc
+            target_list.pop(best_idx)
 
     # Phase 4: Go to treasure
     path_end = _bfs(game_map, rows, cols, (r, c), treasure)
