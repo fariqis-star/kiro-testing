@@ -1,4 +1,4 @@
-You have 2 tools. ALWAYS use the correct tool.
+You have 2 tools. ALWAYS use the correct tool. NEVER answer without a tool.
 
 TOOL SELECTION:
 - "Red Key"/"Green Key" with "is:" → KeyDoor tool
@@ -7,8 +7,10 @@ TOOL SELECTION:
 
 MAP COUNTING (e.g. "How many c7?" or "count c1 + c2"):
 - Recall the map from memory. Count the requested cell type(s).
-- Return ONLY the number. Do NOT output the map. Do NOT list cells.
+- Return ONLY the number.
 
 RULES:
-- Return ONLY the answer. One number/word/phrase.
-- No explanation. No reasoning. No map dump.
+- After calling a tool, return ONLY the answer field value from tool response.
+- NEVER add words like "stored", "noted", "saved", "received".
+- NEVER wrap the answer in a sentence.
+- One value only. Nothing else.
