@@ -154,7 +154,7 @@ def smart_loot_path(game_map, rows, cols, start, treasure):
             elif cell.startswith('c'):
                 all_targets.append((row, col, cell, TARGET_VALUES.get(cell, 250)))
 
-    # Phase 1: Get Red Key (block doors + treasure)
+    # Phase 1: Go STRAIGHT to Red Key (no detours)
     blocked = set()
     if red_door: blocked.add(red_door)
     if green_door: blocked.add(green_door)
@@ -162,67 +162,37 @@ def smart_loot_path(game_map, rows, cols, start, treasure):
 
     red_key_collected = False
     if red_key:
-        while (r, c) != red_key:
-            best_path = _bfs_blocked(game_map, rows, cols, (r, c), red_key, blocked)
-            best_dest = red_key
-            best_score = len(best_path) if best_path else 9999
-
-            for tr, tc, cell, value in all_targets:
-                if (tr, tc) in visited_targets: continue
-                tp = _bfs_blocked(game_map, rows, cols, (r, c), (tr, tc), blocked)
-                if tp and -(value / max(len(tp), 1)) < -(50 / max(best_score, 1)):
-                    best_path = tp
-                    best_dest = (tr, tc)
-                    best_score = len(tp)
-
-            if best_path is None: break
-            full_path.extend(best_path)
-            r, c = best_dest
-            visited_targets.add((r, c))
-
-        if (r, c) == red_key:
+        path_to_key = _bfs_blocked(game_map, rows, cols, (r, c), red_key, blocked)
+        if path_to_key:
+            full_path.extend(path_to_key)
+            r, c = red_key
             red_key_collected = True
             visited_targets.add(red_key)
             blocked.discard(red_door)
 
-    # Phase 2: Get Green Key (red door unblocked)
+    # Phase 2: Go STRAIGHT to Green Key (no detours)
     green_key_collected = False
     if green_key:
-        while (r, c) != green_key:
-            best_path = _bfs_blocked(game_map, rows, cols, (r, c), green_key, blocked)
-            best_dest = green_key
-            if best_path is None: break
-
-            for tr, tc, cell, value in all_targets:
-                if (tr, tc) in visited_targets: continue
-                tp = _bfs_blocked(game_map, rows, cols, (r, c), (tr, tc), blocked)
-                if tp and len(tp) < len(best_path) and value >= 250:
-                    best_path = tp
-                    best_dest = (tr, tc)
-
-            full_path.extend(best_path)
-            r, c = best_dest
-            visited_targets.add((r, c))
-
-        if (r, c) == green_key:
+        path_to_key = _bfs_blocked(game_map, rows, cols, (r, c), green_key, blocked)
+        if path_to_key:
+            full_path.extend(path_to_key)
+            r, c = green_key
             green_key_collected = True
             visited_targets.add(green_key)
             blocked.discard(green_door)
 
-    # Phase 3: Visit all remaining targets by value/distance
+    # Phase 3: Visit ALL remaining targets by nearest-neighbor (less backtracking)
     remaining = [(tr, tc, cell, val) for tr, tc, cell, val in all_targets if (tr, tc) not in visited_targets]
     while remaining:
         best_path = None
-        best_score = float('inf')
+        best_dist = float('inf')
         best_idx = -1
         for i, (tr, tc, cell, value) in enumerate(remaining):
             tp = _bfs_blocked(game_map, rows, cols, (r, c), (tr, tc), blocked)
-            if tp:
-                score = -(value / max(len(tp), 1))
-                if score < best_score:
-                    best_path = tp
-                    best_score = score
-                    best_idx = i
+            if tp and len(tp) < best_dist:
+                best_path = tp
+                best_dist = len(tp)
+                best_idx = i
         if best_path is None: break
         full_path.extend(best_path)
         tr, tc, _, _ = remaining[best_idx]
