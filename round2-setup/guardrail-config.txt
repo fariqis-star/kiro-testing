@@ -1,0 +1,27 @@
+Guardrail Name: c1_guardrail
+
+Denied Topics:
+1. Botany-Restrictions
+   - Definition: Questions about plant biology, botany, gardening, agriculture
+   - Sample phrases: "What is photosynthesis?", "How do plants grow?"
+
+2. Hateful-content
+   - Definition: Content promoting hatred or discrimination
+   - Sample phrases: hate speech examples
+
+NOTE: Medical-Advice REMOVED from denied topics.
+Reason: Guardrail blocks INPUT before supervisor can respond with correct
+denial text "Sorry, the model cannot answer this question." which scores +400.
+When guardrail blocks, game gets generic response = -1.
+Supervisor prompt handles medical refusal better.
+
+Content Filters: ALL set to NONE
+- Hate: NONE
+- Insults: NONE
+- Sexual: NONE
+- Violence: NONE
+- Misconduct: NONE
+
+Reason: HIGH filters block Violet Violet input before supervisor sees it.
+Supervisor prompt already refuses medical/violence/illegal topics.
+Let the MODEL refuse (correct format) instead of the GUARDRAIL (wrong format).
