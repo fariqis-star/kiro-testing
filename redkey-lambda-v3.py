@@ -150,25 +150,25 @@ def lambda_handler(event, context):
         return {"statusCode": 200, "body": json.dumps({"answer": "unknown"})}
 
     # FALLBACK: Generic key detection
+    # Fallback: generic key store
     if re.search(r'[Kk]ey.*is[:\s]', text_str):
-        # Store it
         words = text_str.split()
-        last_word = words[-1].strip().lower().rstrip('.!?')
+        last_word = words[-1].strip().rstrip('.!?')
         KEY_STORAGE["generic_1"] = last_word
         _save_storage()
-        return {"statusCode": 200, "body": json.dumps({"answer": "Thanks"})}
+        return {"statusCode": 200, "body": json.dumps({"answer": last_word})}
 
+    # Fallback: generic key retrieve - ALWAYS return ORIGINAL value (not reversed!)
     if re.search(r'[Ww]hat\s+is.*[Kk]ey', text_str):
-        # Try to retrieve and reverse (default to red door behavior)
         if "green" in text_str.lower():
             for k, v in KEY_STORAGE.items():
                 if "green" in k:
-                    return {"statusCode": 200, "body": json.dumps({"answer": _letters_to_numbers(v)})}
+                    return {"statusCode": 200, "body": json.dumps({"answer": v})}
         for k, v in KEY_STORAGE.items():
             if "red" in k:
-                return {"statusCode": 200, "body": json.dumps({"answer": _reverse_word(v)})}
+                return {"statusCode": 200, "body": json.dumps({"answer": v})}
         if "generic_1" in KEY_STORAGE:
-            return {"statusCode": 200, "body": json.dumps({"answer": _reverse_word(KEY_STORAGE["generic_1"])})}
+            return {"statusCode": 200, "body": json.dumps({"answer": KEY_STORAGE["generic_1"]})}
 
     # Default
-    return {"statusCode": 200, "body": json.dumps({"answer": "Thanks"})}
+    return {"statusCode": 200, "body": json.dumps({"answer": "unknown"})}

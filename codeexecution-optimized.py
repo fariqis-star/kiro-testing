@@ -159,8 +159,18 @@ def _try_intercept(code):
     if pow_match:
         base = int(pow_match.group(1))
         exp = int(pow_match.group(2))
+        # Check for modulo
+        mod_match = re.search(r'%\s*(\d+)', code)
+        if mod_match:
+            mod = int(mod_match.group(1))
+            return str(pow(base, exp, mod))
         if exp <= 10000:
             return str(base ** exp)
+
+    # Power with modulo: pow(a, b, m)
+    pow_mod_match = re.search(r'pow\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)', code)
+    if pow_mod_match:
+        return str(pow(int(pow_mod_match.group(1)), int(pow_mod_match.group(2)), int(pow_mod_match.group(3))))
 
     return None
 
