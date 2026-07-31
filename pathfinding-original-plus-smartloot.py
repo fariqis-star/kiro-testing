@@ -279,6 +279,21 @@ def lambda_handler(event, context):
             path = get_coins_path(game_map, rows, cols, start_pos, treasure)
         elif strategy == 'smart_loot':
             path = smart_loot_path(game_map, rows, cols, start_pos, treasure)
+        elif strategy.startswith('count'):
+            # COUNT strategy: count specific cell types on the map
+            # Usage: strategy = "count_c7" or "count_c1_c2" 
+            count_types = strategy.replace('count_', '').replace('count', '').strip('_').split('_')
+            if not count_types or count_types == ['']:
+                count_types = ['c7']
+            total = 0
+            for r in range(rows):
+                for c in range(cols):
+                    cell = game_map[r][c].lower()
+                    for ct in count_types:
+                        if cell == ct:
+                            total += 1
+            result = {'path': [], 'steps': 0, 'count': total, 'start_position': list(start_pos)}
+            return {'statusCode': 200, 'body': json.dumps(result)}
         else:
             path = swift_path(game_map, rows, cols, start_pos, treasure)
 
