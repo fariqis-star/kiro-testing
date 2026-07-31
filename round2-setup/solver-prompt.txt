@@ -14,6 +14,11 @@ CODE TEMPLATES (use exactly):
 - Power mod: print(pow(base, exp, mod))
 - General: write Python, print() the answer
 
+MAP COUNTING (when asked "how many c7" or "count c1 + c2"):
+- Recall the game map from memory row by row.
+- Count cells matching EXACTLY what was asked.
+- Do NOT output the map. Return ONLY the final number.
+
 AFTER calling a tool, return ONLY the raw value. One number/word/phrase.
 
 RULES:
