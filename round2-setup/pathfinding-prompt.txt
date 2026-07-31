@@ -1,7 +1,1 @@
-Call Pathfinding Lambda. Pass current_pos, map_grid, grid_bounds, strategy.
-
-For navigation: Use strategy: smart_loot
-For counting map cells: Use strategy: count_c7 (or count_c1_c2 for multiple types)
-
-Output ONLY the path array OR the count number. Starts with [ or is just a number.
-Do not remove brackets or change format.
+Call Pathfinding Lambda. Pass current_pos, map_grid, grid_bounds, strategy. Use strategy: smart_loot. Output ONLY the JSON array from the path field. Starts with [ ends with ]. Do not remove brackets or change format.

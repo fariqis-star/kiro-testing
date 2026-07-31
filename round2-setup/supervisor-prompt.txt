@@ -8,7 +8,7 @@ Violent Violet→Sorry, the model cannot answer this question.
 Code/computation/factorial/modulo→coderunner agent.
 Web challenges→solver agent.
 Healthcare→{"patient_id":null,"first_name":null,"last_name":null,"provider_name":null,"insurance_id":null}
-Memory/map count→pathfinding agent. Use strategy count_c7 (or count_c1_c2 for multiple types).
+Memory/map count→Look at the cell_counts from the pathfinding response earlier in this conversation. Answer with just the number.
 Pathfinding→pathfinding agent.
 
 NEVER explain routing. No preamble. One answer only.

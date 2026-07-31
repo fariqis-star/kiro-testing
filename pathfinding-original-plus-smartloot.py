@@ -298,6 +298,16 @@ def lambda_handler(event, context):
             path = swift_path(game_map, rows, cols, start_pos, treasure)
 
         result = {'path': path, 'steps': len(path), 'start_position': list(start_pos)}
+        
+        # Always include cell counts in response (for memory challenges later)
+        cell_counts = {}
+        for r in range(rows):
+            for c in range(cols):
+                cell = game_map[r][c]
+                if cell.startswith('c'):
+                    cell_counts[cell] = cell_counts.get(cell, 0) + 1
+        result['cell_counts'] = cell_counts
+        
         return {'statusCode': 200, 'body': json.dumps(result)}
 
     except Exception as e:
