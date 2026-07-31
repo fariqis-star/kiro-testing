@@ -63,7 +63,23 @@ def _is_suspicious(cell):
 
 
 def _bfs(game_map, rows, cols, start, goal):
-    """Standard BFS avoiding walls only. Simple and reliable."""
+    """BFS: first try avoiding suspicious cells, fallback to walls-only."""
+    # First pass: avoid walls AND suspicious cells (unless it's the goal)
+    queue = deque([(start[0], start[1], [])])
+    visited = {(start[0], start[1])}
+    while queue:
+        r, c, path = queue.popleft()
+        if (r, c) == goal:
+            return path
+        for dr, dc, move in DIRECTIONS:
+            nr, nc = r + dr, c + dc
+            if 0 <= nr < rows and 0 <= nc < cols and (nr, nc) not in visited:
+                cell = game_map[nr][nc]
+                if cell != 'wall' and (not _is_suspicious(cell) or (nr, nc) == goal):
+                    visited.add((nr, nc))
+                    queue.append((nr, nc, path + [move]))
+
+    # Fallback: avoid walls only (allows walking through suspicious cells)
     queue = deque([(start[0], start[1], [])])
     visited = {(start[0], start[1])}
     while queue:
@@ -185,7 +201,7 @@ def _post_process_avoid_spikes(game_map, rows, cols, full_path, start_pos):
         # BFS from before-spike to after-spike, avoiding all dangerous cells
         alt_segment = _bfs_avoiding(game_map, rows, cols, seg_start_pos, seg_end_pos, avoid_cells)
 
-        if alt_segment and len(alt_segment) <= 6:
+        if alt_segment and len(alt_segment) <= 10:
             # Replace the 2 original moves with the alternative segment
             move_start = seg_start_idx  # = danger_idx - 1
             move_end = seg_end_idx      # = danger_idx + 1 (exclusive in moves)
