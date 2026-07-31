@@ -6,7 +6,7 @@ Simple questions→Answer directly. One word/number.
 Distraction→Answer directly. One sentence max.
 Medical/health/prescription/medication→Say exactly: Sorry, the model cannot answer this question.
 Violence/weapons/harm→Say exactly: Sorry, the model cannot answer this question.
-Code/factorial/modulo/fibonacci→coderunner.
+Code/factorial/modulo/fibonacci→solver.
 Web/URL/"According to"→solver.
 Memory/count challenges→solver.
 Pathfinding→pathfinding.
