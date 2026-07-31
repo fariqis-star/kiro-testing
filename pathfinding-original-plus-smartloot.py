@@ -228,6 +228,14 @@ def smart_loot_path(game_map, rows, cols, start, treasure):
             r, c = red_key
             red_key_collected = True
             visited_targets.add(red_key)
+            # Grab any targets within 2 moves of the key (don't waste the trip)
+            for tr, tc, cell, val in all_targets:
+                if (tr, tc) not in visited_targets:
+                    tp = _bfs(game_map, rows, cols, (r, c), (tr, tc))
+                    if tp and len(tp) <= 2:
+                        full_path.extend(tp)
+                        r, c = tr, tc
+                        visited_targets.add((tr, tc))
 
     # Phase 2: Go STRAIGHT to Green Key
     green_key_collected = False
@@ -238,6 +246,14 @@ def smart_loot_path(game_map, rows, cols, start, treasure):
             r, c = green_key
             green_key_collected = True
             visited_targets.add(green_key)
+            # Grab any targets within 2 moves of the key
+            for tr, tc, cell, val in all_targets:
+                if (tr, tc) not in visited_targets:
+                    tp = _bfs(game_map, rows, cols, (r, c), (tr, tc))
+                    if tp and len(tp) <= 2:
+                        full_path.extend(tp)
+                        r, c = tr, tc
+                        visited_targets.add((tr, tc))
 
     # Phase 3: Visit ALL remaining targets by nearest-neighbor
     remaining = [(tr, tc, cell, val) for tr, tc, cell, val in all_targets if (tr, tc) not in visited_targets]
