@@ -40,7 +40,6 @@ def _is_spike(cell):
 
 def _bfs(game_map, rows, cols, start, goal):
     """BFS - tries to avoid spikes first, falls back to allowing them."""
-    # First try without spikes
     queue = deque([(start[0], start[1], [])])
     visited = {(start[0], start[1])}
     while queue:
@@ -53,7 +52,6 @@ def _bfs(game_map, rows, cols, start, goal):
                 visited.add((nr, nc))
                 queue.append((nr, nc, path + [move]))
 
-    # If no path without spikes, allow spikes
     queue = deque([(start[0], start[1], [])])
     visited = {(start[0], start[1])}
     while queue:
@@ -68,79 +66,16 @@ def _bfs(game_map, rows, cols, start, goal):
     return None
 
 
-def _bfs_blocked(game_map, rows, cols, start, goal, blocked_set):
-    """BFS that avoids walls, spikes, AND blocked positions."""
-    # First try without spikes
-    queue = deque([(start[0], start[1], [])])
-    visited = {(start[0], start[1])}
-    while queue:
-        r, c, path = queue.popleft()
-        if (r, c) == goal:
-            return path
-        for dr, dc, move in DIRECTIONS:
-            nr, nc = r + dr, c + dc
-            if 0 <= nr < rows and 0 <= nc < cols and game_map[nr][nc] != 'wall' and not _is_spike(game_map[nr][nc]) and (nr, nc) not in visited and (nr, nc) not in blocked_set:
-                visited.add((nr, nc))
-                queue.append((nr, nc, path + [move]))
-
-    # If no path without spikes, allow spikes
-    queue = deque([(start[0], start[1], [])])
-    visited = {(start[0], start[1])}
-    while queue:
-        r, c, path = queue.popleft()
-        if (r, c) == goal:
-            return path
-        for dr, dc, move in DIRECTIONS:
-            nr, nc = r + dr, c + dc
-            if 0 <= nr < rows and 0 <= nc < cols and game_map[nr][nc] != 'wall' and (nr, nc) not in visited and (nr, nc) not in blocked_set:
-                visited.add((nr, nc))
-                queue.append((nr, nc, path + [move]))
-    return None
-
-
 def swift_path(game_map, rows, cols, start, treasure):
     return _bfs(game_map, rows, cols, start, treasure) or []
 
 
-def get_coins_path(game_map, rows, cols, start, treasure):
-    r, c = start
-    full_path = []
-    collected = set()
-
-    for _ in range(50):
-        queue = deque([(r, c, [])])
-        visited = {(r, c)}
-        targets = []
-        while queue:
-            cr, cc, p = queue.popleft()
-            if game_map[cr][cc] in COLLECTIBLE_COINS and (cr, cc) != (r, c) and (cr, cc) not in collected:
-                targets.append((len(p), p, cr, cc))
-            for dr, dc, move in DIRECTIONS:
-                nr, nc = cr + dr, cc + dc
-                if 0 <= nr < rows and 0 <= nc < cols and game_map[nr][nc] != 'wall' and (nr, nc) not in visited:
-                    visited.add((nr, nc))
-                    queue.append((nr, nc, p + [move]))
-        if not targets:
-            break
-        targets.sort()
-        _, path_to, r, c = targets[0]
-        full_path.extend(path_to)
-        collected.add((r, c))
-
-    path_end = _bfs(game_map, rows, cols, (r, c), treasure)
-    if path_end:
-        full_path.extend(path_end)
-        return full_path
-    return swift_path(game_map, rows, cols, start, treasure)
-
-
 def smart_loot_path(game_map, rows, cols, start, treasure):
-    """Value-weighted pathfinding. NEVER modifies game_map. Uses blocked_set instead."""
+    """Keys first, then nearest-neighbor sweep. NEVER modifies game_map."""
     r, c = start
     full_path = []
     visited_targets = set()
 
-    # Find keys, doors, targets
     red_key = green_key = red_door = green_door = None
     all_targets = []
     for row in range(rows):
@@ -154,22 +89,15 @@ def smart_loot_path(game_map, rows, cols, start, treasure):
             elif cell.startswith('c'):
                 all_targets.append((row, col, cell, TARGET_VALUES.get(cell, 250)))
 
-    # Phase 1: Go STRAIGHT to Red Key using swift BFS (proven to work)
-    blocked = set()
-    if red_door: blocked.add(red_door)
-    if green_door: blocked.add(green_door)
-    blocked.add(treasure)
-
+    # Phase 1: Go STRAIGHT to Red Key
     red_key_collected = False
     if red_key:
-        # Use _bfs (same as swift) which handles the spike/wall ambiguity correctly
         path_to_key = _bfs(game_map, rows, cols, (r, c), red_key)
         if path_to_key:
             full_path.extend(path_to_key)
             r, c = red_key
             red_key_collected = True
             visited_targets.add(red_key)
-            blocked.discard(red_door)
 
     # Phase 2: Go STRAIGHT to Green Key
     green_key_collected = False
@@ -180,9 +108,8 @@ def smart_loot_path(game_map, rows, cols, start, treasure):
             r, c = green_key
             green_key_collected = True
             visited_targets.add(green_key)
-            blocked.discard(green_door)
 
-    # Phase 3: Visit ALL remaining targets by nearest-neighbor (less backtracking)
+    # Phase 3: Visit ALL remaining targets by nearest-neighbor
     remaining = [(tr, tc, cell, val) for tr, tc, cell, val in all_targets if (tr, tc) not in visited_targets]
     while remaining:
         best_path = None
@@ -201,7 +128,6 @@ def smart_loot_path(game_map, rows, cols, start, treasure):
         remaining.pop(best_idx)
 
     # Phase 4: Go to treasure
-    blocked.discard(treasure)
     path_end = _bfs(game_map, rows, cols, (r, c), treasure)
     if path_end:
         full_path.extend(path_end)
@@ -250,12 +176,8 @@ def lambda_handler(event, context):
                         break
 
         strategy = str(body.get('strategy', 'smart_loot')).lower().strip()
-        if 'coin' in strategy:
-            strategy = 'get_coins'
-        elif 'swift' in strategy or 'fast' in strategy or 'quick' in strategy:
+        if 'swift' in strategy or 'fast' in strategy or 'quick' in strategy:
             strategy = 'swift'
-        elif 'smart' in strategy or 'loot' in strategy or 'value' in strategy:
-            strategy = 'smart_loot'
         else:
             strategy = 'smart_loot'
 
@@ -275,39 +197,12 @@ def lambda_handler(event, context):
         if not treasure:
             return _err(400, 'No treasure found on map')
 
-        if strategy == 'get_coins':
-            path = get_coins_path(game_map, rows, cols, start_pos, treasure)
-        elif strategy == 'smart_loot':
-            path = smart_loot_path(game_map, rows, cols, start_pos, treasure)
-        elif strategy.startswith('count'):
-            # COUNT strategy: count specific cell types on the map
-            # Usage: strategy = "count_c7" or "count_c1_c2" 
-            count_types = strategy.replace('count_', '').replace('count', '').strip('_').split('_')
-            if not count_types or count_types == ['']:
-                count_types = ['c7']
-            total = 0
-            for r in range(rows):
-                for c in range(cols):
-                    cell = game_map[r][c].lower()
-                    for ct in count_types:
-                        if cell == ct:
-                            total += 1
-            result = {'path': [], 'steps': 0, 'count': total, 'start_position': list(start_pos)}
-            return {'statusCode': 200, 'body': json.dumps(result)}
-        else:
+        if strategy == 'swift':
             path = swift_path(game_map, rows, cols, start_pos, treasure)
+        else:
+            path = smart_loot_path(game_map, rows, cols, start_pos, treasure)
 
         result = {'path': path, 'steps': len(path), 'start_position': list(start_pos)}
-        
-        # Always include cell counts in response (for memory challenges later)
-        cell_counts = {}
-        for r in range(rows):
-            for c in range(cols):
-                cell = game_map[r][c]
-                if cell.startswith('c'):
-                    cell_counts[cell] = cell_counts.get(cell, 0) + 1
-        result['cell_counts'] = cell_counts
-        
         return {'statusCode': 200, 'body': json.dumps(result)}
 
     except Exception as e:
