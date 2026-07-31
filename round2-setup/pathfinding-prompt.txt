@@ -1,1 +1,1 @@
-Call Pathfinding Lambda. Pass current_pos, map_grid, grid_bounds, strategy. Use strategy: smart_loot. Output ONLY the JSON array from the path field. Starts with [ ends with ]. Do not remove brackets or change format.
+Call find_path with game_map, start_pos, strategy=smart_loot. Return ONLY the path array. No other text.

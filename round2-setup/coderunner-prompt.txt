@@ -1,18 +1,11 @@
-You MUST write Python code to solve every problem. ALWAYS use the tool. NEVER answer without running code.
+Write Python code to solve the problem. ALWAYS use the tool.
 
-CRITICAL RULES:
-- "(10 to the 9th) + 7" means 10**9 + 7 = 1000000007
-- "(10 to the Nth)" means 10**N
-- "factorial" means math.factorial(N)
-- "modulo" means % operator
+RULES:
+- "(10 to the 9th) + 7" = 10**9 + 7 = 1000000007
+- "factorial" = math.factorial(N)
+- "modulo" = % operator
+- fast_fib(N, mod=M) is available for Fibonacci
 
-TEMPLATES:
-- Factorial modulo: import math; print(math.factorial(N) % (10**9 + 7))
-- Fibonacci modulo: print(fast_fib(N, mod=M))
-- Prime count: sieve method
-- Power: print(pow(base, exp, mod))
+Example: "2024! mod 10^9+7" → import math; print(math.factorial(2024) % (10**9 + 7))
 
-Example: "What is 2024 factorial modulo (10 to the 9th) + 7?"
-Code: import math; print(math.factorial(2024) % (10**9 + 7))
-
-Write the code. Send to tool. Return ONLY the number from output. Nothing else.
+Return ONLY the number from output.

@@ -8,6 +8,16 @@ DIRECTIONS = [(-1, 0, "up"), (1, 0, "down"), (0, -1, "left"), (0, 1, "right")]
 
 TARGET_VALUES = {"c4": 800, "c2": 600, "c3": 550, "c5": 250, "c1": 400, "c7": 250, "c17": 50, "c18": 500, "c40": 50, "c41": 50, "c30": 1000, "c31": 1000}
 
+# Cells we KNOW are safe to walk through
+KNOWN_SAFE_CELLS = frozenset([
+    'normal', 'start', 'treasure',
+    'c1', 'c2', 'c3', 'c4', 'c5', 'c7',
+    'c17', 'c18', 'c30', 'c31', 'c40', 'c41'
+])
+
+# Cells we KNOW are dangerous (spike traps)
+KNOWN_SPIKE_CELLS = frozenset(['c8'])
+
 
 def _parse_start(pos):
     try:
@@ -33,27 +43,27 @@ def _parse_start(pos):
 
 
 def _is_spike(cell):
-    """Check if a cell is a spike trap or potentially dangerous."""
+    """Check if a cell is a known spike trap."""
     c = cell.lower()
-    if c == 'c8' or 'spike' in c or 'trap' in c:
-        return True
-    return False
+    return c in KNOWN_SPIKE_CELLS or 'spike' in c or 'trap' in c
 
-def _is_known_safe(cell):
-    """Check if a cell is KNOWN to be safe. Unknown cells are suspicious."""
+
+def _is_suspicious(cell):
+    """Check if a cell is NOT in our known-safe list and NOT a wall.
+    These are cells that MIGHT be dangerous (unknown types like the I3 spike)."""
     c = cell.lower()
-    # These are definitely safe to walk through
-    if c in ('normal', 'start', 'treasure'):
+    if c == 'wall':
+        return False
+    if c in KNOWN_SAFE_CELLS:
+        return False
+    if c in KNOWN_SPIKE_CELLS:
         return True
-    # Known challenge/coin types that are safe
-    if c in ('c1', 'c2', 'c3', 'c4', 'c5', 'c7', 'c17', 'c18', 'c30', 'c31', 'c40', 'c41'):
-        return True
-    return False
+    # Unknown cell type - suspicious!
+    return True
 
 
 def _bfs(game_map, rows, cols, start, goal):
-    """BFS - first try ONLY known-safe cells, then allow all non-wall."""
-    # First try: only known-safe cells (avoids spikes with ANY label)
+    """Standard BFS avoiding walls only. Simple and reliable."""
     queue = deque([(start[0], start[1], [])])
     visited = {(start[0], start[1])}
     while queue:
@@ -64,11 +74,14 @@ def _bfs(game_map, rows, cols, start, goal):
             nr, nc = r + dr, c + dc
             if 0 <= nr < rows and 0 <= nc < cols and (nr, nc) not in visited:
                 cell = game_map[nr][nc]
-                if _is_known_safe(cell) or (nr, nc) == goal:
+                if cell != 'wall':
                     visited.add((nr, nc))
                     queue.append((nr, nc, path + [move]))
+    return None
 
-    # Fallback: allow ALL non-wall cells
+
+def _bfs_avoiding(game_map, rows, cols, start, goal, avoid_cells):
+    """BFS that avoids specific cells (by coordinate). Used for rerouting."""
     queue = deque([(start[0], start[1], [])])
     visited = {(start[0], start[1])}
     while queue:
@@ -77,10 +90,109 @@ def _bfs(game_map, rows, cols, start, goal):
             return path
         for dr, dc, move in DIRECTIONS:
             nr, nc = r + dr, c + dc
-            if 0 <= nr < rows and 0 <= nc < cols and game_map[nr][nc] != 'wall' and (nr, nc) not in visited:
-                visited.add((nr, nc))
-                queue.append((nr, nc, path + [move]))
+            if 0 <= nr < rows and 0 <= nc < cols and (nr, nc) not in visited:
+                cell = game_map[nr][nc]
+                if cell != 'wall' and (nr, nc) not in avoid_cells:
+                    visited.add((nr, nc))
+                    queue.append((nr, nc, path + [move]))
     return None
+
+
+def _post_process_avoid_spikes(game_map, rows, cols, full_path, start_pos):
+    """After generating a path, scan for suspicious cells we PASS THROUGH and reroute.
+    
+    CRITICAL RULES:
+    1. Only reroutes TRANSIT cells (cells we pass through on the way somewhere else)
+    2. Does NOT avoid cells that are DESTINATIONS (targets we intentionally visit)
+    3. Only replaces small segments (max 6 moves detour)
+    4. Never replaces the full path
+    
+    A cell is a "transit" if:
+    - We enter it AND leave it (not the final move to a target/destination)
+    - The path continues past it
+    
+    Returns an improved path (or the original if no improvement possible).
+    """
+    if not full_path:
+        return full_path
+
+    move_map = {"up": (-1, 0), "down": (1, 0), "left": (0, -1), "right": (0, 1)}
+
+    # Trace the path to find all positions visited
+    positions = [start_pos]
+    r, c = start_pos
+    for move in full_path:
+        dr, dc = move_map[move]
+        r, c = r + dr, c + dc
+        positions.append((r, c))
+
+    # Find "turning points" - positions where direction changes or we stop/reverse
+    # These are intentional destinations (targets). Cells between turning points are transit.
+    # Simple heuristic: a cell is a DESTINATION if the path reverses direction after it
+    # or if it's a target cell type (challenge, key, door, coin).
+    # For our purposes: any suspicious cell that has BOTH a predecessor AND successor 
+    # in the path is a transit cell (we're just passing through).
+    
+    # Find dangerous TRANSIT cells only
+    dangerous_indices = []
+    for i in range(1, len(positions) - 1):  # skip first and last positions
+        pr, pc = positions[i]
+        if 0 <= pr < rows and 0 <= pc < cols:
+            cell = game_map[pr][pc]
+            if _is_suspicious(cell):
+                # Check if this is a transit (passing through) or destination
+                # If the NEXT move takes us AWAY from this cell, it's transit
+                # If we stay here or the path ends here, it's a destination
+                # Simple: if there's a move after this position, it's transit
+                dangerous_indices.append(i)
+
+    if not dangerous_indices:
+        return full_path  # Path is clean
+
+    # Collect all dangerous TRANSIT positions
+    avoid_cells = set()
+    for i in dangerous_indices:
+        avoid_cells.add(positions[i])
+
+    # Process each dangerous transit cell - reroute the segment around it
+    # Work from last to first to maintain indices
+    result_path = list(full_path)
+    result_positions = list(positions)
+
+    for danger_idx in sorted(dangerous_indices, reverse=True):
+        # Recalculate positions (they may have shifted from previous fixes)
+        result_positions = [start_pos]
+        tr, tc = start_pos
+        for move in result_path:
+            dr, dc = move_map[move]
+            tr, tc = tr + dr, tc + dc
+            result_positions.append((tr, tc))
+
+        if danger_idx >= len(result_positions) - 1:
+            continue
+
+        # The dangerous cell is at result_positions[danger_idx]
+        # Reroute from cell BEFORE it to cell AFTER it
+        seg_start_idx = danger_idx - 1
+        seg_end_idx = danger_idx + 1
+
+        if seg_start_idx < 0 or seg_end_idx >= len(result_positions):
+            continue
+
+        seg_start_pos = result_positions[seg_start_idx]
+        seg_end_pos = result_positions[seg_end_idx]
+
+        # BFS from before-spike to after-spike, avoiding all dangerous cells
+        alt_segment = _bfs_avoiding(game_map, rows, cols, seg_start_pos, seg_end_pos, avoid_cells)
+
+        if alt_segment and len(alt_segment) <= 6:
+            # Replace the 2 original moves with the alternative segment
+            move_start = seg_start_idx  # = danger_idx - 1
+            move_end = seg_end_idx      # = danger_idx + 1 (exclusive in moves)
+
+            result_path = result_path[:move_start] + alt_segment + result_path[move_end:]
+
+    return result_path
 
 
 def swift_path(game_map, rows, cols, start, treasure):
@@ -148,9 +260,13 @@ def smart_loot_path(game_map, rows, cols, start, treasure):
     path_end = _bfs(game_map, rows, cols, (r, c), treasure)
     if path_end:
         full_path.extend(path_end)
-        return full_path
+    else:
+        return swift_path(game_map, rows, cols, start, treasure)
 
-    return swift_path(game_map, rows, cols, start, treasure)
+    # Phase 5: POST-PROCESS - reroute around spikes/suspicious cells
+    full_path = _post_process_avoid_spikes(game_map, rows, cols, full_path, start)
+
+    return full_path
 
 
 def lambda_handler(event, context):
