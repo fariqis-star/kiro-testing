@@ -154,7 +154,7 @@ def smart_loot_path(game_map, rows, cols, start, treasure):
             elif cell.startswith('c'):
                 all_targets.append((row, col, cell, TARGET_VALUES.get(cell, 250)))
 
-    # Phase 1: Go STRAIGHT to Red Key (no detours)
+    # Phase 1: Go STRAIGHT to Red Key using swift BFS (proven to work)
     blocked = set()
     if red_door: blocked.add(red_door)
     if green_door: blocked.add(green_door)
@@ -162,7 +162,8 @@ def smart_loot_path(game_map, rows, cols, start, treasure):
 
     red_key_collected = False
     if red_key:
-        path_to_key = _bfs_blocked(game_map, rows, cols, (r, c), red_key, blocked)
+        # Use _bfs (same as swift) which handles the spike/wall ambiguity correctly
+        path_to_key = _bfs(game_map, rows, cols, (r, c), red_key)
         if path_to_key:
             full_path.extend(path_to_key)
             r, c = red_key
@@ -170,10 +171,10 @@ def smart_loot_path(game_map, rows, cols, start, treasure):
             visited_targets.add(red_key)
             blocked.discard(red_door)
 
-    # Phase 2: Go STRAIGHT to Green Key (no detours)
+    # Phase 2: Go STRAIGHT to Green Key
     green_key_collected = False
     if green_key:
-        path_to_key = _bfs_blocked(game_map, rows, cols, (r, c), green_key, blocked)
+        path_to_key = _bfs(game_map, rows, cols, (r, c), green_key)
         if path_to_key:
             full_path.extend(path_to_key)
             r, c = green_key
@@ -188,7 +189,7 @@ def smart_loot_path(game_map, rows, cols, start, treasure):
         best_dist = float('inf')
         best_idx = -1
         for i, (tr, tc, cell, value) in enumerate(remaining):
-            tp = _bfs_blocked(game_map, rows, cols, (r, c), (tr, tc), blocked)
+            tp = _bfs(game_map, rows, cols, (r, c), (tr, tc))
             if tp and len(tp) < best_dist:
                 best_path = tp
                 best_dist = len(tp)
@@ -201,7 +202,7 @@ def smart_loot_path(game_map, rows, cols, start, treasure):
 
     # Phase 4: Go to treasure
     blocked.discard(treasure)
-    path_end = _bfs_blocked(game_map, rows, cols, (r, c), treasure, blocked)
+    path_end = _bfs(game_map, rows, cols, (r, c), treasure)
     if path_end:
         full_path.extend(path_end)
         return full_path
