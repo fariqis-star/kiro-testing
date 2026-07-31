@@ -33,13 +33,27 @@ def _parse_start(pos):
 
 
 def _is_spike(cell):
-    """Check if a cell is a spike trap (various possible labels)."""
+    """Check if a cell is a spike trap or potentially dangerous."""
     c = cell.lower()
-    return c == 'c8' or 'spike' in c or 'trap' in c
+    if c == 'c8' or 'spike' in c or 'trap' in c:
+        return True
+    return False
+
+def _is_known_safe(cell):
+    """Check if a cell is KNOWN to be safe. Unknown cells are suspicious."""
+    c = cell.lower()
+    # These are definitely safe to walk through
+    if c in ('normal', 'start', 'treasure'):
+        return True
+    # Known challenge/coin types that are safe
+    if c in ('c1', 'c2', 'c3', 'c4', 'c5', 'c7', 'c17', 'c18', 'c30', 'c31', 'c40', 'c41'):
+        return True
+    return False
 
 
 def _bfs(game_map, rows, cols, start, goal):
-    """BFS - tries to avoid spikes first, falls back to allowing them."""
+    """BFS - first try ONLY known-safe cells, then allow all non-wall."""
+    # First try: only known-safe cells (avoids spikes with ANY label)
     queue = deque([(start[0], start[1], [])])
     visited = {(start[0], start[1])}
     while queue:
@@ -48,10 +62,13 @@ def _bfs(game_map, rows, cols, start, goal):
             return path
         for dr, dc, move in DIRECTIONS:
             nr, nc = r + dr, c + dc
-            if 0 <= nr < rows and 0 <= nc < cols and game_map[nr][nc] != 'wall' and not _is_spike(game_map[nr][nc]) and (nr, nc) not in visited:
-                visited.add((nr, nc))
-                queue.append((nr, nc, path + [move]))
+            if 0 <= nr < rows and 0 <= nc < cols and (nr, nc) not in visited:
+                cell = game_map[nr][nc]
+                if _is_known_safe(cell) or (nr, nc) == goal:
+                    visited.add((nr, nc))
+                    queue.append((nr, nc, path + [move]))
 
+    # Fallback: allow ALL non-wall cells
     queue = deque([(start[0], start[1], [])])
     visited = {(start[0], start[1])}
     while queue:
