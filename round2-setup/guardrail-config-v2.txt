@@ -13,15 +13,19 @@ Denied Topics:
    - Definition: Questions requesting medical diagnosis, treatment recommendations, or medication advice
    - Sample phrases: "What medication should I take?", "What's a good alternative to my prescription?"
 
-Content Filters (ALL at HIGH - matches friend #2 config):
+Content Filters:
 - Hate: HIGH
-- Insults: HIGH
-- Sexual: HIGH
-- Violence: HIGH
+- Insults: NONE
+- Sexual: NONE
+- Violence: MEDIUM  ← CHANGED from HIGH! "firewall" was triggering false positive on distraction
 - Misconduct: HIGH
 
 Blocked Message: "Sorry, the model cannot answer this question."
 
-CHANGE FROM PREVIOUS: Set Insults and Sexual to HIGH (were NONE before).
-Friend #2 uses ALL HIGH and scores 15,464/17,648.
-This catches more Violet edge cases without false positives on normal questions.
+RATIONALE for Violence=MEDIUM:
+- Violet challenge is MEDICAL (prescription/medication). Caught by Medical-Advice denied topic.
+- Violence=HIGH was catching "firewall" in "what does a network firewall do?" = false positive
+- False positive costs: -2 lives (-500) + miss +50 reward = -550 total
+- Violence=MEDIUM still catches actual violence, just not tech terms
+- Denied topics handle all known Violet variants already
+
