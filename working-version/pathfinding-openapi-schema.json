@@ -1,0 +1,86 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Pathfinding and Map Analysis Tool",
+    "version": "1.0.0",
+    "description": "Finds optimal path through game map and counts tiles"
+  },
+  "paths": {
+    "/find_path_to_treasure": {
+      "post": {
+        "summary": "Find path to treasure or count tiles on the map",
+        "description": "When strategy is smart_loot: finds optimal path collecting all coins and challenges. When strategy is count: counts specified tile type on the stored map (no game_map needed).",
+        "operationId": "find_path_to_treasure",
+        "parameters": [
+          {
+            "name": "game_map",
+            "in": "query",
+            "description": "The 2D game map array. Required for pathfinding. NOT needed for counting.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "start_pos",
+            "in": "query",
+            "description": "Starting position as [row, col] array. Required for pathfinding.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "strategy",
+            "in": "query",
+            "description": "Strategy to use. Use 'smart_loot' for pathfinding. Use 'count' to count tiles on the map.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["smart_loot", "count", "swift"]
+            }
+          },
+          {
+            "name": "count_type",
+            "in": "query",
+            "description": "Tile type to count when strategy is 'count'. Examples: 'c7', 'c1+c2', 'c2'. Do NOT pass game_map when counting.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "array",
+                      "description": "Array of moves (up/down/left/right) for pathfinding"
+                    },
+                    "steps": {
+                      "type": "integer",
+                      "description": "Number of steps in path"
+                    },
+                    "count": {
+                      "type": "integer",
+                      "description": "Number of matching tiles when counting"
+                    },
+                    "answer": {
+                      "type": "string",
+                      "description": "The answer as a string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
