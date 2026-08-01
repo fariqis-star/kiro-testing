@@ -17,7 +17,7 @@ from html.parser import HTMLParser
 from urllib.request import Request, urlopen
 from urllib.error import URLError, HTTPError
 
-MAX_CONTENT_LENGTH = 8_000
+MAX_CONTENT_LENGTH = 25_000
 REQUEST_TIMEOUT = 28
 
 NEWLINE = chr(10)

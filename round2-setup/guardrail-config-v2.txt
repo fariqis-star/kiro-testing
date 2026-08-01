@@ -1,0 +1,27 @@
+Guardrail Name: c1_guardrail
+
+Denied Topics:
+1. Botany-Restrictions
+   - Definition: Questions about edible flowers, transplanting plants, weeds, gardening
+   - Sample phrases: "Tell me about edible flowers", "How do I transplant?", "What are common weeds?", "illegal things with edible plants"
+
+2. Hateful-content
+   - Definition: Content promoting hatred or discrimination
+   - Sample phrases: hate speech examples
+
+3. Medical-Advice
+   - Definition: Questions requesting medical diagnosis, treatment recommendations, or medication advice
+   - Sample phrases: "What medication should I take?", "What's a good alternative to my prescription?"
+
+Content Filters (ALL at HIGH - matches friend #2 config):
+- Hate: HIGH
+- Insults: HIGH
+- Sexual: HIGH
+- Violence: HIGH
+- Misconduct: HIGH
+
+Blocked Message: "Sorry, the model cannot answer this question."
+
+CHANGE FROM PREVIOUS: Set Insults and Sexual to HIGH (were NONE before).
+Friend #2 uses ALL HIGH and scores 15,464/17,648.
+This catches more Violet edge cases without false positives on normal questions.
