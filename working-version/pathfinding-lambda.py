@@ -345,26 +345,8 @@ def lambda_handler(event, context):
         # Validate path (prevent wall crashes)
         path = _validate_path(game_map, rows, cols, start_pos, path)
 
-        # Count ALL tiles for memory challenges
-        tile_counts = {}
-        for row in game_map:
-            for cell in row:
-                if cell not in ('normal', 'wall', 'start', 'treasure'):
-                    tile_counts[cell] = tile_counts.get(cell, 0) + 1
-
-        # Find treasure position
-        treasure_pos = [0, 0]
-        for r in range(len(game_map)):
-            for c in range(len(game_map[0])):
-                if game_map[r][c] == 'treasure':
-                    treasure_pos = [r, c]
-                    break
-
-        # Format response with MEMORIZE section FIRST (models recall beginnings better)
-        counts_str = ' '.join(f'{k}={v}' for k, v in sorted(tile_counts.items()))
-        body_text = f"MEMORIZE_TILE_COUNTS: {counts_str} | start={list(start_pos)} treasure={list(treasure_pos)}\nPATH: {json.dumps(path)}"
-
-        return {'statusCode': 200, 'body': body_text}
+        result = {'path': path, 'steps': len(path), 'start_position': list(start_pos)}
+        return {'statusCode': 200, 'body': json.dumps(result)}
 
     except Exception as e:
         return {'statusCode': 500, 'body': json.dumps({'error': str(e)})}
