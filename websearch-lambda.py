@@ -12,12 +12,13 @@ import ssl
 import gzip
 import zlib
 import io
+import time
 from html.parser import HTMLParser
 from urllib.request import Request, urlopen
 from urllib.error import URLError, HTTPError
 
 MAX_CONTENT_LENGTH = 25_000
-REQUEST_TIMEOUT = 25
+REQUEST_TIMEOUT = 28
 
 NEWLINE = chr(10)
 DOUBLE_NEWLINE = chr(10) + chr(10)
@@ -317,22 +318,30 @@ def lambda_handler(event, context):
             html = ""
             fetch_error = None
 
-            try:
-                html = _fetch_page(url)
-            except Exception as e:
-                fetch_error = e
-                alt_url = url.rstrip("/") + "/" if not url.endswith("/") else url.rstrip("/")
+            # Try up to 2 attempts with a short delay between
+            for attempt in range(2):
                 try:
-                    html = _fetch_page(alt_url)
+                    html = _fetch_page(url)
                     fetch_error = None
-                except Exception:
-                    if "://www." not in url:
-                        www_url = url.replace("://", "://www.")
-                        try:
-                            html = _fetch_page(www_url)
-                            fetch_error = None
-                        except Exception:
-                            pass
+                    break
+                except Exception as e:
+                    fetch_error = e
+                    alt_url = url.rstrip("/") + "/" if not url.endswith("/") else url.rstrip("/")
+                    try:
+                        html = _fetch_page(alt_url)
+                        fetch_error = None
+                        break
+                    except Exception:
+                        if "://www." not in url:
+                            www_url = url.replace("://", "://www.")
+                            try:
+                                html = _fetch_page(www_url)
+                                fetch_error = None
+                                break
+                            except Exception:
+                                pass
+                    if attempt == 0 and not html:
+                        time.sleep(1)  # Brief pause before retry
 
             if fetch_error and not html:
                 raise fetch_error
