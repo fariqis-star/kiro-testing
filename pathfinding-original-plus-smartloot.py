@@ -347,11 +347,66 @@ def lambda_handler(event, context):
         strategy = str(body.get('strategy', 'smart_loot')).lower().strip()
         if 'swift' in strategy or 'fast' in strategy or 'quick' in strategy:
             strategy = 'swift'
+        elif 'count' in strategy or body.get('count_type') or body.get('count'):
+            strategy = 'count'
         else:
             strategy = 'smart_loot'
 
+        # === COUNT MODE: read stored map from /tmp and count cells ===
+        if strategy == 'count':
+            import os
+            count_type = str(body.get('count_type', body.get('count', body.get('cell_type', '')))).strip().lower()
+            
+            # Try to load stored map
+            stored_map = None
+            try:
+                if os.path.exists('/tmp/game_map.json'):
+                    with open('/tmp/game_map.json', 'r') as f:
+                        stored_map = json.loads(f.read())
+            except:
+                pass
+            
+            # If game_map provided in request, use that instead (and store it)
+            if game_map:
+                stored_map = game_map
+                try:
+                    with open('/tmp/game_map.json', 'w') as f:
+                        f.write(json.dumps(game_map))
+                except:
+                    pass
+            
+            if not stored_map:
+                return _err(400, 'No stored map available')
+            
+            if not count_type:
+                return _err(400, 'Missing count_type')
+            
+            # Handle "c1+c2" or "c1 and c2" style
+            count_type = count_type.replace(' and ', '+').replace(',', '+')
+            if '+' in count_type:
+                types_to_count = [t.strip() for t in count_type.split('+') if t.strip()]
+            else:
+                types_to_count = [count_type]
+            
+            # Count matching cells
+            total = 0
+            for row in stored_map:
+                for cell in row:
+                    if cell.lower() in types_to_count:
+                        total += 1
+            
+            return {'statusCode': 200, 'body': json.dumps({'count': total, 'answer': str(total)})}
+
         if not game_map:
             return _err(400, 'Missing game_map')
+
+        # === PATHFINDING MODE: store map in /tmp for later counting ===
+        import os
+        try:
+            with open('/tmp/game_map.json', 'w') as f:
+                f.write(json.dumps(game_map))
+        except:
+            pass
 
         rows, cols = len(game_map), len(game_map[0])
         treasure = None
