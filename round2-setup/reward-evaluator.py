@@ -221,7 +221,7 @@ def reward_function(sample: Dict[str, Any], index: int) -> Dict[str, Any]:
         if tool_score > 0 and param_score > 0.5:
             pred_params = predicted.get('parameters', {})
             try:
-                lambda_output = invoke_lambda('pathfinding', pred_params)
+                lambda_output = invoke_lambda('AgentCoreGatewayTool-Pathfinding', pred_params)
                 if 'error' not in lambda_output and lambda_output.get('statusCode') == 200:
                     lambda_success_score = 1.0
             except:
