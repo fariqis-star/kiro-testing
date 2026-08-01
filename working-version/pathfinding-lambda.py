@@ -360,8 +360,11 @@ def lambda_handler(event, context):
                     treasure_pos = [r, c]
                     break
 
-        result = {'path': path, 'steps': len(path), 'start_position': list(start_pos), 'tile_counts': tile_counts, 'treasure_position': treasure_pos}
-        return {'statusCode': 200, 'body': json.dumps(result)}
+        # Format response with MEMORIZE section FIRST (models recall beginnings better)
+        counts_str = ' '.join(f'{k}={v}' for k, v in sorted(tile_counts.items()))
+        body_text = f"MEMORIZE_TILE_COUNTS: {counts_str} | start={list(start_pos)} treasure={list(treasure_pos)}\nPATH: {json.dumps(path)}"
+
+        return {'statusCode': 200, 'body': body_text}
 
     except Exception as e:
         return {'statusCode': 500, 'body': json.dumps({'error': str(e)})}
