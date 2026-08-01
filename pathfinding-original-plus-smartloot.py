@@ -201,10 +201,12 @@ def swift_path(game_map, rows, cols, start, treasure):
 
 
 def smart_loot_path(game_map, rows, cols, start, treasure):
-    """Keys first, then nearest-neighbor sweep. NEVER modifies game_map."""
+    """Keys first, then nearest-neighbor with transit marking. NEVER modifies game_map."""
     r, c = start
     full_path = []
     visited_targets = set()
+
+    move_map = {"up": (-1, 0), "down": (1, 0), "left": (0, -1), "right": (0, 1)}
 
     red_key = green_key = red_door = green_door = None
     all_targets = []
@@ -219,44 +221,56 @@ def smart_loot_path(game_map, rows, cols, start, treasure):
             elif cell.startswith('c'):
                 all_targets.append((row, col, cell, TARGET_VALUES.get(cell, 250)))
 
+    # Helper: find targets the BFS path passes through (free pickups)
+    target_positions = {(tr, tc) for tr, tc, _, _ in all_targets}
+    def mark_transit(path, sr, sc):
+        passed = set()
+        tr, tc = sr, sc
+        for move in path:
+            dr, dc = move_map[move]
+            tr, tc = tr + dr, tc + dc
+            if (tr, tc) in target_positions:
+                passed.add((tr, tc))
+        return passed
+
     # Phase 1: Go STRAIGHT to Red Key
-    red_key_collected = False
     if red_key:
         path_to_key = _bfs(game_map, rows, cols, (r, c), red_key)
         if path_to_key:
+            visited_targets.update(mark_transit(path_to_key, r, c))
             full_path.extend(path_to_key)
             r, c = red_key
-            red_key_collected = True
             visited_targets.add(red_key)
 
     # Phase 2: Go STRAIGHT to Green Key
-    green_key_collected = False
     if green_key:
         path_to_key = _bfs(game_map, rows, cols, (r, c), green_key)
         if path_to_key:
+            visited_targets.update(mark_transit(path_to_key, r, c))
             full_path.extend(path_to_key)
             r, c = green_key
-            green_key_collected = True
             visited_targets.add(green_key)
 
     # Phase 3: Visit ALL remaining targets by nearest-neighbor
-    # But DEFER cells within 2 moves of treasure (visit them last on the way out)
+    # DEFER cells within 2 moves of treasure (visit them last)
     remaining = [(tr, tc, cell, val) for tr, tc, cell, val in all_targets if (tr, tc) not in visited_targets]
 
-    # Identify cells near treasure - visit these LAST
     near_treasure = set()
     for tr, tc, cell, val in remaining:
         tp = _bfs(game_map, rows, cols, (tr, tc), treasure)
         if tp and len(tp) <= 2:
             near_treasure.add((tr, tc))
 
-    # Split into: visit now vs visit last
     remaining_now = [(tr, tc, cell, val) for tr, tc, cell, val in remaining if (tr, tc) not in near_treasure]
     remaining_last = [(tr, tc, cell, val) for tr, tc, cell, val in remaining if (tr, tc) in near_treasure]
 
-    # Visit non-treasure-adjacent targets first
     for target_list in [remaining_now, remaining_last]:
         while target_list:
+            # Remove already-visited targets (from transit marking)
+            target_list[:] = [(tr,tc,cell,val) for tr,tc,cell,val in target_list if (tr,tc) not in visited_targets]
+            if not target_list:
+                break
+
             best_path = None
             best_dist = float('inf')
             best_idx = -1
@@ -266,10 +280,16 @@ def smart_loot_path(game_map, rows, cols, start, treasure):
                     best_path = tp
                     best_dist = len(tp)
                     best_idx = i
-            if best_path is None: break
+            if best_path is None:
+                break
+
+            # Mark transit targets (free pickups along the way)
+            visited_targets.update(mark_transit(best_path, r, c))
+
             full_path.extend(best_path)
             tr, tc, _, _ = target_list[best_idx]
             r, c = tr, tc
+            visited_targets.add((tr, tc))
             target_list.pop(best_idx)
 
     # Phase 4: Go to treasure
