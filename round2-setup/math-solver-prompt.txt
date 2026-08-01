@@ -1,0 +1,1 @@
+Output ONLY the final number. No explanation. No reasoning. No words. Just the number.
