@@ -17,7 +17,7 @@ from html.parser import HTMLParser
 from urllib.request import Request, urlopen
 from urllib.error import URLError, HTTPError
 
-MAX_CONTENT_LENGTH = 25_000
+MAX_CONTENT_LENGTH = 8_000
 REQUEST_TIMEOUT = 28
 
 NEWLINE = chr(10)
@@ -299,6 +299,91 @@ def _fix_unicode_escapes(text):
     text = re.sub(r'\\x([0-9a-fA-F]{2})', _replace_hex, text)
     return text
 
+def _extract_keywords(event):
+    """Extract keywords from event for focused content extraction."""
+    # Try parameters format
+    if isinstance(event.get("parameters"), list):
+        for param in event["parameters"]:
+            if isinstance(param, dict) and param.get("name") == "keywords":
+                val = param.get("value", "")
+                if isinstance(val, list):
+                    return val
+                if isinstance(val, str):
+                    try:
+                        parsed = json.loads(val)
+                        if isinstance(parsed, list):
+                            return parsed
+                    except:
+                        pass
+                    return [k.strip() for k in val.split(",") if k.strip()]
+    # Try requestBody format
+    try:
+        props = event.get("requestBody", {}).get("content", {}).get("application/json", {}).get("properties", [])
+        for p in (props or []):
+            if isinstance(p, dict) and p.get("name") == "keywords":
+                val = p.get("value", "")
+                if isinstance(val, str):
+                    try:
+                        parsed = json.loads(val)
+                        if isinstance(parsed, list):
+                            return parsed
+                    except:
+                        return [k.strip() for k in val.split(",") if k.strip()]
+    except:
+        pass
+    # Try direct key
+    if "keywords" in event:
+        val = event["keywords"]
+        if isinstance(val, list):
+            return val
+        if isinstance(val, str):
+            return [k.strip() for k in val.split(",") if k.strip()]
+    return []
+
+
+def _find_relevant_chunks(text, keywords, max_chunks=5):
+    """Find paragraphs matching keywords. Returns focused content."""
+    if not keywords or not text:
+        return None
+
+    lower_keywords = [k.lower() for k in keywords if k.strip()]
+    if not lower_keywords:
+        return None
+
+    # Split text into paragraphs/lines
+    parts = [p.strip() for p in text.split('\n') if p.strip()]
+    if not parts:
+        return None
+
+    # Score each part by keyword matches
+    scored = []
+    for i, part in enumerate(parts):
+        part_lower = part.lower()
+        score = sum(1 for kw in lower_keywords if kw in part_lower)
+        if score > 0:
+            scored.append((score, i))
+
+    if not scored:
+        return None
+
+    # Get top matching paragraphs with context
+    scored.sort(reverse=True)
+    top_indices = sorted(i for _, i in scored[:max_chunks])
+
+    result_lines = []
+    seen = set()
+    for idx in top_indices:
+        # Include 1 line before and after for context
+        start = max(0, idx - 1)
+        end = min(len(parts), idx + 2)
+        for j in range(start, end):
+            if j not in seen:
+                result_lines.append(parts[j])
+                seen.add(j)
+
+    return '\n'.join(result_lines)
+
+
 def lambda_handler(event, context):
     content = ""
     error = ""
@@ -348,10 +433,20 @@ def lambda_handler(event, context):
 
             clean_text = _extract_text(html)
 
-            if len(clean_text) > MAX_CONTENT_LENGTH:
-                clean_text = clean_text[:MAX_CONTENT_LENGTH]
-
-            content = clean_text
+            # Extract keywords from event for focused search
+            keywords = _extract_keywords(event)
+            if keywords and clean_text:
+                relevant = _find_relevant_chunks(clean_text, keywords)
+                if relevant:
+                    content = relevant
+                else:
+                    if len(clean_text) > MAX_CONTENT_LENGTH:
+                        clean_text = clean_text[:MAX_CONTENT_LENGTH]
+                    content = clean_text
+            else:
+                if len(clean_text) > MAX_CONTENT_LENGTH:
+                    clean_text = clean_text[:MAX_CONTENT_LENGTH]
+                content = clean_text
 
     except HTTPError as exc:
         error = "HTTP error " + str(exc.code) + ": " + str(exc.reason)
