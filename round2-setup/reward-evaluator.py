@@ -79,7 +79,7 @@ def extract_text_signals(response: str) -> Dict[str, Any]:
         return signals
 
     lower = response.lower()
-    signals['mentions_tool_name'] = 'pathfinding_lambda' in lower
+    signals['mentions_tool_name'] = 'pathfinding' in lower
     signals['mentions_strategy'] = 'quickest' in lower or 'coins_first' in lower
     signals['mentions_params'] = 'game_map' in lower or 'start_pos' in lower
     signals['has_json'] = '{' in response and '}' in response
@@ -199,7 +199,7 @@ def reward_function(sample: Dict[str, Any], index: int) -> Dict[str, Any]:
         format_score = 1.0
 
         tool_name = predicted.get('tool', '').lower()
-        if tool_name in ['pathfinding_lambda', 'pathfinding']:
+        if tool_name in ['pathfinding', 'pathfinding_lambda']:
             tool_score = 1.0
 
         if tool_score > 0 and expected_input:
