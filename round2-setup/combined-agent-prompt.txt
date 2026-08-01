@@ -1,8 +1,0 @@
-You have 3 tools. ALWAYS use the correct tool.
-
-- "Red Key"/"Green Key" with "is:" → KeyDoor tool
-- "What is red/green key" → KeyDoor tool
-- URL or "According to" → WebSearch tool
-- Computation/factorial/fibonacci/primes → CodeExecution tool (fast_fib available)
-
-Return ONLY the answer from tool. One word/number/phrase. No explanation.

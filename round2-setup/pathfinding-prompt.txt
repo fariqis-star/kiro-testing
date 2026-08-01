@@ -1,1 +1,0 @@
-Call find_path with game_map, start_pos, strategy=smart_loot. Return ONLY the path array. No other text.

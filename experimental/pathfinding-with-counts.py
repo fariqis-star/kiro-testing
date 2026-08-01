@@ -1,3 +1,14 @@
+"""
+Pathfinding Lambda - WITH TILE COUNTS IN RESPONSE (experimental)
+
+Same as working-version/pathfinding-lambda.py but adds tile_counts
+to the pathfinding response so the model can recall them later
+for counting questions (even if game_map is truncated from context).
+
+Deploy this INSTEAD of working-version/pathfinding-lambda.py to fix
+counting on judge.
+"""
+
 import json
 import re
 import os
@@ -50,7 +61,6 @@ def _extract_params(event):
 
 
 def _bfs(game_map, rows, cols, start, goal, extra_blocked=None, allow_cells=None, allow_spikes=False):
-    """BFS with spike awareness. Blocks c8 unless allow_spikes=True or cell in allow_cells."""
     blocked = extra_blocked or set()
     allowed = allow_cells or set()
     block_set = BLOCKED_TILES_NO_SPIKES if allow_spikes else BLOCKED_TILES
@@ -74,7 +84,6 @@ def _bfs(game_map, rows, cols, start, goal, extra_blocked=None, allow_cells=None
 
 
 def _bfs_spike_aware(game_map, rows, cols, start, goal, extra_blocked=None, allow_cells=None):
-    """Try avoiding spikes first, fallback to allowing them."""
     path = _bfs(game_map, rows, cols, start, goal, extra_blocked=extra_blocked, allow_cells=allow_cells, allow_spikes=False)
     if path is not None:
         return path
@@ -82,7 +91,6 @@ def _bfs_spike_aware(game_map, rows, cols, start, goal, extra_blocked=None, allo
 
 
 def _find_start_exit(game_map, rows, cols, start_pos):
-    """Detect forced spike exits from start position."""
     r, c = start_pos
     allow = set()
     has_free_exit = False
@@ -103,16 +111,13 @@ def _find_start_exit(game_map, rows, cols, start_pos):
 
 
 def _pathfind(game_map, start_pos):
-    """Full pathfinding: sweep coins, handle keys/doors, avoid spikes, reach treasure."""
     rows = len(game_map)
     cols = len(game_map[0])
     board = [row[:] for row in game_map]
     r, c = start_pos
     full_path = []
-
     allowed_spikes = _find_start_exit(game_map, rows, cols, start_pos)
 
-    # Find special positions
     treasure = None
     red_key_pos = None
     red_door_pos = None
@@ -135,7 +140,6 @@ def _pathfind(game_map, start_pos):
     if not treasure:
         return []
 
-    # Block doors initially
     blocked_doors = set()
     if red_door_pos:
         blocked_doors.add(red_door_pos)
@@ -153,7 +157,6 @@ def _pathfind(game_map, start_pos):
         return targets
 
     def sweep(board, cur_r, cur_c, blocked):
-        """Greedy nearest-first sweep avoiding spikes."""
         path = []
         r, c = cur_r, cur_c
         for _ in range(80):
@@ -178,11 +181,9 @@ def _pathfind(game_map, start_pos):
                 break
         return path, r, c
 
-    # PHASE 1: Sweep accessible targets (doors blocked)
     path_segment, r, c = sweep(board, r, c, blocked_doors)
     full_path.extend(path_segment)
 
-    # PHASE 2: Get RED key
     if red_key_pos and red_door_pos:
         if board[red_key_pos[0]][red_key_pos[1]] != 'normal':
             path_to_key = _bfs_spike_aware(board, rows, cols, (r, c), red_key_pos, extra_blocked=blocked_doors, allow_cells=allowed_spikes)
@@ -192,7 +193,6 @@ def _pathfind(game_map, start_pos):
                 board[r][c] = 'normal'
         blocked_doors.discard(red_door_pos)
 
-    # PHASE 3: Get GREEN key
     if green_key_pos and green_door_pos:
         if board[green_key_pos[0]][green_key_pos[1]] != 'normal':
             path_to_key = _bfs_spike_aware(board, rows, cols, (r, c), green_key_pos, extra_blocked=blocked_doors, allow_cells=allowed_spikes)
@@ -202,17 +202,14 @@ def _pathfind(game_map, start_pos):
                 board[r][c] = 'normal'
         blocked_doors.discard(green_door_pos)
 
-    # PHASE 4: Sweep ALL remaining targets (doors open)
     path_segment, r, c = sweep(board, r, c, blocked_doors)
     full_path.extend(path_segment)
 
-    # PHASE 5: Go to treasure
     path_to_treasure = _bfs_spike_aware(board, rows, cols, (r, c), treasure, extra_blocked=blocked_doors, allow_cells=allowed_spikes)
     if path_to_treasure:
         full_path.extend(path_to_treasure)
         return full_path
 
-    # Fallback: direct path allowing all spikes
     all_spikes = set()
     for row in range(rows):
         for col in range(cols):
@@ -223,7 +220,6 @@ def _pathfind(game_map, start_pos):
 
 
 def _validate_path(game_map, rows, cols, start_pos, path):
-    """Validate path - stop if a move goes into a wall."""
     validated = []
     r, c = start_pos
     move_map = {"up": (-1, 0), "down": (1, 0), "left": (0, -1), "right": (0, 1)}
@@ -236,6 +232,16 @@ def _validate_path(game_map, rows, cols, start_pos, path):
         else:
             break
     return validated
+
+
+def _count_all_tiles(game_map):
+    """Count ALL tile types on the map. Returns dict of tile→count."""
+    counts = {}
+    for row in game_map:
+        for cell in row:
+            if cell not in ('normal', 'wall', 'start', 'treasure'):
+                counts[cell] = counts.get(cell, 0) + 1
+    return counts
 
 
 def lambda_handler(event, context):
@@ -255,14 +261,11 @@ def lambda_handler(event, context):
             max_cols = max(len(row) for row in game_map)
             game_map = [row + ['normal'] * (max_cols - len(row)) for row in game_map]
 
-        # Determine action
         strategy = str(params.get('strategy', params.get('action', 'smart_loot'))).lower().strip()
 
-        # === COUNT MODE ===
+        # === COUNT MODE (if /tmp has stored map) ===
         if 'count' in strategy or params.get('count_type') or params.get('tile'):
             count_type = str(params.get('count_type', params.get('tile', params.get('count', '')))).strip().lower()
-
-            # Try stored map first
             stored_map = None
             if not game_map:
                 try:
@@ -277,7 +280,6 @@ def lambda_handler(event, context):
             if not stored_map:
                 return {'statusCode': 200, 'body': json.dumps({'count': 0, 'answer': '0', 'error': 'No map'})}
 
-            # Handle addition: "c1+c2" or "c1 and c2"
             count_type = count_type.replace(' and ', '+').replace(',', '+')
             if '+' in count_type:
                 types_to_count = [t.strip() for t in count_type.split('+') if t.strip()]
@@ -327,22 +329,34 @@ def lambda_handler(event, context):
                 if start_pos != (0, 0):
                     break
 
+        # Find treasure
+        treasure = None
+        for r in range(rows):
+            for c in range(cols):
+                if game_map[r][c] == 'treasure':
+                    treasure = (r, c)
+                    break
+
         # Run pathfinding
         if 'swift' in strategy or 'fast' in strategy or 'quick' in strategy:
-            treasure = None
-            for r in range(rows):
-                for c in range(cols):
-                    if game_map[r][c] == 'treasure':
-                        treasure = (r, c)
-                        break
             path = _bfs(game_map, rows, cols, start_pos, treasure, allow_spikes=True) or []
         else:
             path = _pathfind(game_map, start_pos)
 
-        # Validate path (prevent wall crashes)
+        # Validate path
         path = _validate_path(game_map, rows, cols, start_pos, path)
 
-        result = {'path': path, 'steps': len(path), 'start_position': list(start_pos)}
+        # Count ALL tiles (this is the key addition for judge)
+        tile_counts = _count_all_tiles(game_map)
+
+        # Build result with tile_counts included
+        result = {
+            'path': path,
+            'steps': len(path),
+            'start_position': list(start_pos),
+            'treasure_position': list(treasure) if treasure else [0, 0],
+            'tile_counts': tile_counts
+        }
         return {'statusCode': 200, 'body': json.dumps(result)}
 
     except Exception as e:

@@ -1,2 +1,0 @@
-Memory Name: memento_game_memory
-Description: Store the FULL game map array row by row at game start. For memory counting challenges, count cells by scanning stored map. Count ONLY cells that match exactly (e.g. c7 means cells labeled "c7", not coins collected). The map is a 10x10 grid.
