@@ -345,7 +345,22 @@ def lambda_handler(event, context):
         # Validate path (prevent wall crashes)
         path = _validate_path(game_map, rows, cols, start_pos, path)
 
-        result = {'path': path, 'steps': len(path), 'start_position': list(start_pos)}
+        # Count ALL tiles for memory challenges
+        tile_counts = {}
+        for row in game_map:
+            for cell in row:
+                if cell not in ('normal', 'wall', 'start', 'treasure'):
+                    tile_counts[cell] = tile_counts.get(cell, 0) + 1
+
+        # Find treasure position
+        treasure_pos = [0, 0]
+        for r in range(len(game_map)):
+            for c in range(len(game_map[0])):
+                if game_map[r][c] == 'treasure':
+                    treasure_pos = [r, c]
+                    break
+
+        result = {'path': path, 'steps': len(path), 'start_position': list(start_pos), 'tile_counts': tile_counts, 'treasure_position': treasure_pos}
         return {'statusCode': 200, 'body': json.dumps(result)}
 
     except Exception as e:
