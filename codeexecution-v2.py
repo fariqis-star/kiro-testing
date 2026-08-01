@@ -291,7 +291,13 @@ def lambda_handler(event, context):
         signal.signal(signal.SIGALRM, old_handler)
         sys.stdout = old_stdout
 
-    return _resp(event, json.dumps({"output": stdout_buf.getvalue(), "error": error_msg}))
+    output = stdout_buf.getvalue()
+
+    # If no print output, check for 'result' variable (friend's pattern)
+    if not output.strip() and 'result' in exec_globals and error_msg is None:
+        output = str(exec_globals['result']) + "\n"
+
+    return _resp(event, json.dumps({"output": output, "error": error_msg}))
 
 
 def _resp(event, result_body):
