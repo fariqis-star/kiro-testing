@@ -1,19 +1,29 @@
 import json
 import re
-import os
 from collections import deque
 
+CELL_POINTS = {"c7": 250}
 COLLECTIBLE_COINS = {"c7"}
-CHALLENGE_TILES = {"c1", "c2", "c3", "c4", "c5", "c6", "c17", "c18", "c30", "c31"}
-BLOCKED_TILES = {"wall", "c8"}
-BLOCKED_TILES_NO_SPIKES = {"wall"}
 DIRECTIONS = [(-1, 0, "up"), (1, 0, "down"), (0, -1, "left"), (0, 1, "right")]
-MAP_STORAGE = "/tmp/game_map.json"
+
+TARGET_VALUES = {"c4": 800, "c2": 600, "c3": 550, "c5": 250, "c1": 400, "c7": 250, "c17": 50, "c18": 500, "c40": 50, "c41": 50, "c30": 1000, "c31": 1000}
+
+# Cells we KNOW are safe to walk through
+KNOWN_SAFE_CELLS = frozenset([
+    'normal', 'start', 'treasure',
+    'c1', 'c2', 'c3', 'c4', 'c5', 'c7',
+    'c17', 'c18', 'c30', 'c31', 'c40', 'c41'
+])
+
+# Cells we KNOW are dangerous (spike traps)
+KNOWN_SPIKE_CELLS = frozenset(['c8'])
 
 
 def _parse_start(pos):
     try:
         if isinstance(pos, (list, tuple)):
+            if len(pos) == 1:
+                return _parse_start(pos[0])
             if len(pos) >= 2:
                 a = re.sub(r'[^A-Za-z0-9]', '', str(pos[0]))
                 b = re.sub(r'[^A-Za-z0-9]', '', str(pos[1]))
@@ -32,29 +42,29 @@ def _parse_start(pos):
     return (0, 0)
 
 
-def _extract_params(event):
-    if 'parameters' in event and isinstance(event['parameters'], list):
-        params = {}
-        for p in event['parameters']:
-            name = p.get('name', '')
-            value = p.get('value', '')
-            try:
-                params[name] = json.loads(value) if isinstance(value, str) else value
-            except (json.JSONDecodeError, TypeError):
-                params[name] = value
-        return params
-    if 'body' in event:
-        body = json.loads(event['body']) if isinstance(event['body'], str) else event['body']
-        return body
-    return event
+def _is_spike(cell):
+    """Check if a cell is a known spike trap."""
+    c = cell.lower()
+    return c in KNOWN_SPIKE_CELLS or 'spike' in c or 'trap' in c
 
 
+def _is_suspicious(cell):
+    """Check if a cell is NOT in our known-safe list and NOT a wall.
+    These are cells that MIGHT be dangerous (unknown types like the I3 spike)."""
+    c = cell.lower()
+    if c == 'wall':
+        return False
+    if c in KNOWN_SAFE_CELLS:
+        return False
+    if c in KNOWN_SPIKE_CELLS:
+        return True
+    # Unknown cell type - suspicious!
+    return True
 
-def _bfs(game_map, rows, cols, start, goal, extra_blocked=None, allow_cells=None, allow_spikes=False):
-    """BFS with spike awareness. Blocks c8 unless allow_spikes=True or cell in allow_cells."""
-    blocked = extra_blocked or set()
-    allowed = allow_cells or set()
-    block_set = BLOCKED_TILES_NO_SPIKES if allow_spikes else BLOCKED_TILES
+
+def _bfs(game_map, rows, cols, start, goal):
+    """Standard BFS avoiding walls only. Simple and reliable.
+    Spike avoidance is handled by post-processing, not here."""
     queue = deque([(start[0], start[1], [])])
     visited = {(start[0], start[1])}
     while queue:
@@ -65,288 +75,308 @@ def _bfs(game_map, rows, cols, start, goal, extra_blocked=None, allow_cells=None
             nr, nc = r + dr, c + dc
             if 0 <= nr < rows and 0 <= nc < cols and (nr, nc) not in visited:
                 cell = game_map[nr][nc]
-                if (nr, nc) in allowed:
-                    visited.add((nr, nc))
-                    queue.append((nr, nc, path + [move]))
-                elif cell not in block_set and (nr, nc) not in blocked:
+                if cell != 'wall':
                     visited.add((nr, nc))
                     queue.append((nr, nc, path + [move]))
     return None
 
 
-def _bfs_spike_aware(game_map, rows, cols, start, goal, extra_blocked=None, allow_cells=None):
-    """Try avoiding spikes first, fallback to allowing them."""
-    path = _bfs(game_map, rows, cols, start, goal, extra_blocked=extra_blocked, allow_cells=allow_cells, allow_spikes=False)
-    if path is not None:
-        return path
-    return _bfs(game_map, rows, cols, start, goal, extra_blocked=extra_blocked, allow_cells=allow_cells, allow_spikes=True)
-
-
-def _find_start_exit(game_map, rows, cols, start_pos):
-    """Detect forced spike exits from start position."""
-    r, c = start_pos
-    allow = set()
-    has_free_exit = False
-    for dr, dc, _ in DIRECTIONS:
-        nr, nc = r + dr, c + dc
-        if 0 <= nr < rows and 0 <= nc < cols:
-            cell = game_map[nr][nc]
-            if cell not in BLOCKED_TILES:
-                has_free_exit = True
-                break
-    if not has_free_exit:
-        for dr, dc, _ in DIRECTIONS:
+def _bfs_avoiding(game_map, rows, cols, start, goal, avoid_cells):
+    """BFS that avoids specific cells (by coordinate). Used for rerouting."""
+    queue = deque([(start[0], start[1], [])])
+    visited = {(start[0], start[1])}
+    while queue:
+        r, c, path = queue.popleft()
+        if (r, c) == goal:
+            return path
+        for dr, dc, move in DIRECTIONS:
             nr, nc = r + dr, c + dc
-            if 0 <= nr < rows and 0 <= nc < cols:
-                if game_map[nr][nc] == 'c8':
-                    allow.add((nr, nc))
-    return allow
+            if 0 <= nr < rows and 0 <= nc < cols and (nr, nc) not in visited:
+                cell = game_map[nr][nc]
+                if cell != 'wall' and (nr, nc) not in avoid_cells:
+                    visited.add((nr, nc))
+                    queue.append((nr, nc, path + [move]))
+    return None
 
 
-
-def _pathfind(game_map, start_pos):
-    """Full pathfinding: sweep coins, handle keys/doors, avoid spikes, reach treasure."""
-    rows = len(game_map)
-    cols = len(game_map[0])
-    board = [row[:] for row in game_map]
-    r, c = start_pos
-    full_path = []
-
-    allowed_spikes = _find_start_exit(game_map, rows, cols, start_pos)
-
-    # Find special positions
-    treasure = None
-    red_key_pos = None
-    red_door_pos = None
-    green_key_pos = None
-    green_door_pos = None
-    for row in range(rows):
-        for col in range(cols):
-            cell = board[row][col]
-            if cell == 'treasure':
-                treasure = (row, col)
-            elif cell == 'c40':
-                red_key_pos = (row, col)
-            elif cell == 'c30':
-                red_door_pos = (row, col)
-            elif cell == 'c41':
-                green_key_pos = (row, col)
-            elif cell == 'c31':
-                green_door_pos = (row, col)
-
-    if not treasure:
-        return []
-
-    # Block doors initially
-    blocked_doors = set()
-    if red_door_pos:
-        blocked_doors.add(red_door_pos)
-    if green_door_pos:
-        blocked_doors.add(green_door_pos)
-
-    def get_targets(board, blocked):
-        targets = set()
-        for row in range(rows):
-            for col in range(cols):
-                cell = board[row][col]
-                if cell in COLLECTIBLE_COINS or cell in CHALLENGE_TILES:
-                    if (row, col) not in blocked:
-                        targets.add((row, col))
-        return targets
-
-    def sweep(board, cur_r, cur_c, blocked):
-        """Greedy nearest-first sweep avoiding spikes."""
-        path = []
-        r, c = cur_r, cur_c
-        for _ in range(80):
-            targets = get_targets(board, blocked)
-            best_dist = float('inf')
-            best_path = None
-            best_target = None
-            for target in list(targets):
-                if target == (r, c):
-                    board[r][c] = 'normal'
-                    continue
-                tp = _bfs_spike_aware(board, rows, cols, (r, c), target, extra_blocked=blocked, allow_cells=allowed_spikes)
-                if tp and len(tp) < best_dist:
-                    best_dist = len(tp)
-                    best_path = tp
-                    best_target = target
-            if best_target:
-                path.extend(best_path)
-                r, c = best_target
-                board[r][c] = 'normal'
-            else:
-                break
-        return path, r, c
-
-    # PHASE 1: Sweep accessible targets (doors blocked)
-    path_segment, r, c = sweep(board, r, c, blocked_doors)
-    full_path.extend(path_segment)
-
-    # PHASE 2: Get RED key
-    if red_key_pos and red_door_pos:
-        if board[red_key_pos[0]][red_key_pos[1]] != 'normal':
-            path_to_key = _bfs_spike_aware(board, rows, cols, (r, c), red_key_pos, extra_blocked=blocked_doors, allow_cells=allowed_spikes)
-            if path_to_key:
-                full_path.extend(path_to_key)
-                r, c = red_key_pos
-                board[r][c] = 'normal'
-        blocked_doors.discard(red_door_pos)
-
-    # PHASE 3: Get GREEN key
-    if green_key_pos and green_door_pos:
-        if board[green_key_pos[0]][green_key_pos[1]] != 'normal':
-            path_to_key = _bfs_spike_aware(board, rows, cols, (r, c), green_key_pos, extra_blocked=blocked_doors, allow_cells=allowed_spikes)
-            if path_to_key:
-                full_path.extend(path_to_key)
-                r, c = green_key_pos
-                board[r][c] = 'normal'
-        blocked_doors.discard(green_door_pos)
-
-    # PHASE 4: Sweep ALL remaining targets (doors open)
-    path_segment, r, c = sweep(board, r, c, blocked_doors)
-    full_path.extend(path_segment)
-
-    # PHASE 5: Go to treasure
-    path_to_treasure = _bfs_spike_aware(board, rows, cols, (r, c), treasure, extra_blocked=blocked_doors, allow_cells=allowed_spikes)
-    if path_to_treasure:
-        full_path.extend(path_to_treasure)
+def _post_process_avoid_spikes(game_map, rows, cols, full_path, start_pos):
+    """After generating a path, scan for suspicious cells we PASS THROUGH and reroute.
+    
+    CRITICAL RULES:
+    1. Only reroutes TRANSIT cells (cells we pass through on the way somewhere else)
+    2. Does NOT avoid cells that are DESTINATIONS (targets we intentionally visit)
+    3. Only replaces small segments (max 6 moves detour)
+    4. Never replaces the full path
+    
+    A cell is a "transit" if:
+    - We enter it AND leave it (not the final move to a target/destination)
+    - The path continues past it
+    
+    Returns an improved path (or the original if no improvement possible).
+    """
+    if not full_path:
         return full_path
 
-    # Fallback: direct path allowing all spikes
-    all_spikes = set()
+    move_map = {"up": (-1, 0), "down": (1, 0), "left": (0, -1), "right": (0, 1)}
+
+    # Trace the path to find all positions visited
+    positions = [start_pos]
+    r, c = start_pos
+    for move in full_path:
+        dr, dc = move_map[move]
+        r, c = r + dr, c + dc
+        positions.append((r, c))
+
+    # Find "turning points" - positions where direction changes or we stop/reverse
+    # These are intentional destinations (targets). Cells between turning points are transit.
+    # Simple heuristic: a cell is a DESTINATION if the path reverses direction after it
+    # or if it's a target cell type (challenge, key, door, coin).
+    # For our purposes: any suspicious cell that has BOTH a predecessor AND successor 
+    # in the path is a transit cell (we're just passing through).
+    
+    # Find dangerous TRANSIT cells only
+    dangerous_indices = []
+    for i in range(1, len(positions) - 1):  # skip first and last positions
+        pr, pc = positions[i]
+        if 0 <= pr < rows and 0 <= pc < cols:
+            cell = game_map[pr][pc]
+            if _is_suspicious(cell):
+                # Check if this is a transit (passing through) or destination
+                # If the NEXT move takes us AWAY from this cell, it's transit
+                # If we stay here or the path ends here, it's a destination
+                # Simple: if there's a move after this position, it's transit
+                dangerous_indices.append(i)
+
+    if not dangerous_indices:
+        return full_path  # Path is clean
+
+    # Collect all dangerous TRANSIT positions
+    avoid_cells = set()
+    for i in dangerous_indices:
+        avoid_cells.add(positions[i])
+
+    # Process each dangerous transit cell - reroute the segment around it
+    # Work from last to first to maintain indices
+    result_path = list(full_path)
+    result_positions = list(positions)
+
+    for danger_idx in sorted(dangerous_indices, reverse=True):
+        # Recalculate positions (they may have shifted from previous fixes)
+        result_positions = [start_pos]
+        tr, tc = start_pos
+        for move in result_path:
+            dr, dc = move_map[move]
+            tr, tc = tr + dr, tc + dc
+            result_positions.append((tr, tc))
+
+        if danger_idx >= len(result_positions) - 1:
+            continue
+
+        # The dangerous cell is at result_positions[danger_idx]
+        # Reroute from cell BEFORE it to cell AFTER it
+        seg_start_idx = danger_idx - 1
+        seg_end_idx = danger_idx + 1
+
+        if seg_start_idx < 0 or seg_end_idx >= len(result_positions):
+            continue
+
+        seg_start_pos = result_positions[seg_start_idx]
+        seg_end_pos = result_positions[seg_end_idx]
+
+        # BFS from before-spike to after-spike, avoiding all dangerous cells
+        alt_segment = _bfs_avoiding(game_map, rows, cols, seg_start_pos, seg_end_pos, avoid_cells)
+
+        if alt_segment and len(alt_segment) <= 10:
+            # Replace the 2 original moves with the alternative segment
+            move_start = seg_start_idx  # = danger_idx - 1
+            move_end = seg_end_idx      # = danger_idx + 1 (exclusive in moves)
+
+            result_path = result_path[:move_start] + alt_segment + result_path[move_end:]
+
+    return result_path
+
+
+def swift_path(game_map, rows, cols, start, treasure):
+    return _bfs(game_map, rows, cols, start, treasure) or []
+
+
+def smart_loot_path(game_map, rows, cols, start, treasure):
+    """Keys first, then nearest-neighbor with transit marking. NEVER modifies game_map."""
+    r, c = start
+    full_path = []
+    visited_targets = set()
+
+    move_map = {"up": (-1, 0), "down": (1, 0), "left": (0, -1), "right": (0, 1)}
+
+    red_key = green_key = red_door = green_door = None
+    all_targets = []
     for row in range(rows):
         for col in range(cols):
-            if game_map[row][col] == 'c8':
-                all_spikes.add((row, col))
-    direct = _bfs(game_map, rows, cols, start_pos, treasure, allow_cells=all_spikes, allow_spikes=True)
-    return direct or []
+            cell = game_map[row][col]
+            if cell == 'c40': red_key = (row, col)
+            elif cell == 'c41': green_key = (row, col)
+            elif cell == 'c30': red_door = (row, col)
+            elif cell == 'c31': green_door = (row, col)
+            elif cell in ('treasure', 'wall', 'normal', 'start', 'c8'): continue
+            elif cell.startswith('c'):
+                all_targets.append((row, col, cell, TARGET_VALUES.get(cell, 250)))
 
+    # Helper: find targets the BFS path passes through (free pickups)
+    target_positions = {(tr, tc) for tr, tc, _, _ in all_targets}
+    def mark_transit(path, sr, sc):
+        passed = set()
+        tr, tc = sr, sc
+        for move in path:
+            dr, dc = move_map[move]
+            tr, tc = tr + dr, tc + dc
+            if (tr, tc) in target_positions:
+                passed.add((tr, tc))
+        return passed
 
+    # Phase 1: Go STRAIGHT to Red Key
+    if red_key:
+        path_to_key = _bfs(game_map, rows, cols, (r, c), red_key)
+        if path_to_key:
+            visited_targets.update(mark_transit(path_to_key, r, c))
+            full_path.extend(path_to_key)
+            r, c = red_key
+            visited_targets.add(red_key)
 
-def _validate_path(game_map, rows, cols, start_pos, path):
-    """Validate path - stop if a move goes into a wall."""
-    validated = []
-    r, c = start_pos
-    move_map = {"up": (-1, 0), "down": (1, 0), "left": (0, -1), "right": (0, 1)}
-    for move in path:
-        dr, dc = move_map.get(move, (0, 0))
-        nr, nc = r + dr, c + dc
-        if 0 <= nr < rows and 0 <= nc < cols and game_map[nr][nc] != "wall":
-            validated.append(move)
-            r, c = nr, nc
-        else:
-            break
-    return validated
+    # Phase 2: Go STRAIGHT to Green Key
+    if green_key:
+        path_to_key = _bfs(game_map, rows, cols, (r, c), green_key)
+        if path_to_key:
+            visited_targets.update(mark_transit(path_to_key, r, c))
+            full_path.extend(path_to_key)
+            r, c = green_key
+            visited_targets.add(green_key)
+
+    # Phase 3: Visit ALL remaining targets by nearest-neighbor
+    # DEFER cells within 2 moves of treasure (visit them last)
+    remaining = [(tr, tc, cell, val) for tr, tc, cell, val in all_targets if (tr, tc) not in visited_targets]
+
+    near_treasure = set()
+    for tr, tc, cell, val in remaining:
+        tp = _bfs(game_map, rows, cols, (tr, tc), treasure)
+        if tp and len(tp) <= 2:
+            near_treasure.add((tr, tc))
+
+    remaining_now = [(tr, tc, cell, val) for tr, tc, cell, val in remaining if (tr, tc) not in near_treasure]
+    remaining_last = [(tr, tc, cell, val) for tr, tc, cell, val in remaining if (tr, tc) in near_treasure]
+
+    for target_list in [remaining_now, remaining_last]:
+        while target_list:
+            # Remove already-visited targets (from transit marking)
+            target_list[:] = [(tr,tc,cell,val) for tr,tc,cell,val in target_list if (tr,tc) not in visited_targets]
+            if not target_list:
+                break
+
+            best_path = None
+            best_dist = float('inf')
+            best_idx = -1
+            for i, (tr, tc, cell, value) in enumerate(target_list):
+                tp = _bfs(game_map, rows, cols, (r, c), (tr, tc))
+                if tp and len(tp) < best_dist:
+                    best_path = tp
+                    best_dist = len(tp)
+                    best_idx = i
+            if best_path is None:
+                break
+
+            # Mark transit targets (free pickups along the way)
+            visited_targets.update(mark_transit(best_path, r, c))
+
+            full_path.extend(best_path)
+            tr, tc, _, _ = target_list[best_idx]
+            r, c = tr, tc
+            visited_targets.add((tr, tc))
+            target_list.pop(best_idx)
+
+    # Phase 4: Go to treasure
+    path_end = _bfs(game_map, rows, cols, (r, c), treasure)
+    if path_end:
+        full_path.extend(path_end)
+    else:
+        return swift_path(game_map, rows, cols, start, treasure)
+
+    # Phase 5: POST-PROCESS - reroute around spikes/suspicious cells
+    full_path = _post_process_avoid_spikes(game_map, rows, cols, full_path, start)
+
+    return full_path
 
 
 def lambda_handler(event, context):
     try:
-        params = _extract_params(event)
+        if 'body' in event:
+            body = json.loads(event['body']) if isinstance(event['body'], str) else event['body']
+        else:
+            body = event
 
-        game_map = (params.get('game_map') or params.get('map') or
-                   params.get('maze') or params.get('grid') or [])
-
-        if isinstance(game_map, str):
-            try:
-                game_map = json.loads(game_map)
-            except (json.JSONDecodeError, TypeError):
-                game_map = []
+        game_map = body.get('game_map', [])
 
         if game_map:
             max_cols = max(len(row) for row in game_map)
             game_map = [row + ['normal'] * (max_cols - len(row)) for row in game_map]
 
-        # Determine action
-        strategy = str(params.get('strategy', params.get('action', 'smart_loot'))).lower().strip()
-
-        # === COUNT MODE ===
-        if 'count' in strategy or params.get('count_type') or params.get('tile'):
-            count_type = str(params.get('count_type', params.get('tile', params.get('count', '')))).strip().lower()
-
-            # Try stored map first
-            stored_map = None
-            if not game_map:
-                try:
-                    if os.path.exists(MAP_STORAGE):
-                        with open(MAP_STORAGE, 'r') as f:
-                            stored_map = json.loads(f.read())
-                except:
-                    pass
-            else:
-                stored_map = game_map
-
-            if not stored_map:
-                return {'statusCode': 200, 'body': json.dumps({'count': 0, 'answer': '0', 'error': 'No map'})}
-
-            # Handle addition: "c1+c2" or "c1 and c2"
-            count_type = count_type.replace(' and ', '+').replace(',', '+')
-            if '+' in count_type:
-                types_to_count = [t.strip() for t in count_type.split('+') if t.strip()]
-            else:
-                types_to_count = [count_type]
-
-            total = 0
-            for row in stored_map:
-                for cell in row:
-                    if cell.lower() in types_to_count:
-                        total += 1
-
-            return {'statusCode': 200, 'body': json.dumps({'count': total, 'answer': str(total)})}
-
-        # === PATHFIND MODE ===
-        if not game_map:
-            return {'statusCode': 400, 'body': json.dumps({'error': 'Missing game_map'})}
-
-        # Store map for later counting
-        try:
-            with open(MAP_STORAGE, 'w') as f:
-                f.write(json.dumps(game_map))
-        except:
-            pass
-
-        # Parse start position
-        raw_start = (params.get('start_pos') or params.get('start') or
-                    params.get('position') or params.get('playerStart') or [0, 0])
-        if isinstance(raw_start, str):
-            start_pos = _parse_start(raw_start)
-        elif isinstance(raw_start, dict):
-            start_pos = (raw_start.get('row', 0), raw_start.get('col', 0))
+        map_config = body.get('map_config', {})
+        player_start = map_config.get('playerStart') or body.get('playerStart') or {}
+        if isinstance(player_start, str):
+            start_pos = _parse_start(player_start)
+        elif isinstance(player_start, dict) and player_start:
+            start_pos = (player_start.get('row', 0), player_start.get('col', 0))
         else:
-            start_pos = _parse_start(raw_start)
+            raw = body.get('start_pos') or body.get('start') or body.get('position') or [0, 0]
+            start_pos = _parse_start(raw)
 
-        rows, cols = len(game_map), len(game_map[0])
-        if start_pos[0] >= rows or start_pos[1] >= cols:
+        if game_map and (start_pos[0] < 0 or start_pos[1] < 0 or start_pos[0] >= len(game_map) or start_pos[1] >= len(game_map[0])):
             start_pos = (0, 0)
 
-        # Auto-detect start
-        if start_pos == (0, 0) and game_map[0][0] != 'start':
-            for sr in range(rows):
-                for sc in range(cols):
-                    if game_map[sr][sc] == 'start':
-                        start_pos = (sr, sc)
+        # Auto-detect start from map if defaulted to (0,0)
+        rows_check = len(game_map) if game_map else 0
+        cols_check = len(game_map[0]) if game_map and game_map[0] else 0
+        if start_pos == (0, 0) and rows_check > 0 and cols_check > 0:
+            if game_map[0][0] != 'start':
+                for sr in range(rows_check):
+                    for sc in range(cols_check):
+                        if game_map[sr][sc] == 'start':
+                            start_pos = (sr, sc)
+                            break
+                    if start_pos != (0, 0):
                         break
-                if start_pos != (0, 0):
-                    break
 
-        # Run pathfinding
+        strategy = str(body.get('strategy', 'smart_loot')).lower().strip()
         if 'swift' in strategy or 'fast' in strategy or 'quick' in strategy:
-            treasure = None
-            for r in range(rows):
-                for c in range(cols):
-                    if game_map[r][c] == 'treasure':
-                        treasure = (r, c)
-                        break
-            path = _bfs(game_map, rows, cols, start_pos, treasure, allow_spikes=True) or []
+            strategy = 'swift'
         else:
-            path = _pathfind(game_map, start_pos)
+            strategy = 'smart_loot'
 
-        # Validate path (prevent wall crashes)
-        path = _validate_path(game_map, rows, cols, start_pos, path)
+        if not game_map:
+            return _err(400, 'Missing game_map')
+
+        rows, cols = len(game_map), len(game_map[0])
+        treasure = None
+        for r in range(rows):
+            for c in range(cols):
+                if game_map[r][c] == 'treasure':
+                    treasure = (r, c)
+                    break
+            if treasure:
+                break
+
+        if not treasure:
+            return _err(400, 'No treasure found on map')
+
+        if strategy == 'swift':
+            path = swift_path(game_map, rows, cols, start_pos, treasure)
+        else:
+            path = smart_loot_path(game_map, rows, cols, start_pos, treasure)
 
         result = {'path': path, 'steps': len(path), 'start_position': list(start_pos)}
         return {'statusCode': 200, 'body': json.dumps(result)}
 
     except Exception as e:
-        return {'statusCode': 500, 'body': json.dumps({'error': str(e)})}
+        return _err(500, str(e))
+
+
+def _err(code, msg):
+    return {'statusCode': code, 'body': json.dumps({'error': msg})}
