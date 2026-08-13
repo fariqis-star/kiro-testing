@@ -33,7 +33,7 @@ CHALLENGE_TILES = frozenset(["c30", "c31", "c32", "c33"])
 
 # Cells we KNOW are safe to walk through
 KNOWN_SAFE_CELLS = frozenset([
-    'normal', 'start', 'treasure',
+    'normal', 'start', 'player', 'treasure',
     'c1', 'c2', 'c3', 'c4', 'c5', 'c7',
     'c17', 'c18',
     'c30', 'c31', 'c32', 'c33',
@@ -758,7 +758,7 @@ def lambda_handler(event, context):
         start_pos = (0, 0)
         for sr in range(rows):
             for sc in range(cols):
-                if game_map[sr][sc] == 'start':
+                if game_map[sr][sc] in ('start', 'player', 'Start', 'Player'):
                     start_pos = (sr, sc)
                     break
             if start_pos != (0, 0):
