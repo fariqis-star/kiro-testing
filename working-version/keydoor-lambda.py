@@ -1,13 +1,17 @@
 """
-AWS Lambda - Key/Door tool for Bedrock Agent Game v3 (Round 2).
+AWS Lambda - Key/Door tool for Bedrock Agent Game v3 (Round 3).
 
-Handles BOTH Red Key/Door AND Green Key/Door:
+Handles ALL key/door colors:
 - Red Key (c40): store value, return "Thanks"
-- Red Door (c30): return stored value reversed (spelled backward)
+- Red Door (c30): return stored value as-is (original)
 - Green Key (c41): store value, return "Thanks"
-- Green Door (c31): return stored value as letter-to-number conversion (a=1, b=2... z=26)
+- Green Door (c31): return stored value as-is (original)
+- Grey Key (c42): store value, return "Thanks"
+- Grey Door (c32): return first 2 chars + last 2 chars of stored value
+- Yellow Key (c43): store value, return "Thanks"
+- Yellow Door (c33): return 5th char + 7th char of stored value (1-indexed)
 
-Uses /tmp file + global variable for persistence within warm Lambda instance.
+Uses /tmp/game_keys.json for persistence within warm Lambda instance.
 """
 
 import json
@@ -38,18 +42,48 @@ def _save_storage():
         pass
 
 
-def _letters_to_numbers(word):
-    """Convert letters to their position numbers: a=1, b=2... z=26."""
-    result = []
-    for c in word.lower():
-        if c.isalpha():
-            result.append(str(ord(c) - ord('a') + 1))
-    return ' '.join(result)
+def _transform_red(value):
+    """Red Door (c30): return original value as-is."""
+    return value
 
 
-def _reverse_word(word):
-    """Reverse the word and lowercase: MalaysiaBoleh -> helobaisyalam."""
-    return word[::-1].lower()
+def _transform_green(value):
+    """Green Door (c31): return original value as-is."""
+    return value
+
+
+def _transform_grey(value):
+    """Grey Door (c32): first 2 chars + last 2 chars of stored value.
+    Example: 'AWSisAwesome' -> 'AWme'
+    """
+    if len(value) <= 4:
+        return value
+    return value[:2] + value[-2:]
+
+
+def _transform_yellow(value):
+    """Yellow Door (c33): 5th char + 7th char of stored value (1-indexed).
+    Example: 'sunshine' -> 'hn' (s=1, u=2, n=3, s=4, h=5, i=6, n=7, e=8)
+    """
+    result = ""
+    if len(value) >= 5:
+        result += value[4]  # 5th char (1-indexed = index 4)
+    if len(value) >= 7:
+        result += value[6]  # 7th char (1-indexed = index 6)
+    return result
+
+
+# Map color names to their transformation functions
+DOOR_TRANSFORMS = {
+    "red": _transform_red,
+    "green": _transform_green,
+    "grey": _transform_grey,
+    "gray": _transform_grey,  # handle alternate spelling
+    "yellow": _transform_yellow,
+}
+
+# All recognized key colors
+KEY_COLORS = ["red", "green", "grey", "gray", "yellow"]
 
 
 def _parse_input(event):
@@ -101,7 +135,6 @@ def _parse_input(event):
     return str(event)
 
 
-
 def lambda_handler(event, context):
     global KEY_STORAGE
 
@@ -114,57 +147,70 @@ def lambda_handler(event, context):
 
     text_str = str(text)
 
-    # STORE: "Red Key X is: [word]" or "Green Key X is: [word]"
-    store_match = re.search(r'(?:Red|Green)\s*[Kk]ey\s*(\d+)\s*is[:\s]+(.+)', text_str, re.IGNORECASE)
+    # STORE: "[Color] Key X is: [value]"
+    # Universal pattern for any color key
+    store_match = re.search(
+        r'(Red|Green|Grey|Gray|Yellow)\s*[Kk]ey\s*(\d+)\s*is[:\s]+(.+)',
+        text_str, re.IGNORECASE
+    )
     if store_match:
-        key_num = store_match.group(1)
-        key_value = store_match.group(2).strip()
-        # Detect color
-        color = "red"
-        if re.search(r'[Gg]reen', text_str):
-            color = "green"
+        color = store_match.group(1).lower()
+        if color == "gray":
+            color = "grey"
+        key_num = store_match.group(2)
+        key_value = store_match.group(3).strip()
         storage_key = f"{color}_{key_num}"
         KEY_STORAGE[storage_key] = key_value
         _save_storage()
-        return {"statusCode": 200, "body": json.dumps({"answer": key_value})}
+        return {"statusCode": 200, "body": json.dumps({"answer": "Thanks"})}
 
-    # RETRIEVE RED DOOR: "What is red key X?"
-    red_retrieve = re.search(r'[Ww]hat\s+is\s+[Rr]ed\s*[Kk]ey\s*(\d+)', text_str)
-    if red_retrieve:
-        key_num = red_retrieve.group(1)
-        storage_key = f"red_{key_num}"
+    # RETRIEVE/DOOR: "What is [color] key X?"
+    retrieve_match = re.search(
+        r'[Ww]hat\s+is\s+(Red|Green|Grey|Gray|Yellow)\s*[Kk]ey\s*(\d+)',
+        text_str, re.IGNORECASE
+    )
+    if retrieve_match:
+        color = retrieve_match.group(1).lower()
+        if color == "gray":
+            color = "grey"
+        key_num = retrieve_match.group(2)
+        storage_key = f"{color}_{key_num}"
         if storage_key in KEY_STORAGE:
             value = KEY_STORAGE[storage_key]
-            return {"statusCode": 200, "body": json.dumps({"answer": value})}
+            # Apply the door transformation for this color
+            transform_fn = DOOR_TRANSFORMS.get(color, _transform_red)
+            answer = transform_fn(value)
+            return {"statusCode": 200, "body": json.dumps({"answer": answer})}
         return {"statusCode": 200, "body": json.dumps({"answer": "unknown"})}
 
-    # RETRIEVE GREEN DOOR: "What is green key X?"
-    green_retrieve = re.search(r'[Ww]hat\s+is\s+[Gg]reen\s*[Kk]ey\s*(\d+)', text_str)
-    if green_retrieve:
-        key_num = green_retrieve.group(1)
-        storage_key = f"green_{key_num}"
-        if storage_key in KEY_STORAGE:
-            value = KEY_STORAGE[storage_key]
-            return {"statusCode": 200, "body": json.dumps({"answer": value})}
-        return {"statusCode": 200, "body": json.dumps({"answer": "unknown"})}
-
-    # FALLBACK: Generic key detection
+    # FALLBACK: Generic key store detection
     if re.search(r'[Kk]ey.*is[:\s]', text_str):
+        # Try to detect color from text
+        color = "generic"
+        for c in KEY_COLORS:
+            if c in text_str.lower():
+                color = c if c != "gray" else "grey"
+                break
         words = text_str.split()
         last_word = words[-1].strip().rstrip('.!?')
-        KEY_STORAGE["generic_1"] = last_word
+        KEY_STORAGE[f"{color}_1"] = last_word
         _save_storage()
-        return {"statusCode": 200, "body": json.dumps({"answer": last_word})}
+        return {"statusCode": 200, "body": json.dumps({"answer": "Thanks"})}
 
-    # Fallback: generic key retrieve
+    # FALLBACK: Generic key retrieve
     if re.search(r'[Ww]hat\s+is.*[Kk]ey', text_str):
-        if "green" in text_str.lower():
+        # Detect color
+        color = None
+        for c in KEY_COLORS:
+            if c in text_str.lower():
+                color = c if c != "gray" else "grey"
+                break
+        if color:
             for k, v in KEY_STORAGE.items():
-                if "green" in k:
-                    return {"statusCode": 200, "body": json.dumps({"answer": v})}
-        for k, v in KEY_STORAGE.items():
-            if "red" in k:
-                return {"statusCode": 200, "body": json.dumps({"answer": v})}
+                if color in k:
+                    transform_fn = DOOR_TRANSFORMS.get(color, _transform_red)
+                    return {"statusCode": 200, "body": json.dumps({"answer": transform_fn(v)})}
+        # Try any stored key
         if "generic_1" in KEY_STORAGE:
             return {"statusCode": 200, "body": json.dumps({"answer": KEY_STORAGE["generic_1"]})}
 
