@@ -743,7 +743,7 @@ def lambda_handler(event, context):
     try:
         body = _extract_params(event)
 
-        game_map = body.get('game_map', [])
+        game_map = body.get('game_map') or body.get('map_grid') or body.get('map') or body.get('maze') or body.get('grid') or []
 
         if game_map:
             max_cols = max(len(row) for row in game_map)
