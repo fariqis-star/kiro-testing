@@ -126,8 +126,6 @@ def _try_intercept(code):
                 elif 2 <= num <= 100000:
                     if fact_n is None:
                         fact_n = num
-            if fact_mod == 1000000000 or '10**9' in code or '10 ** 9' in code:
-                fact_mod = 1000000007
             if '1000000007' in code:
                 fact_mod = 1000000007
             if fact_n and fact_mod:
