@@ -1,6 +1,7 @@
 import json
 import re
 from collections import deque
+from itertools import permutations
 
 CELL_POINTS = {"c7": 250}
 COLLECTIBLE_COINS = {"c7"}
@@ -20,6 +21,9 @@ KEY_DOOR_MAP = {
     "c42": "c32",  # Grey key -> Grey door
     "c43": "c33",  # Yellow key -> Yellow door
 }
+
+# Door-to-key reverse mapping
+DOOR_KEY_MAP = {v: k for k, v in KEY_DOOR_MAP.items()}
 
 # Key tiles (must be collected before their corresponding doors)
 KEY_TILES = frozenset(["c40", "c41", "c42", "c43"])
@@ -69,20 +73,6 @@ def _is_spike(cell):
     return c in KNOWN_SPIKE_CELLS or 'spike' in c or 'trap' in c
 
 
-def _is_suspicious(cell):
-    """Check if a cell is NOT in our known-safe list and NOT a wall.
-    These are cells that MIGHT be dangerous (unknown types like the I3 spike)."""
-    c = cell.lower()
-    if c == 'wall':
-        return False
-    if c in KNOWN_SAFE_CELLS:
-        return False
-    if c in KNOWN_SPIKE_CELLS:
-        return True
-    # Unknown cell type - suspicious!
-    return True
-
-
 def _bfs(game_map, rows, cols, start, goal, blocked_cells=None):
     """BFS avoiding walls AND spikes (c8). Spikes are treated as impassable."""
     queue = deque([(start[0], start[1], [])])
@@ -104,264 +94,631 @@ def _bfs(game_map, rows, cols, start, goal, blocked_cells=None):
     return None
 
 
-def _bfs_avoiding(game_map, rows, cols, start, goal, avoid_cells):
-    """BFS that avoids specific cells (by coordinate). Used for rerouting."""
-    queue = deque([(start[0], start[1], [])])
+def _bfs_with_positions(game_map, rows, cols, start, goal, blocked_cells=None):
+    """BFS that returns both the path (moves) and all positions visited along it."""
+    queue = deque([(start[0], start[1], [], [(start[0], start[1])])])
     visited = {(start[0], start[1])}
     while queue:
-        r, c, path = queue.popleft()
+        r, c, path, positions = queue.popleft()
         if (r, c) == goal:
-            return path
+            return path, positions
         for dr, dc, move in DIRECTIONS:
             nr, nc = r + dr, c + dc
             if 0 <= nr < rows and 0 <= nc < cols and (nr, nc) not in visited:
                 cell = game_map[nr][nc]
-                if cell != 'wall' and (nr, nc) not in avoid_cells:
+                if cell == 'wall' or cell in KNOWN_SPIKE_CELLS:
+                    continue
+                if blocked_cells and (nr, nc) in blocked_cells:
+                    continue
+                visited.add((nr, nc))
+                queue.append((nr, nc, path + [move], positions + [(nr, nc)]))
+    return None, None
+
+
+def _precompute_distances(game_map, rows, cols, nodes, blocked_cells=None):
+    """Pre-compute BFS distances and paths between all pairs of nodes.
+    nodes is a list of (row, col) positions.
+    Returns dist_matrix[i][j] = distance, path_matrix[i][j] = list of moves,
+    transit_matrix[i][j] = set of node indices collected along the path."""
+    n = len(nodes)
+    node_set = {pos: idx for idx, pos in enumerate(nodes)}
+    dist_matrix = [[float('inf')] * n for _ in range(n)]
+    path_matrix = [[None] * n for _ in range(n)]
+    transit_matrix = [[set() for _ in range(n)] for _ in range(n)]
+
+    for i in range(n):
+        dist_matrix[i][i] = 0
+        path_matrix[i][i] = []
+        # BFS from node i to all other nodes
+        start = nodes[i]
+        queue = deque([(start[0], start[1], [])])
+        visited = {(start[0], start[1])}
+        while queue:
+            r, c, path = queue.popleft()
+            pos = (r, c)
+            if pos in node_set and pos != start:
+                j = node_set[pos]
+                if len(path) < dist_matrix[i][j]:
+                    dist_matrix[i][j] = len(path)
+                    path_matrix[i][j] = path
+            for dr, dc, move in DIRECTIONS:
+                nr, nc = r + dr, c + dc
+                if 0 <= nr < rows and 0 <= nc < cols and (nr, nc) not in visited:
+                    cell = game_map[nr][nc]
+                    if cell == 'wall' or cell in KNOWN_SPIKE_CELLS:
+                        continue
+                    if blocked_cells and (nr, nc) in blocked_cells:
+                        continue
                     visited.add((nr, nc))
                     queue.append((nr, nc, path + [move]))
-    return None
 
-
-def _post_process_avoid_spikes(game_map, rows, cols, full_path, start_pos):
-    """After generating a path, scan for suspicious cells we PASS THROUGH and reroute.
-
-    CRITICAL RULES:
-    1. Only reroutes TRANSIT cells (cells we pass through on the way somewhere else)
-    2. Does NOT avoid cells that are DESTINATIONS (targets we intentionally visit)
-    3. Only replaces small segments (max 10 moves detour)
-    4. Never replaces the full path
-
-    Returns an improved path (or the original if no improvement possible).
-    """
-    if not full_path:
-        return full_path
-
+    # Compute transit: which nodes are visited along the path from i to j
     move_map = {"up": (-1, 0), "down": (1, 0), "left": (0, -1), "right": (0, 1)}
+    for i in range(n):
+        for j in range(n):
+            if i == j or path_matrix[i][j] is None:
+                continue
+            r, c = nodes[i]
+            for move in path_matrix[i][j]:
+                dr, dc = move_map[move]
+                r, c = r + dr, c + dc
+                pos = (r, c)
+                if pos in node_set:
+                    k = node_set[pos]
+                    if k != i and k != j:
+                        transit_matrix[i][j].add(k)
 
-    # Trace the path to find all positions visited
-    positions = [start_pos]
-    r, c = start_pos
-    for move in full_path:
-        dr, dc = move_map[move]
-        r, c = r + dr, c + dc
-        positions.append((r, c))
+    return dist_matrix, path_matrix, transit_matrix
 
-    # Find dangerous TRANSIT cells only
-    dangerous_indices = []
-    for i in range(1, len(positions) - 1):  # skip first and last positions
-        pr, pc = positions[i]
-        if 0 <= pr < rows and 0 <= pc < cols:
-            cell = game_map[pr][pc]
-            if _is_suspicious(cell):
-                dangerous_indices.append(i)
 
-    if not dangerous_indices:
-        return full_path  # Path is clean
+def _is_valid_order(order, key_indices, door_indices):
+    """Check if the visit order respects key-before-door constraints.
+    key_indices: dict mapping key_cell_type -> index in nodes list
+    door_indices: dict mapping door_cell_type -> index in nodes list"""
+    # For each key-door pair, the key must appear before its door in the order
+    position_in_order = {}
+    for pos, idx in enumerate(order):
+        position_in_order[idx] = pos
 
-    # Collect all dangerous TRANSIT positions
-    avoid_cells = set()
-    for i in dangerous_indices:
-        avoid_cells.add(positions[i])
+    for key_cell, door_cell in KEY_DOOR_MAP.items():
+        if key_cell in key_indices and door_cell in door_indices:
+            ki = key_indices[key_cell]
+            di = door_indices[door_cell]
+            if ki in position_in_order and di in position_in_order:
+                if position_in_order[ki] > position_in_order[di]:
+                    return False
+    return True
 
-    # Process each dangerous transit cell - reroute the segment around it
-    result_path = list(full_path)
 
-    for danger_idx in sorted(dangerous_indices, reverse=True):
-        # Recalculate positions
-        result_positions = [start_pos]
-        tr, tc = start_pos
-        for move in result_path:
-            dr, dc = move_map[move]
-            tr, tc = tr + dr, tc + dc
-            result_positions.append((tr, tc))
+def _compute_tour_cost(order, dist_matrix, transit_matrix, start_idx, end_idx):
+    """Compute the total cost of visiting nodes in the given order,
+    accounting for transit pickups (nodes collected for free along BFS paths).
+    order: list of node indices to visit (NOT including start_idx or end_idx).
+    Returns total distance, or float('inf') if unreachable."""
+    visited = set()
+    total_dist = 0
+    current = start_idx
 
-        if danger_idx >= len(result_positions) - 1:
+    for target in order:
+        if target in visited:
+            continue
+        d = dist_matrix[current][target]
+        if d == float('inf'):
+            return float('inf')
+        total_dist += d
+        # Mark transit nodes as visited
+        transit = transit_matrix[current][target]
+        visited.update(transit)
+        visited.add(target)
+        current = target
+
+    # Go to end (treasure)
+    d = dist_matrix[current][end_idx]
+    if d == float('inf'):
+        return float('inf')
+    total_dist += d
+    return total_dist
+
+
+def _compute_tour_cost_with_skips(order, dist_matrix, transit_matrix, start_idx, end_idx):
+    """Compute tour cost, skipping nodes already collected in transit.
+    Returns (total_distance, effective_order) where effective_order excludes skipped nodes."""
+    visited = set()
+    total_dist = 0
+    current = start_idx
+    effective_order = []
+
+    for target in order:
+        if target in visited:
+            continue
+        d = dist_matrix[current][target]
+        if d == float('inf'):
+            return float('inf'), []
+        total_dist += d
+        # Mark transit nodes as visited
+        transit = transit_matrix[current][target]
+        visited.update(transit)
+        visited.add(target)
+        effective_order.append(target)
+        current = target
+
+    # Go to end (treasure)
+    d = dist_matrix[current][end_idx]
+    if d == float('inf'):
+        return float('inf'), []
+    total_dist += d
+    return total_dist, effective_order
+
+
+def _nearest_neighbor_order(dist_matrix, transit_matrix, start_idx, end_idx,
+                            target_indices, key_indices, door_indices):
+    """Greedy nearest-neighbor with transit-aware skipping and key-door constraints."""
+    remaining = set(target_indices)
+    visited = set()
+    order = []
+    current = start_idx
+    collected_keys = set()  # track key cell types collected
+
+    while remaining:
+        # Filter out locked doors
+        available = []
+        for idx in remaining:
+            if idx in visited:
+                continue
+            available.append(idx)
+
+        if not available:
+            break
+
+        # Find nearest available target (respecting key constraints)
+        best_idx = None
+        best_dist = float('inf')
+        for idx in available:
+            # Check if this is a door that requires a key we haven't collected
+            is_locked = False
+            for door_cell, key_cell in DOOR_KEY_MAP.items():
+                if idx in door_indices.get(door_cell, set()) and key_cell not in collected_keys:
+                    is_locked = True
+                    break
+            if is_locked:
+                continue
+            d = dist_matrix[current][idx]
+            if d < best_dist:
+                best_dist = d
+                best_idx = idx
+
+        if best_idx is None:
+            # All remaining are locked doors - try to find a key first
+            # This shouldn't happen if keys are prioritized, but handle gracefully
+            break
+
+        # Move to best target
+        order.append(best_idx)
+        # Mark transit nodes as visited
+        transit = transit_matrix[current][best_idx]
+        for t in transit:
+            if t in remaining:
+                visited.add(t)
+                remaining.discard(t)
+                # Check if transit node is a key
+                for key_cell, ki_set in key_indices.items():
+                    if t in ki_set:
+                        collected_keys.add(key_cell)
+                order.append(t)  # Add to order for tracking
+
+        visited.add(best_idx)
+        remaining.discard(best_idx)
+        # Check if this target is a key
+        for key_cell, ki_set in key_indices.items():
+            if best_idx in ki_set:
+                collected_keys.add(key_cell)
+        current = best_idx
+
+    return order
+
+
+def _two_opt_improve(order, dist_matrix, transit_matrix, start_idx, end_idx,
+                     key_indices, door_indices, node_cells, max_iterations=500):
+    """Apply 2-opt local search to improve the tour, respecting key-door constraints."""
+    best_order = list(order)
+    best_cost, _ = _compute_tour_cost_with_skips(best_order, dist_matrix, transit_matrix, start_idx, end_idx)
+
+    improved = True
+    iterations = 0
+    while improved and iterations < max_iterations:
+        improved = False
+        iterations += 1
+        for i in range(len(best_order) - 1):
+            for j in range(i + 1, len(best_order)):
+                # Try reversing the segment between i and j
+                new_order = best_order[:i] + best_order[i:j+1][::-1] + best_order[j+1:]
+                # Check key-door constraints
+                if not _check_key_door_order(new_order, node_cells, key_indices, door_indices, transit_matrix, start_idx):
+                    continue
+                new_cost, _ = _compute_tour_cost_with_skips(new_order, dist_matrix, transit_matrix, start_idx, end_idx)
+                if new_cost < best_cost:
+                    best_order = new_order
+                    best_cost = new_cost
+                    improved = True
+                    break
+            if improved:
+                break
+
+    return best_order, best_cost
+
+
+def _or_opt_improve(order, dist_matrix, transit_matrix, start_idx, end_idx,
+                    key_indices, door_indices, node_cells, max_iterations=200):
+    """Apply or-opt (relocate single nodes) to improve the tour."""
+    best_order = list(order)
+    best_cost, _ = _compute_tour_cost_with_skips(best_order, dist_matrix, transit_matrix, start_idx, end_idx)
+
+    improved = True
+    iterations = 0
+    while improved and iterations < max_iterations:
+        improved = False
+        iterations += 1
+        for i in range(len(best_order)):
+            node = best_order[i]
+            remaining = best_order[:i] + best_order[i+1:]
+            for j in range(len(remaining) + 1):
+                new_order = remaining[:j] + [node] + remaining[j:]
+                if not _check_key_door_order(new_order, node_cells, key_indices, door_indices, transit_matrix, start_idx):
+                    continue
+                new_cost, _ = _compute_tour_cost_with_skips(new_order, dist_matrix, transit_matrix, start_idx, end_idx)
+                if new_cost < best_cost:
+                    best_order = new_order
+                    best_cost = new_cost
+                    improved = True
+                    break
+            if improved:
+                break
+
+    return best_order, best_cost
+
+
+def _check_key_door_order(order, node_cells, key_indices, door_indices, transit_matrix, start_idx):
+    """Check if a given order respects key-before-door constraints,
+    accounting for transit pickups."""
+    collected_keys = set()
+    current = start_idx
+
+    # Check if start itself is a key
+    for key_cell, ki_set in key_indices.items():
+        if start_idx in ki_set:
+            collected_keys.add(key_cell)
+
+    visited = set()
+    for idx in order:
+        if idx in visited:
             continue
 
-        seg_start_idx = danger_idx - 1
-        seg_end_idx = danger_idx + 1
+        # Check transit from current to idx
+        if current != idx:
+            transit = transit_matrix[current][idx]
+            for t in transit:
+                for key_cell, ki_set in key_indices.items():
+                    if t in ki_set:
+                        collected_keys.add(key_cell)
+                visited.add(t)
 
-        if seg_start_idx < 0 or seg_end_idx >= len(result_positions):
+        # Check if idx is a door - need its key collected first
+        cell = node_cells.get(idx, '')
+        if cell in DOOR_KEY_MAP:
+            required_key = DOOR_KEY_MAP[cell]
+            if required_key not in collected_keys:
+                return False
+
+        # If idx is a key, mark it collected
+        if cell in KEY_DOOR_MAP:
+            collected_keys.add(cell)
+
+        visited.add(idx)
+        current = idx
+
+    return True
+
+
+def smart_loot_path(game_map, rows, cols, start, treasure):
+    """Optimized pathfinding using pre-computed distances and TSP optimization.
+    Uses nearest-neighbor + 2-opt/or-opt improvements with transit-aware costing."""
+
+    # Collect all target positions
+    targets = []  # (row, col, cell_type)
+    for row in range(rows):
+        for col in range(cols):
+            cell = game_map[row][col]
+            if cell in ('treasure', 'wall', 'normal', 'start'):
+                continue
+            if cell in KNOWN_SPIKE_CELLS:
+                continue
+            targets.append((row, col, cell))
+
+    if not targets:
+        return _bfs(game_map, rows, cols, start, treasure) or []
+
+    # Build node list: [start, *targets, treasure]
+    nodes = [start] + [(r, c) for r, c, _ in targets] + [treasure]
+    start_idx = 0
+    end_idx = len(nodes) - 1
+    target_indices = list(range(1, end_idx))
+
+    # Map node index to cell type
+    node_cells = {}
+    for i, (r, c, cell) in enumerate(targets):
+        node_cells[i + 1] = cell  # offset by 1 for start
+
+    # Map key/door cell types to their node indices
+    key_indices = {}  # key_cell_type -> set of node indices
+    door_indices = {}  # door_cell_type -> set of node indices
+    for i, (r, c, cell) in enumerate(targets):
+        idx = i + 1
+        if cell in KEY_TILES:
+            key_indices.setdefault(cell, set()).add(idx)
+        if cell in CHALLENGE_TILES:
+            door_indices.setdefault(cell, set()).add(idx)
+
+    # Pre-compute all pairwise BFS distances (no blocked doors - doors are always walkable)
+    dist_matrix, path_matrix, transit_matrix = _precompute_distances(
+        game_map, rows, cols, nodes
+    )
+
+    # Check reachability - remove unreachable targets
+    reachable = []
+    for idx in target_indices:
+        if dist_matrix[start_idx][idx] < float('inf') or dist_matrix[idx][end_idx] < float('inf'):
+            # More thorough check: can we reach it from start AND reach treasure from it?
+            if dist_matrix[start_idx][idx] < float('inf') and dist_matrix[idx][end_idx] < float('inf'):
+                reachable.append(idx)
+    target_indices = reachable
+
+    if not target_indices:
+        return _bfs(game_map, rows, cols, start, treasure) or []
+
+    # Strategy 1: Nearest-neighbor with key priority
+    order_nn = _nearest_neighbor_with_keys(
+        dist_matrix, transit_matrix, start_idx, end_idx,
+        target_indices, key_indices, door_indices, node_cells
+    )
+
+    # Strategy 2: Keys first, then nearest-neighbor
+    order_keys_first = _keys_first_then_nn(
+        dist_matrix, transit_matrix, start_idx, end_idx,
+        target_indices, key_indices, door_indices, node_cells
+    )
+
+    # Pick the better starting order
+    cost_nn, _ = _compute_tour_cost_with_skips(order_nn, dist_matrix, transit_matrix, start_idx, end_idx)
+    cost_kf, _ = _compute_tour_cost_with_skips(order_keys_first, dist_matrix, transit_matrix, start_idx, end_idx)
+
+    if cost_kf < cost_nn:
+        best_order = order_keys_first
+        best_cost = cost_kf
+    else:
+        best_order = order_nn
+        best_cost = cost_nn
+
+    # Apply 2-opt improvement
+    improved_order, improved_cost = _two_opt_improve(
+        best_order, dist_matrix, transit_matrix, start_idx, end_idx,
+        key_indices, door_indices, node_cells
+    )
+    if improved_cost < best_cost:
+        best_order = improved_order
+        best_cost = improved_cost
+
+    # Apply or-opt improvement
+    improved_order, improved_cost = _or_opt_improve(
+        best_order, dist_matrix, transit_matrix, start_idx, end_idx,
+        key_indices, door_indices, node_cells
+    )
+    if improved_cost < best_cost:
+        best_order = improved_order
+        best_cost = improved_cost
+
+    # Another round of 2-opt after or-opt
+    improved_order, improved_cost = _two_opt_improve(
+        best_order, dist_matrix, transit_matrix, start_idx, end_idx,
+        key_indices, door_indices, node_cells
+    )
+    if improved_cost < best_cost:
+        best_order = improved_order
+        best_cost = improved_cost
+
+    # Build the actual path from the order
+    full_path = _build_path_from_order(best_order, dist_matrix, path_matrix, transit_matrix, start_idx, end_idx)
+
+    return full_path
+
+
+def _nearest_neighbor_with_keys(dist_matrix, transit_matrix, start_idx, end_idx,
+                                target_indices, key_indices, door_indices, node_cells):
+    """Nearest-neighbor that prioritizes keys when doors are blocking progress."""
+    remaining = set(target_indices)
+    order = []
+    current = start_idx
+    collected_keys = set()
+    visited = set()
+
+    while remaining:
+        # Remove already visited
+        remaining -= visited
+
+        if not remaining:
+            break
+
+        # Determine which targets are available (not locked)
+        available = []
+        locked = []
+        for idx in remaining:
+            if idx in visited:
+                continue
+            cell = node_cells.get(idx, '')
+            if cell in DOOR_KEY_MAP:
+                required_key = DOOR_KEY_MAP[cell]
+                if required_key not in collected_keys:
+                    locked.append(idx)
+                    continue
+            available.append(idx)
+
+        if not available:
+            # Need to collect keys - find nearest key that unlocks something
+            key_targets = []
+            for key_cell in KEY_DOOR_MAP:
+                if key_cell not in collected_keys and key_cell in key_indices:
+                    for ki in key_indices[key_cell]:
+                        if ki in remaining and ki not in visited:
+                            key_targets.append(ki)
+            if not key_targets:
+                break
+            available = key_targets
+
+        # Find nearest available
+        best_idx = None
+        best_dist = float('inf')
+        for idx in available:
+            d = dist_matrix[current][idx]
+            if d < best_dist:
+                best_dist = d
+                best_idx = idx
+
+        if best_idx is None or best_dist == float('inf'):
+            break
+
+        # Collect transit nodes
+        transit = transit_matrix[current][best_idx]
+        for t in transit:
+            if t in remaining:
+                visited.add(t)
+                cell = node_cells.get(t, '')
+                if cell in KEY_DOOR_MAP:
+                    collected_keys.add(cell)
+
+        order.append(best_idx)
+        visited.add(best_idx)
+        remaining.discard(best_idx)
+
+        cell = node_cells.get(best_idx, '')
+        if cell in KEY_DOOR_MAP:
+            collected_keys.add(cell)
+
+        current = best_idx
+
+    return order
+
+
+def _keys_first_then_nn(dist_matrix, transit_matrix, start_idx, end_idx,
+                        target_indices, key_indices, door_indices, node_cells):
+    """Collect all keys first (by nearest), then all other targets by nearest-neighbor."""
+    remaining = set(target_indices)
+    order = []
+    current = start_idx
+    collected_keys = set()
+    visited = set()
+
+    # Phase 1: Collect keys
+    key_nodes = set()
+    for key_cell, ki_set in key_indices.items():
+        key_nodes.update(ki_set)
+
+    keys_remaining = key_nodes & remaining
+    while keys_remaining:
+        keys_remaining -= visited
+        if not keys_remaining:
+            break
+
+        best_idx = None
+        best_dist = float('inf')
+        for idx in keys_remaining:
+            d = dist_matrix[current][idx]
+            if d < best_dist:
+                best_dist = d
+                best_idx = idx
+
+        if best_idx is None or best_dist == float('inf'):
+            break
+
+        transit = transit_matrix[current][best_idx]
+        for t in transit:
+            if t in remaining:
+                visited.add(t)
+                cell = node_cells.get(t, '')
+                if cell in KEY_DOOR_MAP:
+                    collected_keys.add(cell)
+
+        order.append(best_idx)
+        visited.add(best_idx)
+        remaining.discard(best_idx)
+        keys_remaining.discard(best_idx)
+
+        cell = node_cells.get(best_idx, '')
+        if cell in KEY_DOOR_MAP:
+            collected_keys.add(cell)
+
+        current = best_idx
+
+    # Phase 2: All other targets by nearest-neighbor
+    remaining -= visited
+    while remaining:
+        remaining -= visited
+        if not remaining:
+            break
+
+        best_idx = None
+        best_dist = float('inf')
+        for idx in remaining:
+            if idx in visited:
+                continue
+            d = dist_matrix[current][idx]
+            if d < best_dist:
+                best_dist = d
+                best_idx = idx
+
+        if best_idx is None or best_dist == float('inf'):
+            break
+
+        transit = transit_matrix[current][best_idx]
+        for t in transit:
+            if t in remaining:
+                visited.add(t)
+
+        order.append(best_idx)
+        visited.add(best_idx)
+        remaining.discard(best_idx)
+        current = best_idx
+
+    return order
+
+
+def _build_path_from_order(order, dist_matrix, path_matrix, transit_matrix, start_idx, end_idx):
+    """Build the actual move path from the optimized order."""
+    full_path = []
+    current = start_idx
+    visited = set()
+
+    for target in order:
+        if target in visited:
             continue
+        path_segment = path_matrix[current][target]
+        if path_segment is None:
+            continue
+        full_path.extend(path_segment)
+        # Mark transit as visited
+        transit = transit_matrix[current][target]
+        visited.update(transit)
+        visited.add(target)
+        current = target
 
-        seg_start_pos = result_positions[seg_start_idx]
-        seg_end_pos = result_positions[seg_end_idx]
+    # Finally go to treasure
+    path_segment = path_matrix[current][end_idx]
+    if path_segment:
+        full_path.extend(path_segment)
 
-        # BFS from before-spike to after-spike, avoiding all dangerous cells
-        alt_segment = _bfs_avoiding(game_map, rows, cols, seg_start_pos, seg_end_pos, avoid_cells)
-
-        if alt_segment and len(alt_segment) <= 10:
-            # Replace the 2 original moves with the alternative segment
-            move_start = seg_start_idx
-            move_end = seg_end_idx
-
-            result_path = result_path[:move_start] + alt_segment + result_path[move_end:]
-
-    return result_path
+    return full_path
 
 
 def swift_path(game_map, rows, cols, start, treasure):
     return _bfs(game_map, rows, cols, start, treasure) or []
-
-
-def smart_loot_path(game_map, rows, cols, start, treasure):
-    """Keys first, then nearest-neighbor with transit marking. NEVER modifies game_map.
-    Doors are blocked until their corresponding key is collected."""
-    r, c = start
-    full_path = []
-    visited_targets = set()
-    collected_keys = set()  # Track which keys have been collected
-
-    move_map = {"up": (-1, 0), "down": (1, 0), "left": (0, -1), "right": (0, 1)}
-
-    # Scan map for keys, doors, and other targets
-    key_positions = {}   # cell_type -> (row, col)
-    door_positions = {}  # cell_type -> (row, col)
-    all_targets = []
-
-    for row in range(rows):
-        for col in range(cols):
-            cell = game_map[row][col]
-            if cell in KEY_TILES:
-                key_positions[cell] = (row, col)
-            elif cell in CHALLENGE_TILES:
-                door_positions[cell] = (row, col)
-            elif cell in ('treasure', 'wall', 'normal', 'start', 'c8'):
-                continue
-            elif cell.startswith('c'):
-                all_targets.append((row, col, cell, TARGET_VALUES.get(cell, 250)))
-
-    # Add doors to all_targets too (they are challenge targets)
-    for cell, pos in door_positions.items():
-        all_targets.append((pos[0], pos[1], cell, TARGET_VALUES.get(cell, 1000)))
-
-    # Helper: find targets the BFS path passes through (free pickups)
-    target_positions = {(tr, tc) for tr, tc, _, _ in all_targets}
-    # Also include key positions as potential transit pickups
-    for kpos in key_positions.values():
-        target_positions.add(kpos)
-
-    def mark_transit(path, sr, sc):
-        passed = set()
-        tr, tc = sr, sc
-        for move in path:
-            dr, dc = move_map[move]
-            tr, tc = tr + dr, tc + dc
-            if (tr, tc) in target_positions:
-                passed.add((tr, tc))
-        return passed
-
-    def get_blocked_doors():
-        """Return set of (row, col) for doors whose keys haven't been collected yet."""
-        blocked = set()
-        for key_cell, door_cell in KEY_DOOR_MAP.items():
-            if key_cell not in collected_keys and door_cell in door_positions:
-                blocked.add(door_positions[door_cell])
-        return blocked
-
-    # Phase 1: Collect ALL keys first (in order: red, green, grey, yellow)
-    key_order = ["c40", "c41", "c42", "c43"]
-    for key_cell in key_order:
-        if key_cell in key_positions:
-            key_pos = key_positions[key_cell]
-            blocked = get_blocked_doors()
-            path_to_key = _bfs(game_map, rows, cols, (r, c), key_pos, blocked)
-            if path_to_key:
-                transit = mark_transit(path_to_key, r, c)
-                visited_targets.update(transit)
-                # Check if we passed through any key positions
-                for kt, kp in key_positions.items():
-                    if kp in transit:
-                        collected_keys.add(kt)
-                full_path.extend(path_to_key)
-                r, c = key_pos
-                visited_targets.add(key_pos)
-                collected_keys.add(key_cell)
-
-    # Phase 2: Visit ALL remaining targets by nearest-neighbor
-    # DEFER cells within 2 moves of treasure (visit them last)
-    remaining = [(tr, tc, cell, val) for tr, tc, cell, val in all_targets if (tr, tc) not in visited_targets]
-
-    near_treasure = set()
-    blocked = get_blocked_doors()
-    for tr, tc, cell, val in remaining:
-        tp = _bfs(game_map, rows, cols, (tr, tc), treasure, blocked)
-        if tp and len(tp) <= 2:
-            near_treasure.add((tr, tc))
-
-    remaining_now = [(tr, tc, cell, val) for tr, tc, cell, val in remaining if (tr, tc) not in near_treasure]
-    remaining_last = [(tr, tc, cell, val) for tr, tc, cell, val in remaining if (tr, tc) in near_treasure]
-
-    for target_list in [remaining_now, remaining_last]:
-        while target_list:
-            # Remove already-visited targets (from transit marking)
-            target_list[:] = [(tr, tc, cell, val) for tr, tc, cell, val in target_list if (tr, tc) not in visited_targets]
-            if not target_list:
-                break
-
-            blocked = get_blocked_doors()
-
-            best_path = None
-            best_dist = float('inf')
-            best_idx = -1
-            for i, (tr, tc, cell, value) in enumerate(target_list):
-                # Skip doors that are still locked
-                if (tr, tc) in blocked:
-                    continue
-                tp = _bfs(game_map, rows, cols, (r, c), (tr, tc), blocked)
-                if tp and len(tp) < best_dist:
-                    best_path = tp
-                    best_dist = len(tp)
-                    best_idx = i
-            if best_path is None:
-                # Remove locked doors from list and retry
-                target_list[:] = [(tr, tc, cell, val) for tr, tc, cell, val in target_list if (tr, tc) not in blocked]
-                if not target_list:
-                    break
-                # If still stuck, break
-                has_reachable = False
-                for tr, tc, cell, val in target_list:
-                    tp = _bfs(game_map, rows, cols, (r, c), (tr, tc))
-                    if tp:
-                        has_reachable = True
-                        break
-                if not has_reachable:
-                    break
-                continue
-
-            # Mark transit targets (free pickups along the way)
-            transit = mark_transit(best_path, r, c)
-            visited_targets.update(transit)
-            # Check if we passed through any key positions
-            for kt, kp in key_positions.items():
-                if kp in transit:
-                    collected_keys.add(kt)
-
-            full_path.extend(best_path)
-            tr, tc, _, _ = target_list[best_idx]
-            r, c = tr, tc
-            visited_targets.add((tr, tc))
-            # If this was a key, mark it collected
-            cell_at = game_map[tr][tc]
-            if cell_at in KEY_TILES:
-                collected_keys.add(cell_at)
-            target_list.pop(best_idx)
-
-    # Phase 3: Go to treasure
-    blocked = get_blocked_doors()
-    path_end = _bfs(game_map, rows, cols, (r, c), treasure, blocked)
-    if not path_end:
-        # Try without blocked doors as fallback
-        path_end = _bfs(game_map, rows, cols, (r, c), treasure)
-    if path_end:
-        full_path.extend(path_end)
-    else:
-        return swift_path(game_map, rows, cols, start, treasure)
-
-    # Phase 4: POST-PROCESS - reroute around spikes/suspicious cells
-    full_path = _post_process_avoid_spikes(game_map, rows, cols, full_path, start)
-
-    return full_path
 
 
 def _extract_params(event):
