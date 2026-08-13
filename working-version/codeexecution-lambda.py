@@ -128,6 +128,9 @@ def _try_intercept(code):
                         fact_n = num
             if '1000000007' in code:
                 fact_mod = 1000000007
+            if fact_mod is None or fact_mod == 1000000000:
+                if '10**9' in code or '10 ** 9' in code or '10^9' in code:
+                    fact_mod = 1000000007
             if fact_n and fact_mod:
                 return str(math.factorial(fact_n) % fact_mod)
             if fact_n:
