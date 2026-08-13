@@ -84,8 +84,7 @@ def _is_suspicious(cell):
 
 
 def _bfs(game_map, rows, cols, start, goal, blocked_cells=None):
-    """BFS avoiding walls and optionally blocked cells (locked doors).
-    blocked_cells is a set of (row, col) tuples to avoid."""
+    """BFS avoiding walls AND spikes (c8). Spikes are treated as impassable."""
     queue = deque([(start[0], start[1], [])])
     visited = {(start[0], start[1])}
     while queue:
@@ -96,11 +95,12 @@ def _bfs(game_map, rows, cols, start, goal, blocked_cells=None):
             nr, nc = r + dr, c + dc
             if 0 <= nr < rows and 0 <= nc < cols and (nr, nc) not in visited:
                 cell = game_map[nr][nc]
-                if cell != 'wall':
-                    if blocked_cells and (nr, nc) in blocked_cells:
-                        continue
-                    visited.add((nr, nc))
-                    queue.append((nr, nc, path + [move]))
+                if cell == 'wall' or cell in KNOWN_SPIKE_CELLS:
+                    continue
+                if blocked_cells and (nr, nc) in blocked_cells:
+                    continue
+                visited.add((nr, nc))
+                queue.append((nr, nc, path + [move]))
     return None
 
 
