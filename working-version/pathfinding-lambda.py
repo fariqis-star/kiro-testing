@@ -754,15 +754,28 @@ def lambda_handler(event, context):
         if not game_map:
             return _err(400, 'Missing game_map')
 
-        # ALWAYS auto-detect start from map - ignore model's start_pos
-        start_pos = (0, 0)
+        # Auto-detect start from map, fallback to model's start_pos
+        start_pos = None
         for sr in range(rows):
             for sc in range(cols):
                 if game_map[sr][sc] in ('start', 'player', 'Start', 'Player'):
                     start_pos = (sr, sc)
                     break
-            if start_pos != (0, 0):
+            if start_pos:
                 break
+        
+        # If auto-detect failed, use model's start_pos/current_pos parameter
+        if start_pos is None:
+            raw_start = body.get('start_pos') or body.get('current_pos') or body.get('start') or body.get('position') or None
+            if raw_start:
+                if isinstance(raw_start, (list, tuple)) and len(raw_start) >= 2:
+                    start_pos = (int(raw_start[0]), int(raw_start[1]))
+                elif isinstance(raw_start, str):
+                    start_pos = _parse_start(raw_start)
+            
+            # Final fallback: (0,0) but NEVER use swift from here
+            if start_pos is None:
+                start_pos = (0, 0)
 
         strategy = str(body.get('strategy', 'smart_loot')).lower().strip()
         if 'swift' in strategy or 'fast' in strategy or 'quick' in strategy:
