@@ -45,16 +45,16 @@ KNOWN_SPIKE_CELLS = frozenset(['c8'])
 
 # Hardcoded Round 3 10x10 map (fallback when model passes empty/minimal map)
 INTERNAL_MAP = [
-    ["c42", "normal", "normal", "normal", "normal", "normal", "normal", "normal", "normal", "treasure"],
-    ["normal", "c18", "normal", "normal", "c1", "normal", "normal", "normal", "normal", "normal"],
-    ["normal", "c4", "normal", "normal", "normal", "c43", "normal", "normal", "normal", "normal"],
-    ["normal", "normal", "c2", "normal", "normal", "normal", "normal", "normal", "normal", "c33"],
-    ["start", "normal", "normal", "normal", "c5", "normal", "normal", "normal", "normal", "normal"],
-    ["normal", "normal", "normal", "normal", "normal", "normal", "normal", "normal", "normal", "c32"],
-    ["normal", "normal", "normal", "normal", "normal", "normal", "normal", "c7", "c7", "normal"],
-    ["normal", "normal", "normal", "normal", "normal", "c17", "c7", "c7", "c7", "c1"],
-    ["c2", "normal", "normal", "normal", "normal", "normal", "normal", "c7", "c7", "c7"],
-    ["normal", "c4", "normal", "normal", "c18", "normal", "c7", "c7", "c7", "c7"]
+    ["c42", "c18", "normal", "normal", "c1", "normal", "c7", "normal", "normal", "treasure"],
+    ["c4", "normal", "normal", "c2", "wall", "normal", "normal", "normal", "normal", "normal"],
+    ["normal", "normal", "normal", "normal", "wall", "c43", "normal", "normal", "normal", "normal"],
+    ["wall", "wall", "wall", "c5", "wall", "wall", "c8", "wall", "wall", "c33"],
+    ["start", "normal", "normal", "normal", "c8", "normal", "normal", "normal", "normal", "normal"],
+    ["wall", "wall", "wall", "c8", "wall", "wall", "wall", "wall", "wall", "c32"],
+    ["c8", "normal", "normal", "normal", "wall", "c7", "c7", "c7", "c7", "c1"],
+    ["c2", "normal", "normal", "c4", "wall", "c17", "c7", "c7", "c7", "c7"],
+    ["normal", "normal", "normal", "normal", "wall", "wall", "wall", "wall", "wall", "normal"],
+    ["c8", "normal", "normal", "c18", "c5", "c7", "c7", "c7", "c7", "c7"],
 ]
 
 
