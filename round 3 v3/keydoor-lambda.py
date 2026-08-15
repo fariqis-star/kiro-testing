@@ -20,6 +20,8 @@ import os
 
 # Global storage
 KEY_STORAGE = {}
+# Secondary in-memory map: value -> color for when /tmp is wiped
+VALUE_TO_COLOR = {}
 STORAGE_FILE = "/tmp/game_keys.json"
 
 
@@ -147,6 +149,11 @@ def lambda_handler(event, context):
 
     text_str = str(text)
 
+    # Debug: log what we received and current storage state
+    print(f"INPUT: {text_str[:200]}")
+    print(f"STORAGE: {json.dumps(KEY_STORAGE)}")
+    print(f"VALUE_MAP: {json.dumps(VALUE_TO_COLOR)}")
+
     # STORE: "[Color] Key X is: [value]"
     # Universal pattern for any color key
     store_match = re.search(
@@ -162,6 +169,7 @@ def lambda_handler(event, context):
         storage_key = f"{color}_{key_num}"
         KEY_STORAGE[storage_key] = key_value
         _save_storage()
+        VALUE_TO_COLOR[key_value] = color
         return {"statusCode": 200, "body": json.dumps({"answer": "Thanks"})}
 
     # RETRIEVE/DOOR: "What is [color] key/code X?"
@@ -195,6 +203,7 @@ def lambda_handler(event, context):
         last_word = words[-1].strip().rstrip('.!?')
         KEY_STORAGE[f"{color}_1"] = last_word
         _save_storage()
+        VALUE_TO_COLOR[last_word] = color
         return {"statusCode": 200, "body": json.dumps({"answer": "Thanks"})}
 
     # FALLBACK: Generic key/code retrieve
@@ -215,12 +224,33 @@ def lambda_handler(event, context):
             return {"statusCode": 200, "body": json.dumps({"answer": KEY_STORAGE["generic_1"]})}
 
     # FALLBACK: If text matches a stored key VALUE, apply its transform
-    # (handles case where model passes the key value instead of the question)
+    # Check KEY_STORAGE first
     for k, v in KEY_STORAGE.items():
-        if v == text_str or v in text_str:
+        if v == text_str or text_str == v:
             color = k.split('_')[0]
             transform_fn = DOOR_TRANSFORMS.get(color, _transform_red)
             answer = transform_fn(v)
+            return {"statusCode": 200, "body": json.dumps({"answer": answer})}
+
+    # Check VALUE_TO_COLOR (survives if /tmp was wiped but Lambda is warm)
+    if text_str in VALUE_TO_COLOR:
+        color = VALUE_TO_COLOR[text_str]
+        transform_fn = DOOR_TRANSFORMS.get(color, _transform_red)
+        answer = transform_fn(text_str)
+        return {"statusCode": 200, "body": json.dumps({"answer": answer})}
+
+    # Partial match: check if text_str contains any stored value
+    for k, v in KEY_STORAGE.items():
+        if v in text_str:
+            color = k.split('_')[0]
+            transform_fn = DOOR_TRANSFORMS.get(color, _transform_red)
+            answer = transform_fn(v)
+            return {"statusCode": 200, "body": json.dumps({"answer": answer})}
+
+    for val, color in VALUE_TO_COLOR.items():
+        if val in text_str:
+            transform_fn = DOOR_TRANSFORMS.get(color, _transform_red)
+            answer = transform_fn(val)
             return {"statusCode": 200, "body": json.dumps({"answer": answer})}
 
     # Default
