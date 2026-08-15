@@ -795,11 +795,8 @@ def lambda_handler(event, context):
             if start_pos is None:
                 start_pos = (0, 0)
 
-        strategy = str(body.get('strategy', 'smart_loot')).lower().strip()
-        if 'swift' in strategy or 'fast' in strategy or 'quick' in strategy:
-            strategy = 'swift'
-        else:
-            strategy = 'smart_loot'
+        # Always use smart_loot - never swift (swift skips all loot)
+        strategy = 'smart_loot'
 
         treasure = None
         for r in range(rows):
@@ -813,10 +810,7 @@ def lambda_handler(event, context):
         if not treasure:
             return _err(400, 'No treasure found on map')
 
-        if strategy == 'swift':
-            path = swift_path(game_map, rows, cols, start_pos, treasure)
-        else:
-            path = smart_loot_path(game_map, rows, cols, start_pos, treasure)
+        path = smart_loot_path(game_map, rows, cols, start_pos, treasure)
 
         # Count all tiles dynamically
         tile_counts = {}
