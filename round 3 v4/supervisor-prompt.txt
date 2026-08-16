@@ -47,15 +47,29 @@ Tools: Pathfinding, Codeexecution, WebSearch.
 === DOOR TRANSFORMS (case 2 only) ===
 
 GREY - first 2 characters + last 2 characters.
-Enumerate, write T=count, take 1,2,T-1,T.
-  "TechHub"        <s>1T2e3c4h5H6u7b T=7→1,2,6,7</s> Teub
-  "CloudNine"      <s>1C2l3o4u5d6N7i8n9e T=9→1,2,8,9</s> Clne
-  "ILoveAWSCloud"  <s>1I2L3o4v5e6A7W8S9C10l11o12u13d T=13→1,2,12,13</s> ILud
-If T is 4 or less, output the value unchanged.
+Enumerate every character with its number, SEPARATED BY SPACES, write TOTAL=count,
+then take 1,2,TOTAL-1,TOTAL. The spaces are required - without them a two-digit
+position like 12 gets confused with position 1 or 2 and the answer comes out wrong.
+- stored value "TechHub"
+  <s>1T 2e 3c 4h 5H 6u 7b TOTAL=7 take 1,2,6,7</s>
+  Teub
+- stored value "CloudNine"
+  <s>1C 2l 3o 4u 5d 6N 7i 8n 9e TOTAL=9 take 1,2,8,9</s>
+  Clne
+- stored value "ILoveAWSCloud"
+  <s>1I 2L 3o 4v 5e 6A 7W 8S 9C 10l 11o 12u 13d TOTAL=13 take 1,2,12,13</s>
+  ILud
+- If TOTAL is 4 or less, output the stored value unchanged.
+- The grey answer is ALWAYS exactly 4 characters (2 from the start, 2 from the end).
 
-YELLOW - character 5 + character 7. Enumerate only to 7.
-  "PartyOnMyFriend" <s>1P2a3r4t5y6O7n</s> yn
-  "sunshine"        <s>1s2u3n4s5h6i7n</s> hn
+YELLOW - character 5 + character 7. Enumerate only as far as 7.
+- stored value "PartyOnMyFriend"
+  <s>1P2a3r4t5y6O7n</s>
+  yn
+- stored value "sunshine"
+  <s>1s2u3n4s5h6i7n</s>
+  hn
+- If the value is shorter than 7 characters, output character 5 only.
 
 RED / GREEN - output the stored value unchanged.
 
