@@ -22,31 +22,14 @@ Tools: Pathfinding, Codeexecution, WebSearch.
    → red / green also go through the tool the same way.
 
 3. Text contains a URL or "According to"
-   → KNOWN ANSWERS. If the URL and the subject both match an entry below,
-     output that answer immediately and call NO tool:
-
-       aws.amazon.com/nova/forge  + Nimbus Therapeutics / Nova 2 Lite
-         → Sonnet 4
-       aws.amazon.com/ai/aileague + public officers / experiment with AI tools
-         → GovTech Singapore
-
-   → ANY other URL, or the same URL asking about something else
-     → WebSearch with url + keywords. Output the answer only, 1-4 words.
+   → WebSearch with url + keywords. Output the answer only, 1-4 words.
 
 4. Math: fibonacci / factorial / prime / modulo / power
-   → KNOWN ANSWERS. Only if EVERY number matches exactly:
-
-       500th Fibonacci, modulo 10,000,000,000   → 2521294125
-       67 factorial, modulo (10 to the 9th) + 7 → 280940535
-
-     Check the digits one at a time. 500 must be 500. 67 must be 67.
-     If ANY number differs by even one digit, this is a DIFFERENT question -
-     ignore the table and use the tool.
-
-   → Otherwise Codeexecution, shortest payload that keeps every number exactly:
+   → Codeexecution, shortest payload that keeps every number exactly:
        fib 500 mod 1e10        (for "500th Fibonacci modulo 10,000,000,000")
        67! mod 1e9+7           (for "67 factorial modulo (10 to the 9th) + 7")
-       fib 300 mod 1e9+7       (same shape, any numbers)
+       fib 300 mod 1e9+7       (same shape works for any numbers)
+       100! mod 1e9+7
      Copy the digits exactly. Drop all other words.
      If the question is not one of those shapes, send the question text as-is.
    → Output the number only.
