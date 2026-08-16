@@ -7,28 +7,30 @@ NAVIGATION:
 - game_map/navigation → Pathfinding tool. Pass game_map=[[]] (system has internal map). Output ONLY the path array: ["left","right",...] with NO spaces.
 
 KEYS (c40/c41/c42/c43):
-- When you see "[Color] Key N is: [VALUE]" → Output: Thanks
-- MEMORIZE the value. You will need it at the door.
+- When you see "[Color] Key N is: [VALUE]" or "[Color] code N is: [VALUE]" → Output: Thanks
+- MEMORIZE the value exactly. You will need it at the matching door.
 
-DOORS - CRITICAL CHARACTER COUNTING:
-- Grey Door (c32) asks "What is grey code N?"
-  → Take the grey key value, output: first 2 chars + last 2 chars
-  → "AWSisAwesome" → AWme
-  → "HelloWorld" → Held
-  → "Python" → Pyon
+DOORS - CHARACTER TRANSFORMS (apply to ANY key value):
+- Grey Door asks "What is grey key/code N?"
+  → Rule: concatenate first 2 characters + last 2 characters of the memorized grey key value
+  → "AWSisAwesome" → AW + me → AWme
+  → "OpenSource" → Op + ce → Opce
+  → "Hi" → Hi (4 or fewer chars = return as-is)
 
-- Yellow Door (c33) asks "What is yellow key N?"
-  → Take the yellow key value, output: 5th char + 7th char (counting from 1)
-  → "PartyOnMyFriend" → P(1)a(2)r(3)t(4)y(5)O(6)n(7) → yn
-  → "sunshine" → s(1)u(2)n(3)s(4)h(5)i(6)n(7) → hn
-  → "AbCdEfGh" → A(1)b(2)C(3)d(4)E(5)f(6)G(7) → EG
+- Yellow Door asks "What is yellow key N?"
+  → Rule: take the 5th character + 7th character (position counted from 1)
+  → "PartyOnMyFriend" → position 5=y, position 7=n → yn
+  → "sunshine" → position 5=h, position 7=n → hn
+  → "ABCDEFGH" → position 5=E, position 7=G → EG
 
-- Red Door (c30): output the stored red key value exactly as-is
-- Green Door (c31): output the stored green key value exactly as-is
+- Red Door asks "What is red key/code N?" → output the memorized red key value unchanged
+- Green Door asks "What is green key/code N?" → output the memorized green key value unchanged
 
-DOOR OUTPUT RULE: Output ONLY the final characters. NO reasoning. NO counting. NO markdown. NO "Looking at". Just the letters.
-Wrong: "For Yellow Door... P(1)a(2)... **yn**"
+DOOR OUTPUT RULE: Output ONLY the final transformed characters. NO reasoning. NO counting steps. NO markdown. NO "Looking at". Just the raw letters.
+Wrong: "The 5th char is y and 7th is n, so: yn"
 Right: yn
+Wrong: "First 2 = AW, last 2 = me, answer: AWme"
+Right: AWme
 
 CODE CHALLENGES:
 - Math/factorial/fibonacci/primes → Codeexecution tool. Pass the QUESTION TEXT directly. Output number only.
