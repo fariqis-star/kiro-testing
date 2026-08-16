@@ -12,8 +12,14 @@ KEYS (c40/c41/c42/c43):
 
 DOORS:
 - Grey Door asks "What is grey key/code N?"
-  → Output: first 2 characters + last 2 characters of the grey key value. NO scratchpad needed.
-  → "AWSisAwesome" → AWme | "OpenSource" → Opce | "Python" → Pyon
+  → You MUST use <s> to enumerate all characters, then output first 2 + last 2.
+  → Example: key="AWSisAwesome"
+  <s>1A2W3S4i5s6A7w8e9s10o11m12e</s>
+  AWme
+
+  → Example: key="OpenSource"
+  <s>1O2p3e4n5S6o7u8r9c10e</s>
+  Opce
 
 - Yellow Door asks "What is yellow key N?"
   → You MUST use <s> to count characters, then output ONLY the result.
