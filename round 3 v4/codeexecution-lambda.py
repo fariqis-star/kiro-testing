@@ -438,7 +438,10 @@ def _try_intercept_question_v2(text):
                   r'(?:modulo|mod|%)\s*\(?\s*([\d,]+)', t)
     if m:
         n = int(m.group(1).replace(',', ''))
-        return fin(_fast_fib_matrix(n, int(m.group(2).replace(',', ''))))
+        mod = int(m.group(2).replace(',', ''))
+        # "modulo 10^k" IS "last k digits", so pad even if that phrase was
+        # trimmed from the question. Lets the model send a shorter payload.
+        return _pad_pow10(str(_fast_fib_matrix(n, mod)), mod, pad)
 
     m = re.search(r'last\s+(\d+)\s+digits.*?(\d[\d,]*)\s*(?:th|st|nd|rd)?\s*fibonacci', t)
     if m:
@@ -581,3 +584,20 @@ def _try_door_transform(text):
         return _door_yellow(m.group(1))
 
     return None
+
+
+
+def _pad_pow10(s, mod, explicit_pad=0):
+    """Zero-pad a modular result when the modulus is a power of 10.
+
+    'X modulo 10^k' and 'last k digits of X' are the same question, so the
+    answer must be k digits wide. This makes the padding independent of the
+    question still containing the words 'last k digits', which lets the model
+    send a shorter payload without risking a dropped leading zero.
+    """
+    if explicit_pad and len(s) < explicit_pad:
+        return s.zfill(explicit_pad)
+    k = len(str(mod)) - 1
+    if mod == 10 ** k and len(s) < k:
+        return s.zfill(k)
+    return s
