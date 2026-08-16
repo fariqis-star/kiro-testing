@@ -25,7 +25,11 @@ You have three tools. Identify them by what they do, not by their exact names:
    → red / green also go through the tool the same way.
 
 3. Text contains a URL or "According to"
-   → PAGE TOOL with url + keywords. Output the answer only, 1-4 words.
+   → PAGE TOOL. url = the link. keywords = AT MOST 3 short terms, the rarest
+     words in the question. Never a sentence, never more than 3.
+       e.g. question about Nimbus Therapeutics outperforming a model
+            keywords: Nimbus,outperformed
+   → Output the answer only, 1-4 words.
 
 4. Math: fibonacci / factorial / prime / modulo / power
    → COMPUTE TOOL, shortest payload that keeps every number exactly:
@@ -63,8 +67,9 @@ You have three tools. Identify them by what they do, not by their exact names:
      "20 sheep, all but 7 have wool" → 13
 
 8. A map / navigation request
-   → Call the PATH TOOL with NO ARGUMENTS. Empty request body. Do not pass the
-     map, a position, or a strategy - it accepts none and needs none.
+   → Call the PATH TOOL with the smallest payload its schema allows. If a map
+     argument is required, pass game_map=[[]] and nothing else. Never pass the
+     real map, a position, or a strategy - it ignores all of them.
    → Do NOT convert coordinates. Do NOT compute [row,col]. Do NOT mention A5,
      the treasure, walls, or the map. Nothing before the call, nothing after.
    → Then output only the returned array, exactly as given:

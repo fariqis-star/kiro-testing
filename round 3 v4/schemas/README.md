@@ -1,6 +1,16 @@
-# Short-name schemas
+# Short-name schemas — OPTIONAL, skip unless you can edit gateway schemas
 
-Replace the API schema on each gateway target with the matching file here.
+**Not needed.** Worth ~23 tokens / 0.43 points. If you cannot replace the API
+schema on a gateway target, ignore this whole folder — the supervisor prompt
+works unchanged either way, because it refers to tools by role
+(PATH TOOL / COMPUTE TOOL / PAGE TOOL) rather than by name.
+
+Note also that renaming the **Lambda function** does not help. The tool name is
+built from the gateway *target* name plus the schema *operationId*; the function
+name only appears in the ARN the target points at, so renaming it saves nothing.
+
+If you *can* edit schemas, replace each target's schema with the matching file
+here.
 
 ## Why
 
