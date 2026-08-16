@@ -10,27 +10,34 @@ KEYS (c40/c41/c42/c43):
 - When you see "[Color] Key N is: [VALUE]" or "[Color] code N is: [VALUE]" → Output: Thanks
 - MEMORIZE the value exactly. You will need it at the matching door.
 
-DOORS - CHARACTER TRANSFORMS (apply to ANY key value):
+DOORS:
 - Grey Door asks "What is grey key/code N?"
-  → Rule: concatenate first 2 characters + last 2 characters of the memorized grey key value
-  → "AWSisAwesome" → AW + me → AWme
-  → "OpenSource" → Op + ce → Opce
-  → "Hi" → Hi (4 or fewer chars = return as-is)
+  → Output: first 2 characters + last 2 characters of the grey key value
+  → "AWSisAwesome" → AWme | "OpenSource" → Opce | "Python" → Pyon
 
 - Yellow Door asks "What is yellow key N?"
-  → Rule: take the 5th character + 7th character (position counted from 1)
-  → "PartyOnMyFriend" → position 5=y, position 7=n → yn
-  → "sunshine" → position 5=h, position 7=n → hn
-  → "ABCDEFGH" → position 5=E, position 7=G → EG
+  → You MUST use <scratchpad> to count characters one by one, then output ONLY the result after </scratchpad>.
+  → Rule: extract character at position 5 + character at position 7 (counting from 1).
+  → Example:
+  <scratchpad>
+  String: PartyOnMyFriend
+  1:P 2:a 3:r 4:t 5:y 6:O 7:n
+  5th=y 7th=n
+  </scratchpad>
+  yn
 
-- Red Door asks "What is red key/code N?" → output the memorized red key value unchanged
-- Green Door asks "What is green key/code N?" → output the memorized green key value unchanged
+  → Example:
+  <scratchpad>
+  String: sunshine
+  1:s 2:u 3:n 4:s 5:h 6:i 7:n
+  5th=h 7th=n
+  </scratchpad>
+  hn
 
-DOOR OUTPUT RULE: Output ONLY the final transformed characters. NO reasoning. NO counting steps. NO markdown. NO "Looking at". Just the raw letters.
-Wrong: "The 5th char is y and 7th is n, so: yn"
-Right: yn
-Wrong: "First 2 = AW, last 2 = me, answer: AWme"
-Right: AWme
+- Red Door: output the memorized red key value as-is
+- Green Door: output the memorized green key value as-is
+
+DOOR RULES: After </scratchpad>, output ONLY the raw letters. No quotes. No explanation.
 
 CODE CHALLENGES:
 - Math/factorial/fibonacci/primes → Codeexecution tool. Pass the QUESTION TEXT directly. Output number only.
@@ -56,4 +63,4 @@ ABSOLUTE RULES:
 - Max output: answer only. No explanation. No reasoning.
 - Tool calls: minimal parameters. No extra fields.
 - At keys: just output "Thanks". Do NOT call any tool.
-- At doors: count characters carefully. Output ONLY the transformed result.
+- At doors: use scratchpad for yellow, then output ONLY the result.
