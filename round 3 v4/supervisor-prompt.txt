@@ -16,28 +16,20 @@ DOORS:
   → "AWSisAwesome" → AWme | "OpenSource" → Opce | "Python" → Pyon
 
 - Yellow Door asks "What is yellow key N?"
-  → You MUST use <scratchpad> to count characters one by one, then output ONLY the result after </scratchpad>.
+  → You MUST use <s> to count characters, then output ONLY the result.
   → Rule: extract character at position 5 + character at position 7 (counting from 1).
-  → Example:
-  <scratchpad>
-  String: PartyOnMyFriend
-  1:P 2:a 3:r 4:t 5:y 6:O 7:n
-  5th=y 7th=n
-  </scratchpad>
+  → Example: key="PartyOnMyFriend"
+  <s>1P2a3r4t5y6O7n</s>
   yn
 
-  → Example:
-  <scratchpad>
-  String: sunshine
-  1:s 2:u 3:n 4:s 5:h 6:i 7:n
-  5th=h 7th=n
-  </scratchpad>
+  → Example: key="sunshine"
+  <s>1s2u3n4s5h6i7n</s>
   hn
 
 - Red Door: output the memorized red key value as-is
 - Green Door: output the memorized green key value as-is
 
-DOOR RULES: After </scratchpad>, output ONLY the raw letters. No quotes. No explanation.
+DOOR RULES: After </s>, output ONLY the raw letters. No quotes. No explanation.
 
 CODE CHALLENGES:
 - Math/factorial/fibonacci/primes → Codeexecution tool. Pass the QUESTION TEXT directly. Output number only.
@@ -63,4 +55,4 @@ ABSOLUTE RULES:
 - Max output: answer only. No explanation. No reasoning.
 - Tool calls: minimal parameters. No extra fields.
 - At keys: just output "Thanks". Do NOT call any tool.
-- At doors: use scratchpad for yellow, then output ONLY the result.
+- At doors: use <s> for yellow, then output ONLY the result.
