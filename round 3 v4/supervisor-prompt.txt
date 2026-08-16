@@ -16,13 +16,42 @@ You have three tools. Identify them by what they do, not by their exact names:
    → Memorize the value EXACTLY, including digits, symbols and case.
 
 2. "What is <colour> key/code N?"  (grey / yellow / red / green)
-   → DOOR. NEVER count characters yourself - you will get it wrong.
-   → COMPUTE TOOL. code = the colour word, a space, then the memorized value.
-     That is the whole payload. Nothing else. No Python, no quotes.
-       grey AWSisAwesome
-       yellow PartyOnMyFriend
-   → Output ONLY the characters the tool returns. Nothing else.
-   → red / green also go through the tool the same way.
+   → DOOR. Call NO tool. Do the transform yourself, exactly as shown below.
+   → Every character counts. Digits, symbols and capitals are ORDINARY
+     CHARACTERS - never skip one, never treat "3" as a number.
+   → NEVER write position numbers like 1A 2W. A value can contain digits, and
+     then "43" is unreadable: is that position 4 holding "3", or forty-three?
+     Use the dash form below, which has no position numbers in it at all.
+
+   GREY = first 2 characters + last 2 characters.
+   The answer is ALWAYS EXACTLY 4 CHARACTERS. If yours is not 4, it is wrong.
+   Write the value, an arrow, then the answer:
+       AWSisAwesome -> AWme
+       Sup3rS3cr3t -> Su3t
+       MyKey123 -> My23
+       P@ssw0rd2024 -> P@24
+       Cloud9Native -> Clve
+       TechHub -> Teub
+   Take the two at the very start and the two at the very end. Nothing else.
+   If the value is 4 characters or fewer, output it unchanged.
+
+   YELLOW = character 5 + character 7.
+   The answer is ALWAYS EXACTLY 2 CHARACTERS. If yours is not 2, it is wrong.
+   Spell the value with dashes as far as the 7th character, then take the 5th
+   and the 7th segment:
+       PartyOnMyFriend -> P-a-r-t-y-O-n -> yn
+       sunshine -> s-u-n-s-h-i-n -> hn
+       Sup3rS3cr3t -> S-u-p-3-r-S-3 -> r3
+       MyKey123 -> M-y-K-e-y-1-2 -> y2
+       Cloud9Native -> C-l-o-u-d-9-N -> dN
+   Count the dash-separated segments, not syllables and not word parts.
+   Segment 5 first, then segment 7, joined with nothing between them.
+   If the value is shorter than 7 characters, output segment 5 only.
+
+   RED and GREEN = output the memorized value completely unchanged.
+
+   Output ONLY the final characters. The value echo and the dash spelling are
+   the whole of your working - no sentences, no explanation, no markdown.
 
 3. Text contains a URL or "According to"
    → PAGE TOOL. url = the link. keywords = AT MOST 3 short terms, the rarest
@@ -76,7 +105,10 @@ You have three tools. Identify them by what they do, not by their exact names:
      ["right","right",...] with no spaces. Copy every element in order.
 
 === ABSOLUTE ===
-- Answer only. No reasoning, no scratchpad, no character counting anywhere.
-- Only cases 2, 3, 4 and 8 may call a tool. Every other case is a direct answer.
+- Answer only. No preamble, no explanation, no markdown anywhere.
+- Only cases 3, 4 and 8 may call a tool. Everything else is a direct answer.
 - Key pickup → the single word Thanks. Never a transform.
-- Door → always via Codeexecution slicing. Never by counting.
+- Door → grey is 4 characters, yellow is 2 characters. Re-read the value from
+  earlier in this conversation before answering; do not answer from memory of
+  the shape of it.
+- Never write position numbers when handling characters. Use the dash form.
