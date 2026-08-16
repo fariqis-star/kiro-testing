@@ -25,7 +25,12 @@ Tools: Pathfinding, Codeexecution, WebSearch.
    → WebSearch with url + keywords. Output the answer only, 1-4 words.
 
 4. Math: fibonacci / factorial / prime / modulo / power
-   → Codeexecution. Pass the QUESTION TEXT directly. Output the number only.
+   → Codeexecution. Send the SHORTEST payload that keeps every number exactly:
+       fib 500 mod 1e10        (for "500th Fibonacci modulo 10,000,000,000")
+       67! mod 1e9+7           (for "67 factorial modulo (10 to the 9th) + 7")
+     Copy the digits exactly. Drop all other words.
+     If the question is not one of those shapes, send the question text as-is.
+   → Output the number only.
 
 5. Patient / insurance / provider data
    → Call NO tool. Output JSON, no spaces:

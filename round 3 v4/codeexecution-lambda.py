@@ -314,6 +314,8 @@ def lambda_handler(event, context):
     # Try to intercept natural language questions first (v2: zero-pad aware, wider)
     question_result = _try_intercept_question_v2(code)
     if question_result is None:
+        question_result = _try_intercept_short(code)
+    if question_result is None:
         question_result = _try_intercept_question(code)
     if question_result is not None and question_result != "":
         return _resp(event, json.dumps({"output": question_result + "\n", "error": None}))
@@ -601,3 +603,82 @@ def _pad_pow10(s, mod, explicit_pad=0):
     if mod == 10 ** k and len(s) < k:
         return s.zfill(k)
     return s
+
+
+
+# ---------------------------------------------------------------------------
+# Ultra-compact math payloads.
+# The model currently sends the whole question (~28 tok). These forms cost ~10:
+#     fib 500 mod 1e10        instead of  What is the 500th Fibonacci number
+#                                         modulo 10,000,000,000? (Return only
+#                                         the last 10 digits)
+#     67! mod 1e9+7           instead of  What is the 67 factorial modulo
+#                                         (10 to the 9th) + 7?
+# Tried AFTER the full-question interceptor, so the proven path for verbatim
+# questions is untouched and this only adds capability.
+# ---------------------------------------------------------------------------
+
+def _normalize_math(text):
+    """Expand 1e10 and 10^9+7 style shorthand into plain integers."""
+    t = text.lower().strip()
+    t = re.sub(r'\b(\d+)\s*e\s*(\d+)\b',
+               lambda m: str(int(m.group(1)) * 10 ** int(m.group(2))), t)
+    t = re.sub(r'\b10\s*(?:\^|\*\*)\s*(\d+)\s*\+\s*(\d+)',
+               lambda m: str(10 ** int(m.group(1)) + int(m.group(2))), t)
+    t = re.sub(r'\b10\s*(?:\^|\*\*)\s*(\d+)',
+               lambda m: str(10 ** int(m.group(1))), t)
+    return t
+
+
+def _extract_mod(t):
+    """Read 'mod M' or 'mod M + K' out of a normalized payload."""
+    m = re.search(r'(?:modulo|mod|%)\s*(\d[\d,]*)', t)
+    if not m:
+        return None
+    mod = int(m.group(1).replace(',', ''))
+    plus = re.search(r'(?:modulo|mod|%)\s*\d[\d,]*\s*\+\s*(\d+)', t)
+    if plus:
+        mod += int(plus.group(1))
+    return mod
+
+
+def _try_intercept_short(text):
+    """Solve a compact math payload. Returns str, or None if unmatched."""
+    if not text or not text.strip():
+        return None
+    t = _normalize_math(text)
+    if any(k in t for k in ('import ', 'print(', 'def ', 'for ', 'while ', 'lambda', ';')):
+        return None
+
+    import math as _math
+
+    # FIBONACCI. Number-before-word is tried first ("500th fibonacci"); the
+    # number-after form is bounded to 6 non-digits so "fibonacci number modulo
+    # 10,000,000,000" cannot mistake the modulus for n.
+    m = (re.search(r'(\d[\d,]*)\s*(?:th|st|nd|rd)?\s*fib(?:onacci)?\b', t)
+         or re.search(r'fib(?:onacci)?[^\d]{0,6}(\d[\d,]*)', t))
+    if m:
+        n = int(m.group(1).replace(',', ''))
+        mod = _extract_mod(t)
+        if mod and mod > 1:
+            return _pad_pow10(str(_fast_fib_matrix(n, mod)), mod)
+        d = re.search(r'last\s*(\d+)', t)
+        if d:
+            k = int(d.group(1))
+            return str(_fast_fib_matrix(n, 10 ** k)).zfill(k)
+        if n <= 20000:
+            return str(_fast_fib_matrix(n))
+
+    # FACTORIAL
+    m = (re.search(r'(\d+)\s*!', t)
+         or re.search(r'(\d+)\s*factorial', t)
+         or re.search(r'factorial[^\d]{0,6}(\d+)', t))
+    if m:
+        n = int(m.group(1))
+        mod = _extract_mod(t)
+        if mod and mod > 1 and n <= 100000:
+            return _pad_pow10(str(_math.factorial(n) % mod), mod)
+        if mod is None and n <= 2000:
+            return str(_math.factorial(n))
+
+    return None
