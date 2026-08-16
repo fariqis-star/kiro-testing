@@ -12,17 +12,19 @@ KEYS (c40/c41/c42/c43):
 
 DOORS:
 - Grey Door asks "What is grey key/code N?"
-  → Rule: output value[:2]+value[-2:] (first 2 chars + last 2 chars)
-  → You MUST use <s> to spell out the full string, then pick first 2 and last 2.
+  → Rule: first 2 chars + last 2 chars of the key value.
+  → MUST spell string in <s>, then read left2 and right2.
   → Example: key="AWSisAwesome"
-  <s>A-W-S-i-s-A-w-e-s-o-m-e</s>
-  first2=AW last2=me
-  AWme
+  <s>A,W,S,i,s,A,w,e,s,o,m,e</s>
+  AW+me=AWme
 
   → Example: key="OpenSource"
-  <s>O-p-e-n-S-o-u-r-c-e</s>
-  first2=Op last2=ce
-  Opce
+  <s>O,p,e,n,S,o,u,r,c,e</s>
+  Op+ce=Opce
+
+  → Example: key="CloudNine"
+  <s>C,l,o,u,d,N,i,n,e</s>
+  Cl+ne=Clne
 
 - Yellow Door asks "What is yellow key N?"
   → You MUST use <s> to count characters, then output ONLY the result.
