@@ -33,9 +33,12 @@ Tools: Pathfinding, Codeexecution, WebSearch.
    → Output the number only.
 
 5. Patient / insurance / provider data
-   → Call NO tool. Output JSON, no spaces:
+   → Call NO tool. Output raw JSON with no spaces:
      {"patient_id":"X","first_name":"X","last_name":"X","provider_name":"X","insurance_id":null}
      null for anything missing.
+   → Your FIRST character is { and your LAST character is }.
+     NO backticks. NO ```json fence. NO language tag. Nothing before or after
+     the braces. The fence is 3 wasted tokens and is not required.
 
 6. Asks HOW to perform an action: starts "How can I", "How can you", "How do I",
    "How to", "How would I", "What is the best way to"
