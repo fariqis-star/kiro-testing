@@ -10,10 +10,19 @@ Tools: Pathfinding, Codeexecution, WebSearch.
    → KEY PICKUP. Output exactly: Thanks
    → Call NO tool. Do NOT transform. Do NOT output any letter of the value.
    → Transforming here fails to collect the key and the door will later kill you.
-   → Memorize the value; its door may be many turns later.
+   → Memorize the value EXACTLY, including digits, symbols and case.
 
 2. "What is <colour> key/code N?"  (grey / yellow / red / green)
-   → DOOR. Call NO tool. Use <s> then output only the result. See TRANSFORMS.
+   → DOOR. NEVER count characters yourself - you will get it wrong.
+   → Call Codeexecution, substituting the memorized value in place of V:
+       grey    print("V"[:2]+"V"[-2:])
+       yellow  print("V"[4]+"V"[6])
+   → Output ONLY the characters the tool returns. Nothing else.
+   → red / green: call NO tool, output the memorized value unchanged.
+   Example - stored grey value AWSisAwesome:
+       print("AWSisAwesome"[:2]+"AWSisAwesome"[-2:])
+   Example - stored yellow value PartyOnMyFriend:
+       print("PartyOnMyFriend"[4]+"PartyOnMyFriend"[6])
 
 3. Text contains a URL or "According to"
    → WebSearch with url + keywords. Output the answer only, 1-4 words.
@@ -39,43 +48,15 @@ Tools: Pathfinding, Codeexecution, WebSearch.
      "20 sheep, all but 7 have wool" → 13
 
 8. A map / navigation request
-   → Call Pathfinding IMMEDIATELY with game_map=[[]]
-   → Do NOT convert coordinates. Do NOT compute [row,col]. Do NOT describe the
-     map, walls, or treasure. The tool needs no position - it knows the map.
-   → Output only the returned array: ["left","right",...] with no spaces.
-
-=== DOOR TRANSFORMS (case 2 only) ===
-
-GREY - first 2 characters + last 2 characters.
-Enumerate every character with its number, SEPARATED BY SPACES, write TOTAL=count,
-then take 1,2,TOTAL-1,TOTAL. The spaces are required - without them a two-digit
-position like 12 gets confused with position 1 or 2 and the answer comes out wrong.
-- stored value "TechHub"
-  <s>1T 2e 3c 4h 5H 6u 7b TOTAL=7 take 1,2,6,7</s>
-  Teub
-- stored value "CloudNine"
-  <s>1C 2l 3o 4u 5d 6N 7i 8n 9e TOTAL=9 take 1,2,8,9</s>
-  Clne
-- stored value "ILoveAWSCloud"
-  <s>1I 2L 3o 4v 5e 6A 7W 8S 9C 10l 11o 12u 13d TOTAL=13 take 1,2,12,13</s>
-  ILud
-- If TOTAL is 4 or less, output the stored value unchanged.
-- The grey answer is ALWAYS exactly 4 characters (2 from the start, 2 from the end).
-
-YELLOW - character 5 + character 7. Enumerate only as far as 7.
-- stored value "PartyOnMyFriend"
-  <s>1P2a3r4t5y6O7n</s>
-  yn
-- stored value "sunshine"
-  <s>1s2u3n4s5h6i7n</s>
-  hn
-- If the value is shorter than 7 characters, output character 5 only.
-
-RED / GREEN - output the stored value unchanged.
-
-After </s> output ONLY the characters. Exact case. No quotes, no spaces, no words.
+   → Your entire output is this one call, nothing before it and nothing after:
+       Pathfinding(game_map=[[]])
+   → Do NOT convert coordinates. Do NOT compute [row,col]. Do NOT mention A5,
+     the treasure, walls, or the map. The tool already knows the map and needs
+     no position from you.
+   → Then output only the returned array: ["left","right",...] with no spaces.
 
 === ABSOLUTE ===
-- Answer only. No reasoning anywhere except inside <s>.
-- Only cases 3, 4 and 8 may call a tool. Every other case is a direct answer.
+- Answer only. No reasoning, no scratchpad, no character counting anywhere.
+- Only cases 2, 3, 4 and 8 may call a tool. Every other case is a direct answer.
 - Key pickup → the single word Thanks. Never a transform.
+- Door → always via Codeexecution slicing. Never by counting.

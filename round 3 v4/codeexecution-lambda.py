@@ -303,6 +303,14 @@ def lambda_handler(event, context):
     if not code.strip():
         return _resp(event, json.dumps({"output": "", "error": "No code provided."}))
 
+    # Door transform sent in loose form, e.g. "grey AWSisAwesome" or "yellow=Key123".
+    # Checked before the code guard because "yellow=X" contains '=' and would
+    # otherwise be exec'd as Python and raise NameError. The patterns are anchored
+    # on a colour name / explicit wording, so real Python never matches them.
+    door = _try_door_transform(code)
+    if door:
+        return _resp(event, json.dumps({"output": door + "\n", "error": None}))
+
     # Try to intercept natural language questions first (v2: zero-pad aware, wider)
     question_result = _try_intercept_question_v2(code)
     if question_result is None:
@@ -518,5 +526,57 @@ def _try_intercept_question_v2(text):
     if m:
         a, b = int(m.group(1)), int(m.group(2))
         return fin(a * b // _math.gcd(a, b))
+
+    return None
+
+
+
+# ---------------------------------------------------------------------------
+# Door-transform safety net.
+# The prompt tells the model to send a Python slice, e.g.
+#     print("AWSisAwesome"[:2]+"AWSisAwesome"[-2:])
+# which exec() handles. This catches the looser forms it might send instead,
+# so a door never fails just because the phrasing drifted.
+# ---------------------------------------------------------------------------
+
+def _door_grey(v):
+    return v if len(v) <= 4 else v[:2] + v[-2:]
+
+
+def _door_yellow(v):
+    r = ""
+    if len(v) >= 5:
+        r += v[4]
+    if len(v) >= 7:
+        r += v[6]
+    return r
+
+
+def _try_door_transform(text):
+    """Recognise a door-transform request in loose form. Returns str or None."""
+    if not text:
+        return None
+    t = text.strip()
+
+    # "grey AWSisAwesome" / "grey: AWSisAwesome" / "grey=AWSisAwesome"
+    m = re.match(r'^(grey|gray|yellow|red|green)\s*[:=]?\s*(\S+)\s*$', t, re.I)
+    if m:
+        colour = m.group(1).lower()
+        val = m.group(2).strip('"\'')
+        if colour in ('grey', 'gray'):
+            return _door_grey(val)
+        if colour == 'yellow':
+            return _door_yellow(val)
+        return val
+
+    # "first 2 and last 2 of AWSisAwesome"
+    m = re.search(r'first\s*2.*?last\s*2\s*(?:characters?\s*)?(?:of\s+)?["\']?(\S+?)["\']?\s*$', t, re.I)
+    if m:
+        return _door_grey(m.group(1))
+
+    # "5th and 7th character of PartyOnMyFriend"
+    m = re.search(r'5(?:th)?\s*(?:and|\+|,)\s*7(?:th)?\s*(?:characters?\s*)?(?:of\s+)?["\']?(\S+?)["\']?\s*$', t, re.I)
+    if m:
+        return _door_yellow(m.group(1))
 
     return None
