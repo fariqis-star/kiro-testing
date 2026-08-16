@@ -559,10 +559,11 @@ def _try_door_transform(text):
     t = text.strip()
 
     # "grey AWSisAwesome" / "grey: AWSisAwesome" / "grey=AWSisAwesome"
-    m = re.match(r'^(grey|gray|yellow|red|green)\s*[:=]?\s*(\S+)\s*$', t, re.I)
+    # (.+) not (\S+) so a value containing spaces still resolves.
+    m = re.match(r'^(grey|gray|yellow|red|green)\s*(?:[:=]\s*|\s+)(.+?)\s*$', t, re.I)
     if m:
         colour = m.group(1).lower()
-        val = m.group(2).strip('"\'')
+        val = m.group(2).strip().strip('"\'')
         if colour in ('grey', 'gray'):
             return _door_grey(val)
         if colour == 'yellow':

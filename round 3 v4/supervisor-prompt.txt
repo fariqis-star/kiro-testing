@@ -14,15 +14,12 @@ Tools: Pathfinding, Codeexecution, WebSearch.
 
 2. "What is <colour> key/code N?"  (grey / yellow / red / green)
    → DOOR. NEVER count characters yourself - you will get it wrong.
-   → Call Codeexecution, substituting the memorized value in place of V:
-       grey    print("V"[:2]+"V"[-2:])
-       yellow  print("V"[4]+"V"[6])
+   → Call Codeexecution with the colour word, a space, then the memorized value.
+     That is the whole payload. Nothing else. No Python, no quotes.
+       grey AWSisAwesome
+       yellow PartyOnMyFriend
    → Output ONLY the characters the tool returns. Nothing else.
-   → red / green: call NO tool, output the memorized value unchanged.
-   Example - stored grey value AWSisAwesome:
-       print("AWSisAwesome"[:2]+"AWSisAwesome"[-2:])
-   Example - stored yellow value PartyOnMyFriend:
-       print("PartyOnMyFriend"[4]+"PartyOnMyFriend"[6])
+   → red / green also go through the tool the same way.
 
 3. Text contains a URL or "According to"
    → WebSearch with url + keywords. Output the answer only, 1-4 words.
