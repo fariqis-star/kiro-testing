@@ -1,0 +1,50 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "c",
+    "version": "1.0.0",
+    "description": "Computes maths and key/door transforms."
+  },
+  "paths": {
+    "/c": {
+      "post": {
+        "operationId": "c",
+        "summary": "Compute a maths result or a key/door transform",
+        "description": "Send a short maths payload such as 'fib 500 mod 1e10' or '67! mod 1e9+7', or a door transform such as 'grey SomeValue' or 'yellow SomeValue'. Also accepts Python code or a full question. Returns the answer.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["code"],
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "description": "Short maths payload, door transform, or Python code"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The computed answer",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "output": { "type": "string" },
+                    "error": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
