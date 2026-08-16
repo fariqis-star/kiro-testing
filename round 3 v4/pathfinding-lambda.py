@@ -789,12 +789,20 @@ VERIFIED_COUNTS = 'c1=2 c2=2 c4=2 c5=2 c7=14 c8=5 c17=1 c18=2 c32=1 c33=1 c42=1 
 # sends a bare STRING, so it may have failed on structure (a list was expected)
 # rather than on the words. 'letters' keeps the list structure and is therefore
 # still an open question - see the note in the summary before spending a run.
-# EXPERIMENT 2: 'letters' -> ["r","r","u",...]
-# Keeps the LIST structure that 'compact' threw away, which is the reason
-# compact's failure did not rule this out. Saves ~58 tok vs 'words'.
-# If move 1 forfeits again, the parser wants the literal words and there are no
-# format savings available at all - set this back to 'words' permanently.
-MOVE_FORMAT = 'letters'   # 'words' | 'letters' | 'compact'  ('compact' is DEAD)
+# BOTH ALTERNATIVE FORMATS ARE DEAD. Tested on the judge, both forfeited:
+#
+#   'compact'  "rrruuulll..."          lost 0:27, 0 coins, 5 lives intact
+#   'letters'  ["r","r","u",...]       lost, 0 coins, 5 lives intact,
+#                                      and elapsed printed as 29781526:38
+#
+# Neither took damage, so neither was a wall or spike. The broken timer on the
+# letters run points at an unhandled exception inside the game's move parser.
+# 'letters' kept the list structure and still failed, so the parser requires the
+# literal strings "right"/"left"/"up"/"down".
+#
+# CONCLUSION: the ~137 token move array is irreducible. Do not spend further
+# submissions on move encoding.
+MOVE_FORMAT = 'words'   # DO NOT CHANGE - both alternatives are proven dead
 
 _MOVE_ABBREV = {'right': 'r', 'left': 'l', 'up': 'u', 'down': 'd'}
 
