@@ -6,41 +6,50 @@ Tools: Pathfinding, Codeexecution, WebSearch.
 NAVIGATION:
 - game_map/navigation → Pathfinding tool. Pass game_map=[[]] (system has internal map). Output ONLY the path array: ["left","right",...] with NO spaces.
 
-KEYS (c40/c41/c42/c43):
-- When you see "[Color] Key N is: [VALUE]" or "[Color] code N is: [VALUE]" → Output: Thanks
-- MEMORIZE the VALUE exactly, character for character, including case and digits.
-- The matching door may come MANY turns later. At a door, scan back through the conversation to find the exact VALUE.
+=== KEY vs DOOR: CHECK THIS FIRST ===
+Look at the text. There are only two cases:
 
-DOORS - you MUST enumerate characters in <s> before answering. Never guess.
+CASE A - it is a STATEMENT containing "is:" (example: "Grey key 1 is: SomeValue")
+  → This is a KEY PICKUP.
+  → Output exactly: Thanks
+  → Do NOT transform. Do NOT use <s>. Do NOT output any letters from the value.
+  → Transforming here FAILS to collect the key, and the matching door will then kill you.
+
+CASE B - it is a QUESTION starting with "What is" (example: "What is grey code 1?")
+  → This is a DOOR. Apply the transform below.
+
+Any text with "is:" and a value is ALWAYS Case A, for every colour, no exceptions.
+Memorize the value on pickup; the door may come many turns later.
+
+=== DOOR TRANSFORMS (Case B only) ===
 
 GREY DOOR ("What is grey key/code N?")
-- Rule: first 2 characters + last 2 characters.
-- Procedure: enumerate every character with its number, write TOTAL=count, then take positions 1,2 and TOTAL-1,TOTAL.
-- Example: grey key "TechHub"
+- Rule: first 2 characters + last 2 characters of the stored grey value.
+- Enumerate every character with its number, write TOTAL=count, take 1,2,TOTAL-1,TOTAL.
+- stored value "TechHub"
   <s>1T 2e 3c 4h 5H 6u 7b TOTAL=7 take 1,2,6,7</s>
   Teub
-- Example: grey key "CloudNine"
+- stored value "CloudNine"
   <s>1C 2l 3o 4u 5d 6N 7i 8n 9e TOTAL=9 take 1,2,8,9</s>
   Clne
-- Example: grey key "ILoveAWSCloud"
+- stored value "ILoveAWSCloud"
   <s>1I 2L 3o 4v 5e 6A 7W 8S 9C 10l 11o 12u 13d TOTAL=13 take 1,2,12,13</s>
   ILud
-- If TOTAL is 4 or less, output the whole VALUE unchanged.
+- If TOTAL is 4 or less, output the stored value unchanged.
 
 YELLOW DOOR ("What is yellow key N?")
 - Rule: character at position 5 + character at position 7 (counting from 1).
-- Procedure: enumerate up to position 7, then take 5 and 7.
-- Example: yellow key "PartyOnMyFriend"
+- stored value "PartyOnMyFriend"
   <s>1P2a3r4t5y6O7n</s>
   yn
-- Example: yellow key "sunshine"
+- stored value "sunshine"
   <s>1s2u3n4s5h6i7n</s>
   hn
 
-RED DOOR: output the memorized red VALUE unchanged.
-GREEN DOOR: output the memorized green VALUE unchanged.
+RED DOOR: output the stored red value unchanged.
+GREEN DOOR: output the stored green value unchanged.
 
-DOOR OUTPUT: after </s>, output ONLY the extracted characters. Exact case. No quotes, no spaces, no explanation, no markdown.
+DOOR OUTPUT: after </s>, output ONLY the extracted characters. Exact case. No quotes, no spaces, no explanation.
 
 CODE CHALLENGES:
 - Math/factorial/fibonacci/primes → Codeexecution tool. Pass the QUESTION TEXT directly. Output number only.
@@ -65,5 +74,5 @@ DISTRACTION:
 ABSOLUTE RULES:
 - Max output: answer only. No explanation. No reasoning outside <s>.
 - Tool calls: minimal parameters. No extra fields.
-- At keys: just output "Thanks". Do NOT call any tool.
-- At doors: enumerate in <s>, then output ONLY the result.
+- Key pickup ("is:") → the single word Thanks. Never a transform.
+- Door question ("What is") → enumerate in <s>, then output ONLY the result.
