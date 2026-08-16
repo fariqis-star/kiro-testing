@@ -779,11 +779,17 @@ VERIFIED_COUNTS = 'c1=2 c2=2 c4=2 c5=2 c7=14 c8=5 c17=1 c18=2 c32=1 c33=1 c42=1 
 # Failure is immediate and obvious - move 1 misreads and you hit a wall in
 # ~10 seconds - so one submission buys the answer cheaply.
 # ---------------------------------------------------------------------------
-# Set to 'compact' to run the experiment. One submission answers it for all
-# three formats at once: if the parser needs the literal words "right"/"up",
-# then 'letters' would fail too, so there is no point testing that separately.
-# Revert to 'words' if move 1 hits a wall.
-MOVE_FORMAT = 'compact'   # 'words' | 'letters' | 'compact'
+# RESULT of the 'compact' experiment: REJECTED.
+#   output: "rrruuulllurrrrrrddlrrrrddddlllldrrrrddlllllluullldrdrrrrrrrruuuuuuuuu"
+#   -> "You lost the game" at 0:27, 0 coins, 1 challenge, but Lives remaining 5.
+#   No damage was taken, so this was not a wall or spike - the parser refused the
+#   payload outright and the run was forfeited.
+#
+# I claimed one test would settle all three formats. That was wrong: 'compact'
+# sends a bare STRING, so it may have failed on structure (a list was expected)
+# rather than on the words. 'letters' keeps the list structure and is therefore
+# still an open question - see the note in the summary before spending a run.
+MOVE_FORMAT = 'words'   # 'words' | 'letters' | 'compact'  ('compact' is DEAD)
 
 _MOVE_ABBREV = {'right': 'r', 'left': 'l', 'up': 'u', 'down': 'd'}
 
