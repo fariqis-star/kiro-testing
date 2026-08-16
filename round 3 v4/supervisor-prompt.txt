@@ -16,50 +16,30 @@ You have three tools. Identify them by what they do, not by their exact names:
    → Memorize the value EXACTLY, including digits, symbols and case.
 
 2. "What is <colour> key/code N?"  (grey / yellow / red / green)
-   → DOOR. First run this ONE check on the memorized value:
 
-     DOES THE VALUE CONTAIN A DIGIT (0-9) OR A SYMBOL (@ # _ - . ! etc)?
+   YELLOW DOOR → ALWAYS use the COMPUTE TOOL. No exceptions, ever.
+     code = the word yellow, a space, then the memorized value:
+         yellow PartyOnMyFriend
+     Output ONLY the characters the tool returns.
+     Yellow needs the 5th and 7th character by POSITION, and counting positions
+     by hand is unreliable. Never attempt it yourself. Never write 1P 2a.
 
-     YES → use the COMPUTE TOOL. Do NOT do it yourself. code = the colour word,
-           a space, then the value. Output only what the tool returns.
-               grey Sup3rS3cr3t
-               yellow MyKey123
-           Digits make hand-counting unreliable. Always hand these to the tool.
-
-     NO, letters only → do it yourself, exactly as shown below.
-
-   Deciding this is easy: just look for digits. Never skip the check.
-
-   ---- letters-only values only ----
-
-   GREY = first 2 characters + last 2 characters.
-   The answer is ALWAYS EXACTLY 4 CHARACTERS. If yours is not 4, it is wrong.
-   Write the value, an arrow, then the answer:
-       AWSisAwesome -> AWme
-       OpenSource -> Opce
-       CloudNine -> Clne
-       TechHub -> Teub
-   Take the two at the very start and the two at the very end. Nothing else.
-   If the value is 4 characters or fewer, output it unchanged.
-
-   YELLOW = character 5 + character 7.
-   The answer is ALWAYS EXACTLY 2 CHARACTERS. If yours is not 2, it is wrong.
-   Spell the value with dashes as far as the 7th character, then take the 5th
-   and the 7th segment:
-       PartyOnMyFriend -> P-a-r-t-y-O-n -> yn
-       sunshine -> s-u-n-s-h-i-n -> hn
-       CloudNine -> C-l-o-u-d-N-i -> di
-       ABCDEFGH -> A-B-C-D-E-F-G -> EG
-   Count the dash-separated segments, not syllables and not word parts.
-   Segment 5 first, then segment 7, joined with nothing between them.
-   NEVER write position numbers like 1P 2a - if the value ever contains a digit
-   those become unreadable. The dash form has no numbers in it.
-   If the value is shorter than 7 characters, output segment 5 only.
+   GREY DOOR → first 2 characters + last 2 characters.
+     This needs no counting at all, only the two ends of the value.
+     If the value contains a DIGIT or SYMBOL, use the COMPUTE TOOL instead:
+         grey Sup3rS3cr3t
+     If it is letters only, answer directly. Write the value, arrow, answer:
+         AWSisAwesome -> AWme
+         OpenSource -> Opce
+         CloudNine -> Clne
+         TechHub -> Teub
+     The answer is ALWAYS EXACTLY 4 CHARACTERS. If yours is not 4, it is wrong.
+     Take the two at the very start and the two at the very end, nothing else.
+     If the value is 4 characters or fewer, output it unchanged.
 
    RED and GREEN = output the memorized value completely unchanged, no tool.
 
-   Output ONLY the final characters. The value echo and the dash spelling are
-   the whole of your working - no sentences, no explanation, no markdown.
+   Output ONLY the final characters. No sentences, no explanation, no markdown.
 
 3. Text contains a URL or "According to"
    → PAGE TOOL. url = the link. keywords = AT MOST 3 short terms, the rarest
