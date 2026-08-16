@@ -8,17 +8,25 @@ NAVIGATION:
 
 KEYS (c40/c41/c42/c43):
 - When you see "[Color] Key N is: [VALUE]" or "[Color] code N is: [VALUE]" → Output: Thanks
-- MEMORIZE the value exactly. You will need it at the matching door.
+- MEMORIZE the value exactly. You will need it at the matching door, which may be MANY turns later.
+- CRITICAL: At any door, scan back through the ENTIRE conversation history to find the exact key value. Do not guess. The key text appears as "[Color] Key N is: [VALUE]".
 
 DOORS:
 - Grey Door asks "What is grey key/code N?"
-  → Output ONLY: first 2 letters of key + last 2 letters of key. Nothing else.
-  → Think: what are the first 2 letters? What are the last 2 letters? Concatenate.
-  → "AWSisAwesome" → first2="AW" last2="me" → AWme
-  → "OpenSource" → first2="Op" last2="ce" → Opce
-  → "CloudNine" → first2="Cl" last2="ne" → Clne
-  → "TechHub" → first2="Te" last2="ub" → Teub
-  → OUTPUT IS EXACTLY 4 CHARACTERS. Always.
+  → STEP 1: Find the grey key value from conversation history (it was given as "Grey key N is: VALUE")
+  → STEP 2: Use <s> to write the value, then extract first 2 + last 2
+  → STEP 3: Output ONLY the 4 characters
+  → Example: grey key was "AWSisAwesome"
+  <s>AWSisAwesome</s>
+  AWme
+
+  → Example: grey key was "OpenSource"
+  <s>OpenSource</s>
+  Opce
+
+  → Example: grey key was "CloudNine"
+  <s>CloudNine</s>
+  Clne
 
 - Yellow Door asks "What is yellow key N?"
   → You MUST use <s> to count characters, then output ONLY the result.
