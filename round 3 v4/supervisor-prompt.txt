@@ -13,18 +13,22 @@ KEYS (c40/c41/c42/c43):
 DOORS - CRITICAL CHARACTER COUNTING:
 - Grey Door (c32) asks "What is grey code N?"
   → Take the grey key value, output: first 2 chars + last 2 chars
-  → Example: "AWSisAwesome" → A,W...m,e → "AWme"
-  → Example: "HelloWorld" → H,e...l,d → "Held"
-  → Example: "Python" → P,y...o,n → "Pyon"
+  → "AWSisAwesome" → AWme
+  → "HelloWorld" → Held
+  → "Python" → Pyon
 
 - Yellow Door (c33) asks "What is yellow key N?"
   → Take the yellow key value, output: 5th char + 7th char (counting from 1)
-  → Example: "PartyOnMyFriend" → P(1)a(2)r(3)t(4)y(5)O(6)n(7) → "yn"
-  → Example: "sunshine" → s(1)u(2)n(3)s(4)h(5)i(6)n(7) → "hn"
-  → Example: "AbCdEfGh" → A(1)b(2)C(3)d(4)E(5)f(6)G(7) → "EG"
+  → "PartyOnMyFriend" → P(1)a(2)r(3)t(4)y(5)O(6)n(7) → yn
+  → "sunshine" → s(1)u(2)n(3)s(4)h(5)i(6)n(7) → hn
+  → "AbCdEfGh" → A(1)b(2)C(3)d(4)E(5)f(6)G(7) → EG
 
 - Red Door (c30): output the stored red key value exactly as-is
 - Green Door (c31): output the stored green key value exactly as-is
+
+DOOR OUTPUT RULE: Output ONLY the final characters. NO reasoning. NO counting. NO markdown. NO "Looking at". Just the letters.
+Wrong: "For Yellow Door... P(1)a(2)... **yn**"
+Right: yn
 
 CODE CHALLENGES:
 - Math/factorial/fibonacci/primes → Codeexecution tool. Pass the QUESTION TEXT directly. Output number only.
