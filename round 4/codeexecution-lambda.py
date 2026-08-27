@@ -879,10 +879,18 @@ def _try_path_request(text):
 # "backwards" means walking the alphabet from the other end.
 #
 # Candidates for key "open", in the order worth testing:
-#   'atbash'   lkvm        a<->z mirror. Most likely given green is alphabet-based.
+#   'atbash'   lkvm        a<->z mirror. Most likely - see below.
+#   'asis'     open        no transform. Weaker, see below.
 #   'revnum'   12112213    position counted from z (a=26 .. z=1), concatenated.
 #   'revthennum' 1451615   reverse the string, then letters to numbers.
-#   'reverse'  nepo        DISPROVEN - do not use.
+#   'reverse'  nepo        DISPROVEN twice - do not use.
+#
+# Why atbash over asis: in the SAME run, the green door asked "What is green key
+# 1?" with value "fghi" and the answer 6789 - the TRANSFORM - scored +1000. The
+# red door asks the identical question form. If red wanted the raw value, green
+# would have wanted "fghi" and it did not. So red has a transform; it just is not
+# string reversal. Green is alphabet-based, so the symmetric reading of
+# "backwards" is walking the alphabet from the far end, which is atbash.
 RED_MODE = "atbash"
 
 
@@ -921,11 +929,17 @@ def _red_revthennum(v):
     return "".join(out)
 
 
+def _red_asis(v):
+    """No transform - the door wants the raw key value."""
+    return v
+
+
 _RED_MODES = {
     "reverse": _red_reverse,
     "atbash": _red_atbash,
     "revnum": _red_revnum,
     "revthennum": _red_revthennum,
+    "asis": _red_asis,
 }
 
 
