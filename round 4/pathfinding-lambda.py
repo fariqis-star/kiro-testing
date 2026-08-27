@@ -7,18 +7,22 @@ hallucinates a map, and solving on a fake map produces a path that walks into a
 wall on move 1 and ends the run.
 
 Route verified by simulation against the real map:
-  105 moves, 0 walls hit, exactly 4 spike crossings, steps on all 46 scoring
-  tiles, collects both keys before their doors, ends on the treasure at J1.
+  105 moves, 0 walls hit, steps on all 46 scoring tiles, collects both keys
+  before their doors, ends on the treasure at J1.
 
-Spikes CANNOT be fully avoided on this map. 10 tiles - including the green key
-at F5 - sit in pockets whose only entrance is a spike:
-  F5 c41, F6 c7 (behind the spike at F7)
-  A7 c1, B7 c2, A8 c7, B8 c7, A9 c7, B9 c7, A10 c18, B10 c7 (behind A6)
-Each pocket costs 2 crossings (in and out), so 4 is the minimum. A local search
-over 60,000 iterations could not beat 105 moves at 4 spikes.
+Spike cost is 2 damage, not 4. The route crosses a spike four times, but only
+two DISTINCT spike tiles exist on the map (A6 and F7) and a spike is consumed on
+contact - so re-entering A6 or F7 later is free.
 
-Skipping those pockets is worse: the A-B block alone is 2,450 points against
-500 of life bonus, and F5 holds the green key that unlocks the +1000 green door.
+Spikes cannot be avoided. 10 tiles, including the green key at F5, sit in pockets
+whose only entrance is a spike:
+  F5 c41, F6 c7                                        behind F7
+  A7 c1, B7 c2, A8 c7, B8 c7, A9 c7, B9 c7, A10 c18, B10 c7   behind A6
+Both spikes must therefore be taken: 2 damage, and 5 - 2 = 3 health remain.
+
+A local search over 60,000 iterations could not beat 105 moves, and skipping the
+pockets is far worse: the A-B block alone is 2,450 points against 250 of life
+bonus, and F5 holds the green key for the +1000 green door.
 """
 
 import json

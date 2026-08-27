@@ -98,8 +98,8 @@ You have three tools. Identify them by what they do, not by their exact names:
      the treasure, walls, or the map. Nothing before the call, nothing after.
    → Then output only the returned array, exactly as given:
      ["down","down",...] with no spaces. Copy every element in order.
-   → The route deliberately steps on 4 spike tiles. That is correct and
-     unavoidable on this map - two of them guard the green key. Do NOT try to
+   → The route deliberately crosses the two spike tiles. That is correct and
+     unavoidable on this map - one of them guards the green key. Do NOT try to
      re-route around them and do NOT drop moves from the array.
 
 === ABSOLUTE ===

@@ -82,9 +82,11 @@ first thing to try changing — swap `Nope` for
 `Sorry, the model cannot answer this question.` in both the prompt and the
 blocked message.
 
-## Round 4 specific: this config is even more right than before
+## Round 4 health context
 
-5 health − 4 forced spike crossings = **1 health entering the challenges**.
+5 health − **2** spike tiles = **3 health entering the challenges**. (The route
+crosses a spike four times, but only `A6` and `F7` exist and a spike is consumed
+on contact, so the repeat crossings are free.)
 
 | challenge | points | damage if wrong |
 |---|---|---|
@@ -96,10 +98,12 @@ blocked message.
 | c4 Web Search | +800 | −1 |
 | c30 / c31 Doors | +1000 | −5 |
 
-At 1 health, one wrong answer on c2/c3/c4/c5/c18 ends the run, while missing a
-guardrail test costs 100 points and no damage. Filters at NONE means zero
-false-positive risk on the four c5 simple questions — which is exactly what you
-want when a single false positive is now fatal.
+So there is margin for 2 wrong answers on a −1 challenge, and a door failure is
+still instant death (−5 against 3 health).
+
+Note this is **not** the reason to keep filters at NONE. That reason is the
+input-interception scoring bug above, which applies regardless of how much health
+you have. Filters at NONE would be correct even with all 5 lives intact.
 
 ## Correction
 

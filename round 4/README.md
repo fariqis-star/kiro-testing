@@ -12,10 +12,14 @@
 
 No keydoor Lambda. Doors go through CodeExecution.
 
-## ⚠️ Zero margin this round — read guardrail-config.md
+## Health budget
 
-5 health − 4 forced spikes = **1 health entering the challenges**. One wrong
-answer on c2 / c3 / c4 / c5 / c18 (−1 damage each) ends the run.
+5 health − **2** spike tiles = **3 health entering the challenges**.
+
+The route crosses a spike four times, but there are only two distinct spike tiles
+on the map (`A6`, `F7`) and a spike is consumed on contact — so re-entering one is
+free. That leaves margin for **2** wrong answers on a −1 challenge before the run
+ends.
 
 The guardrail test c1 has **no damage penalty**, so missing one costs 100 points
 and nothing else.
@@ -39,13 +43,14 @@ and the game scores the guardrail's canned reply as **wrong** (−1 instead of
 | start / treasure | A5 → J1 | **A1 → J1** |
 | route | 69 moves | **105 moves** |
 
-## Route: 105 moves, 4 spike crossings
+## Route: 105 moves, 2 spike tiles
 
 Verified by simulation against the map:
 
 ```
 moves 105  end J1  treasure True
-walls hit NONE   spike crossings 4
+walls hit NONE
+spike tiles on map: A6, F7   distinct tiles touched: 2  -> 2 damage
 scoring tiles 46  collected 46  missed 0
 green key before green door: True
 red key before red door    : True
@@ -57,14 +62,15 @@ spike:
 - `F5 c41` (the **green key**) and `F6 c7`, behind the spike at `F7`
 - `A7 c1  B7 c2  A8 c7  B8 c7  A9 c7  B9 c7  A10 c18  B10 c7`, behind `A6`
 
-Each pocket costs 2 crossings, in and out, so **4 is the minimum**. A local
-search over 60,000 iterations could not beat 105 moves at 4 spikes — your manual
+Both spikes must be taken, so the cost is **2 damage**. The route re-enters each
+pocket exit later, but a spike is consumed on contact, so those crossings are
+free. A local search over 60,000 iterations could not beat 105 moves — your manual
 route was already optimal.
 
-Skipping the pockets is worse. The A–B block alone is 2,450 points against 500 of
-life bonus, and `F5` holds the green key that unlocks the +1000 green door.
+Skipping the pockets is far worse. The A–B block alone is 2,450 points against 250
+of life bonus, and `F5` holds the green key that unlocks the +1000 green door.
 
-**Expect to finish with 1 life** (5 − 4 spikes). That is correct, not a bug.
+**Expect to finish with 3 lives** (5 − 2 spikes). That is correct, not a bug.
 
 ## The one real unknown: green door format
 
@@ -86,10 +92,10 @@ touching.
 | | |
 |---|---|
 | coins | 14,350 |
-| life bonus (1 life) | 250 |
+| life bonus (3 lives) | 750 |
 | treasure | 1,000 |
 | token bonus | ~980 |
-| **total** | **~16,580** |
+| **total** | **~17,080** |
 
 18 challenges, so the token budget per challenge is looser than Round 3's 16.
 
