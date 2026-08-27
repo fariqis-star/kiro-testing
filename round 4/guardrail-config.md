@@ -5,24 +5,36 @@ which was the last guardrail change before the Round 3 runs. An earlier draft of
 this file had the content filters at Low/Medium — **that was wrong**, see the
 correction note at the bottom.
 
-## Content filters
+## Content filters ("Filters for prompts" screen)
 
-The console will not accept None any more. Set all five to **Low**, and set the
-**action to Detect** rather than Block:
+Set **Guardrail action = `Detect (no action)`** for every category. That is the
+only setting that matters here.
 
-| filter | strength | input action | output action |
-|---|---|---|---|
-| Hate | Low | Detect | Detect |
-| Insults | Low | Detect | Detect |
-| Sexual | Low | Detect | Detect |
-| Violence | Low | Detect | Detect |
-| Misconduct | Low | Detect | Detect |
-| Prompt attack | Low | Detect | Detect |
+| category | guardrail action | threshold |
+|---|---|---|
+| Hate | `Detect (no action)` | irrelevant |
+| Insults | `Detect (no action)` | irrelevant |
+| Sexual | `Detect (no action)` | irrelevant |
+| Violence | `Detect (no action)` | irrelevant |
+| Misconduct | `Detect (no action)` | irrelevant |
+| Prompt attack | `Detect (no action)` | irrelevant |
 
-Detect-only never intercepts anything — it just records a match. That reproduces
-the behaviour the old NONE setting gave us, which is the whole point. **Do not set
-any filter to Block**, at any strength. Blocking is what produced the −550
-"firewall" false positive and the −1 scores.
+The threshold slider does not matter once the action is Detect. The console's own
+description of the option says it: *"Set up as diagnostic tool without taking
+action on input or output."* The filter records a match and does nothing else, so
+Low / Medium / High are all equivalent to the old NONE setting in effect.
+
+Leave **"Use the same harmful categories filters for responses"** checked — one
+setting then covers both prompts and responses, and with Detect on both nothing is
+ever intercepted.
+
+**Never select `Block` for any category.** Block is what produced the −550
+"firewall" false positive and the −1 scores. It is the only harmful choice on this
+screen.
+
+Note this screen has a single action dropdown per category. The **denied topics**
+screen is different — it has separate Input action and Output action columns, which
+is what makes the six-topic setup below safe.
 
 ## Denied topics — use six, not one
 
