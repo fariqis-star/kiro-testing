@@ -37,12 +37,12 @@ walking the alphabet from the other end rather than reversing the string.
 | `thanks` | `Thanks` | ❌ run 7 |
 | `num` | `1516514` | ❌ run 8 |
 | `numthenrev` | `4156151` | ❌ run 9 |
-| `t9` / `t9rev` | `6736` / `6376` | ❌ killed by green's text, no run spent |
-| **`reverse`** | **`nepo`** | **current — clean retest** |
+| **`t9rev`** | **`6376`** | **current** |
+| `t9` | `6736` | companion, keypad without reversing |
 | `digitrev` | `5161541` | last resort |
 | `upper` / `upper_asis` | `NEPO` / `OPEN` | last resort, case only |
 
-### Both door descriptions are now known, and they are literal
+### Green is not a trick. Red is. That asymmetry *is* the puzzle.
 
 ```
 GREEN (c31): "translate the code you receive by replacing letters with
@@ -50,27 +50,37 @@ GREEN (c31): "translate the code you receive by replacing letters with
 RED   (c30): "translate the code you receive by reading it backwards"
 ```
 
-Green is the proof that this author writes instructions that mean exactly what they
-say — applied literally it produces the answer that scored +1000:
+Green states its transform **completely** — one step, letters to alphabet positions,
+and it lands on a number:
 
 ```
-fghi  ->  f=6 g=7 h=8 i=9  ->  6789     +1000
+fghi  ->  f=6 g=7 h=8 i=9  ->  6789     +1000, no interpretation needed
 ```
 
-So red's instruction should also mean exactly what it says: `open` → `nepo`.
+Red's text does **not** state a complete transform, and that is the tell. "Reading it
+backwards" turns `open` into `nepo` — which is still **letters**. Green's door answer
+was a **number**. A door code is numeric, so red cannot be finished at `nepo`; there
+has to be a second step the description withholds. That withheld step is the trick.
 
-**This eliminates two whole branches with no runs spent:**
+So what converts `nepo` into a number? Exactly two schemes exist, and one is gone:
 
-- **T9 is dead.** Green's text says *"the numbers that represent them in order"* — that is alphabet position, stated explicitly. Neither door mentions a phone keypad, and T9 of `fghi` is `3444`, not `6789`.
-- **Numbers are dead for red.** Red's text never mentions numbers; that is green's rule, and the two descriptions are deliberately different. It's settled empirically too — if red were numeric, "backwards" has only two possible orderings and both are already dead (`revthennum` run 6, `numthenrev` run 9).
+| scheme | result | |
+|---|---|---|
+| alphabet position | `nepo` → 14 5 16 15 → `1451615` | ❌ run 6 (`revthennum`) |
+| **telephone keypad** | `nepo` → 6 3 7 6 → **`6376`** | ← this run |
 
-### Why retest `nepo`
+With alphabet position dead, the phone pad is the only remaining way to numerify
+`nepo`. It also restores green's **shape**: 4 letters in, 4 clean digits out, exactly
+like `fghi` → `6789`. Alphabet position could never match that shape for `open`,
+because `o`=15 and `p`=16 spill into two digits and give the ragged 7-digit `1516514`.
 
-It is the only candidate consistent with the literal text, **and** the only rung whose
-single failure came from a run we know was misconfigured. `DEPLOY-CHECKLIST.md` records
-that run 2 was still executing the **old Lambda** — that is precisely how it emitted
-`nepo` when `RED_MODE` had already been switched to `atbash`. Every other rung was
-tested on a known-good deployment. So `nepo` is the one value never cleanly tested.
+### Correction: my earlier objection to T9 was wrong
+
+I argued T9 must be false because T9 of `fghi` is `3444`, not `6789`. That assumed both
+doors run **one shared cipher**. They do not — green says letters-to-position, red says
+backwards, and the descriptions are different on purpose. Green is the honest door and
+constrains only itself. It constrains red in exactly one way: the answer shape is a
+short clean number.
 
 ### The green pair is the control experiment, and it disproves the red door's own text
 

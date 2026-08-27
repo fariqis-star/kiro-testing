@@ -918,38 +918,41 @@ def _try_path_request(text):
 #   'num'         1516514    run 8
 #   'numthenrev'  4156151    run 9
 #
-# CURRENT: 'reverse' -> nepo   (RETEST - see below, its one failure is contaminated)
+# CURRENT: 't9rev' -> 6376   (reverse to nepo, then type nepo on a phone keypad)
 #
-# BOTH DOOR DESCRIPTIONS ARE NOW KNOWN, and they are literal, precise, and DIFFERENT
-# from each other:
+# GREEN IS NOT A TRICK. RED IS. That asymmetry is the whole puzzle, and both door
+# texts now support it:
 #
 #   GREEN DOOR (c31): "translate the code you receive by replacing letters with the
 #                      numbers that represent them in order"
 #   RED DOOR   (c30): "translate the code you receive by reading it backwards"
 #
-# Green is the proof that this author writes instructions that mean exactly what they
-# say. Its rule, applied literally, gives the answer that scored +1000:
-#   fghi -> f=6 g=7 h=8 i=9 -> 6789    +1000
+# Green states its transform COMPLETELY. One step, letters to alphabet positions,
+# and it lands on a number:
+#   fghi -> f=6 g=7 h=8 i=9 -> 6789    +1000, no interpretation required
 #
-# So the red instruction should also mean exactly what it says:
-#   open -> read backwards -> nepo
+# Red's text does NOT state a complete transform, and that is the tell. "Reading it
+# backwards" turns open into nepo - which is still LETTERS. Green's door answer was a
+# NUMBER. A door code is numeric, so red cannot be finished at nepo; there has to be
+# a second step the description deliberately withholds. That withheld step is the
+# trick.
 #
-# T9 IS NOW DEAD WITHOUT SPENDING A RUN. Green's text says "the numbers that
-# represent them in order" - that is alphabet position, explicitly. Neither door
-# mentions a phone keypad, and T9 of fghi is 3444, not 6789. The whole T9 branch
-# (6376, 6736) is eliminated on the text alone.
+# So: what converts nepo into a number? Exactly two schemes exist, and one is already
+# eliminated:
+#   alphabet position    nepo -> 14 5 16 15 -> 1451615    DEAD, run 6 (revthennum)
+#   telephone keypad     nepo -> 6  3 7  6  -> 6376       THIS RUN
+# With alphabet position dead, the phone pad is the only remaining way to numerify
+# nepo. It also restores green's SHAPE: 4 letters in, 4 clean digits out, exactly
+# like fghi -> 6789. Alphabet position could never match that shape for open,
+# because o=15 and p=16 spill into two digits and give the ragged 7-digit 1516514.
 #
-# NUMBERS ARE DEAD FOR RED TOO. Red's text never mentions numbers - that is green's
-# rule, and the two descriptions are deliberately different. It is also settled
-# empirically: if red were numeric, "backwards" has only two possible orderings and
-# BOTH are already dead - revthennum 1451615 (run 6) and numthenrev 4156151 (run 9).
+#   n=6  e=3  p=7  o=6  ->  6376
 #
-# That leaves 'nepo' as the ONLY candidate consistent with the literal text, and it
-# is also the ONLY rung whose failure came from a run we know was misconfigured:
-# DEPLOY-CHECKLIST records that run 2 was still executing the OLD Lambda, which is
-# exactly why it emitted nepo when RED_MODE had already been set to atbash. Every
-# other rung was tested on a known-good deployment. So nepo is the one value that
-# was never cleanly tested.
+# This is why my earlier objection was wrong. I argued T9 must be false because T9 of
+# fghi is 3444, not 6789 - but that assumed both doors run ONE shared cipher. They do
+# not. Green says letters-to-position and red says backwards; the descriptions are
+# different on purpose. Green is the honest door and constrains only itself. It
+# constrains red in one way only: the ANSWER SHAPE is a short clean number.
 #
 # The answer is 4 bare characters. See the supervisor prompt - the door grades on an
 # exact string, so ANY extra character, quote, capital or trailing word loses it.
@@ -1015,7 +1018,7 @@ def _try_path_request(text):
 #
 # The door cannot be skipped - it is the only way into the west region and the
 # user has confirmed avoiding it is not an option. It has to be solved.
-RED_MODE = "reverse"
+RED_MODE = "t9rev"
 
 
 def _red_reverse(v):
