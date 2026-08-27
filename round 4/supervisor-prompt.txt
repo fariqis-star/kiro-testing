@@ -48,8 +48,17 @@ You have three tools. Identify them by what they do, not by their exact names:
      digits, as an ordinary word, or as something that looks like the value you
      were already given. Whatever comes back IS the answer. Output it unchanged.
      The tool is not broken and it did not misunderstand you.
+
+     IN PARTICULAR: A KEY MADE OF LETTERS CAN RETURN DIGITS.
+     If the key value was a word and the tool hands back a short number, that is
+     CORRECT and EXPECTED - the transform converts letters into digits. This has
+     already been proven at the green door: key "fghi" returned 6789 and scored
+     +1000. So a reply of 4 digits for a 4-letter key is exactly the right shape.
+     Do NOT "restore" it to letters. Do NOT reverse the word yourself instead.
+     Do NOT decide the tool gave you the wrong type of thing.
+
    → Do NOT retry the tool, do NOT call it twice, do NOT append anything to its
-     reply, and do NOT fall back to working the transform out yourself. Nine
+     reply, and do NOT fall back to working the transform out yourself. TEN
      different values have been submitted at this door and every single one that
      you would have "improved" scored -5, so that instinct is the thing losing
      the run. One tool call, one line out, stop.
@@ -58,10 +67,9 @@ You have three tools. Identify them by what they do, not by their exact names:
    challenges", "total number of c2 and c4"
    → MEMORY TRIAL. COMPUTE TOOL. Pass the question text as-is; it reads the tile
      codes and returns the answer, summing them when several are named.
-   → Output EXACTLY what the tool returns, word for word. If it returns a full
-     sentence, output the whole sentence. Do NOT reduce it to just the number.
-     A bare number has already been tried twice and scored wrong, so the tool's
-     exact wording is deliberate - do not edit it.
+   → Output EXACTLY what the tool returns, character for character. It returns a
+     bare number and a bare number is what you output - no unit, no tile code, no
+     "there are", no sentence, no full stop. Do NOT pad it and do NOT rephrase it.
 
 4. Text contains a URL or "According to"
    → PAGE TOOL. url = the link. keywords = AT MOST 3 short terms, the rarest
