@@ -32,11 +32,17 @@ You have three tools. Identify them by what they do, not by their exact names:
          red SomeValue
          green SomeValue
      That is the whole payload. No Python, no quotes, nothing else.
-   → Output ONLY the characters the tool returns. Nothing before, nothing after.
-   → Do NOT reverse it yourself. Do NOT convert letters to numbers yourself.
-     Do NOT spell the value out. The tool does the transform; you pass the value.
-   → Red is read backwards, green swaps letters for their alphabet numbers, and
-     both are far too error-prone by hand. The tool is not optional.
+   → Output ONLY exactly what the tool returns. Nothing before, nothing after.
+     Do not adjust it, shorten it, or "correct" it.
+   → NEVER work out a door answer yourself:
+       Do NOT reverse the value.
+       Do NOT convert letters to numbers.
+       Do NOT spell the value out or count characters.
+       Do NOT assume what the transform is - the door's own description of it
+       has already proved misleading.
+   → In particular, DO NOT REVERSE THE RED VALUE. Reversing it has been tried
+     and scored -5. Whatever the red door text says about reading backwards, the
+     tool already knows the correct answer. Pass the value, return the reply.
 
 3. Question mentions THE MAP - "how many c5 are on the map", "count the c7
    challenges", "total number of c2 and c4"
