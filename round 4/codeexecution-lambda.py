@@ -884,29 +884,27 @@ def _try_path_request(text):
 # "backwards" means walking the alphabet from the other end.
 #
 # ELIMINATED, each one cost -5 and the run:
-#   'reverse'  nepo   run 2
-#   'atbash'  lkvm   run 3
-#   'asis'    open   run 4
+#   'reverse'  nepo       run 2
+#   'atbash'   lkvm       run 3
+#   'asis'     open       run 4
+#   'revnum'   12112213   run 5
 #
-# CURRENT: 'revnum' -> 12112213
+# CURRENT: 'revthennum' -> 1451615
 #
-# The reasoning, from the one door that works. Green's text says "replacing
-# letters with the numbers that represent them IN ORDER" and fghi -> 6789 scored
-# +1000, so green is a=1, b=2 ... z=26. Red's text says "reading it BACKWARDS".
-# IN ORDER versus BACKWARDS is a deliberate pair, so the thing read backwards is
-# most likely the ALPHABET, not the code string:
-#     z=1, y=2 ... a=26     open -> o12 p11 e22 n13 -> 12112213
-# I originally read "backwards" as reversing the string, which is now dead.
+# Reverse the word, THEN apply the rule the green door already proved:
+#     open  ->  nepo  ->  n14 e5 p16 o15  ->  1451615
 #
-# Remaining ladder if revnum also fails:
-#   'revthennum'  1451615    reverse the string, then a=1
-#   'numthenrev'  4156151    a=1, then reverse the digit string
-#   'thanks'      Thanks     lowest probability - see note below
+# This is the most natural remaining reading. It follows the red door's literal
+# instruction ("reading it backwards") and then uses the transform the other door
+# demonstrably wants - green's text is "replacing letters with the numbers that
+# represent them in order" and fghi -> 6789 scored +1000. Both doors are then
+# letter-to-number; red just reverses first.
 #
-# On 'thanks': green proves a door wants the transformed code and pays +1000 for
-# it, while "Thanks" is what a KEY pickup answers for +50. Worth trying only once
-# everything else is gone.
-RED_MODE = "revnum"
+# Remaining ladder:
+#   'numthenrev'  4156151    map to numbers first, then reverse the digit string
+#   'thanks'      Thanks     lowest probability - a door pays +1000 for a code,
+#                            whereas "Thanks" is what a key pickup answers for +50
+RED_MODE = "revthennum"
 
 
 def _red_reverse(v):
@@ -1037,14 +1035,25 @@ def _try_memory_v2(text):
 # variable must be how the answer is phrased.
 #
 # MEMORY_FORMAT candidates for "How many c4 challenges are on the map?":
-#   'sentence'  There are 2 c4 challenges on the map.   CURRENT
-#   'number'    2                                       tried run 2, rejected
-#   'word'      two
-#   'labelled'  2 c4 challenges
+#   'word'      two                                     CURRENT
+#   'number'    2                                        rejected run 2
+#   'sentence'  There are 2 c4 challenges on the map.     rejected run 5
+#   'labelled'  2 c4 challenges                          untested
 #
-# MEMORY_COUNTS is back to whole-map totals, since 2 is factually correct and the
-# seen-so-far theory was disproven by run 3.
-MEMORY_FORMAT = "sentence"
+# The count itself is not in doubt. 2 has been verified three ways: from the map,
+# from the trace tile-by-tile, and by checking the part of the route the run never
+# reached in case a c4 was hidden there. Only H3 and F8 are c4, and both appeared
+# as Web Search challenges in the trace.
+#
+# A bare number was rejected AND a sentence containing that number was rejected,
+# which is hard to explain by phrasing alone. If 'word' and 'labelled' also fail,
+# the likely cause is structural: the challenge text says "Utilizing Amazon
+# Bedrock AgentCore Memory", so it may require memory to actually be configured on
+# the agent, which no Lambda or prompt can fake.
+#
+# Keep it in proportion: memory is +550 and -1 damage. The red door is +1000 and
+# ends the run.
+MEMORY_FORMAT = "word"
 
 MEMORY_COUNTS_WHOLE_MAP = {
     "c1": 4, "c2": 2, "c3": 1, "c4": 2, "c5": 4, "c7": 28,
