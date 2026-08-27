@@ -848,12 +848,16 @@ def _try_path_request(text):
     # positive merely returns a path the caller ignores.
     if re.search(r'game_?map|navigat|\bpath\b|\broute\b|\bmaze\b|find.*treasure|'
                  r'optimal.*(path|route|move)|\bmoves\b|solve.*maze|pathfind', t):
+        # counts must match R4_COUNTS_SEEN and the pathfinding Lambda's
+        # VERIFIED_COUNTS. The model quotes this string directly at the Memory
+        # Trial instead of calling the memory handler, so whole-map totals here
+        # produce a wrong answer - that is what cost run 2 a life.
         return json.dumps({
             "path": R4_PATH,
             "steps": len(R4_PATH),
             "start_position": [0, 0],
-            "counts": ("c1=4 c2=2 c3=1 c4=2 c5=4 c7=28 c8=2 "
-                       "c18=1 c30=1 c31=1 c40=1 c41=1"),
+            "counts": ("c1=1 c2=1 c3=1 c4=1 c5=3 c7=11 c8=0 "
+                       "c18=0 c30=0 c31=0 c40=1 c41=0"),
         }, separators=(",", ":"))
     return None
 

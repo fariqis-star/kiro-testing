@@ -59,9 +59,22 @@ VERIFIED_PATH = [
     "right",
 ]
 
-# Real tile counts, for the Memory Trial challenge (c3).
-VERIFIED_COUNTS = ("c1=4 c2=2 c3=1 c4=2 c5=4 c7=28 c8=2 "
-                   "c18=1 c30=1 c31=1 c40=1 c41=1")
+# Counts for the Memory Trial challenge (c3).
+#
+# These are SEEN-SO-FAR counts, not whole-map totals, and that distinction cost a
+# run. In test run 2 the model never called a memory handler at all - it read
+# "c4=2" straight out of this string and answered 2, which was marked wrong. So
+# the number the Memory Trial gets is whatever this string says, and it has to
+# agree with MEMORY_MODE in the CodeExecution Lambda.
+#
+# Whole-map totals, for reference, NOT for answering:
+#   c1=4 c2=2 c3=1 c4=2 c5=4 c7=28 c8=2 c18=1 c30=1 c31=1 c40=1 c41=1
+#
+# Counts already encountered by the time the route reaches the c3 tile at F10,
+# which is challenge 19 of 48. Both plausible readings of the question - "seen so
+# far" and "still remaining" - give 1 for c4, and only 2 is ruled out.
+VERIFIED_COUNTS = ("c1=1 c2=1 c3=1 c4=1 c5=3 c7=11 c8=0 "
+                   "c18=0 c30=0 c31=0 c40=1 c41=0")
 
 # The move array must use the full words. Both alternatives were tested on the
 # Round 3 judge and BOTH forfeited the run outright:

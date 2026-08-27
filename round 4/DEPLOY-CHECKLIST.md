@@ -10,17 +10,39 @@ the trace proves it:
 
 So both of last round's fixes are still waiting. Deploy in this order.
 
-## 1. `codeexecution-lambda.py` → BOTH Lambda functions
+## 1. Deploy BOTH Lambda files
 
-Deploy it to the CodeExecution function **and** to the function behind
-`PathfindingLambdaTarget`. Section 4 explains why both.
+| file | function |
+|---|---|
+| `codeexecution-lambda.py` | your CodeExecution Lambda |
+| `pathfinding-lambda.py` | your Pathfinding Lambda |
 
-This one file carries every fix: the path fallback, `RED_MODE = atbash`,
-`MEMORY_MODE = seen`, doors, memory counts and maths.
+They are separate Lambdas and both need updating. **The counts string changed in
+both, and they must match** — see the memory bug below.
 
-Confirm afterwards that the red door returns **`lkvm`** and the memory question
-returns **`1`**. If you still see `nepo` or `2`, one of the two functions is still
-running the old code.
+Confirm afterwards: red door returns **`lkvm`** (not `nepo`), memory returns **`1`**
+(not `2`).
+
+## 1b. The memory bug I got wrong first time
+
+`MEMORY_MODE = seen` in the CodeExecution Lambda would **not** have fixed the memory
+failure on its own.
+
+Re-reading the run 2 trace: the model called `PathfindingLambdaTarget` for the memory
+question and answered `2`. It never reached a memory handler — it read `c4=2`
+straight out of the **`counts` string in the path response**, which I had populated
+with whole-map totals.
+
+So the number the Memory Trial gets is whatever `counts` says. All three sources now
+carry the same seen-so-far figures:
+
+| source | c4 |
+|---|---|
+| `pathfinding-lambda.py` → `VERIFIED_COUNTS` | 1 |
+| `codeexecution-lambda.py` → path fallback `counts` | 1 |
+| `codeexecution-lambda.py` → `R4_COUNTS_SEEN` | 1 |
+
+Whole-map totals are kept in a comment for reference, marked not-for-answering.
 
 ## 2. Guardrail — `guardrail-config.md`
 
@@ -44,55 +66,54 @@ Already carries the case 6/7 reorder so patient JSON cannot swallow a guardrail
 test. Lower priority than the two above, since the guardrail should now catch D8
 before the prompt is even consulted.
 
-## 4. Why "Pathfinding" answers door questions
+## 4. Why the path request went to CodeExecution
 
-Your target *is* attached to the agent — that part is fine. The problem is what is
-**inside the Lambda function it points at**. From run 2:
+**Because the prompt told it to.** Case 9 says:
 
-| tool called | request | returned |
-|---|---|---|
-| `PathfindingLambdaTarget___execute_code` | green door | `6789` |
-| `PathfindingLambdaTarget___execute_code` | red door | `nepo` |
-| `PathfindingLambdaTarget___execute_code` | memory count | `2` |
-| `AgentCoreGatewayTool-CodeExecution___execute_code` | navigation | the 105-move path |
+> If that tool errors, returns nothing, or returns something without a `"path"`
+> field, call the COMPUTE TOOL with `code = find optimal path`
 
-A pathfinding Lambda cannot produce `6789` for a green door. Only the CodeExecution
-code knows that transform. So **the function behind `PathfindingLambdaTarget`
-contains code-execution code** — most likely a paste into the wrong function at some
-point.
+The model tried `PathfindingLambdaTarget` first, it failed, and the fallback fired.
+That is working as designed — without it, run 2 would have invented a path and ended
+in nine moves like run 1.
 
-Worse, the two copies are different vintages:
-
-- `AgentCoreGatewayTool-CodeExecution` returned the path → it **has** the path
-  fallback → you deployed the **new** file there
-- `PathfindingLambdaTarget` returned `nepo` and `2` → **old** file, before
-  `RED_MODE` and `MEMORY_MODE`
-
-That is exactly why doors and memory were wrong while navigation was right: the
-model sent doors to the stale copy and navigation to the fresh one.
-
-### The fix: deploy `codeexecution-lambda.py` to BOTH functions
-
-Do not bother restoring pathfinding-specific code. `codeexecution-lambda.py` is a
-**superset** — it answers navigation, memory counts, both doors, maths and raw
-Python:
+### Why the pathfinding tool failed
 
 ```
-navigation   -> 105 moves, starts down
-memory count -> 1
-red door     -> lkvm
-green door   -> 6789
-maths        -> 437918130
-python       -> 1024
+PathfindingLambdaTarget___execute_code
+                        ^^^^^^^^^^^^
 ```
 
-Put that one file in **both** Lambda functions and the whole routing confusion stops
-mattering — whichever target the model reaches for, every request type resolves. It
-also returns the tile counts in its path response, so nothing is lost by retiring
-`pathfinding-lambda.py`.
+The part after `___` is the schema `operationId`. Earlier rounds showed
+`solve_maze` / `find_optimal_path` there; it now reads `execute_code`, so **the
+CodeExecution schema is attached to your pathfinding target**.
 
-`pathfinding-lambda.py` stays in the repo as the reference for the verified route and
-the map, but it does not need to be deployed anywhere.
+That schema declares a required `code` parameter and no `game_map`, so the model
+calls your pathfinding Lambda with `code="..."`. An older pathfinding Lambda does:
+
+```python
+if not game_map: return _err(400, 'Missing game_map')
+```
+
+→ error → fallback → CodeExecution answers instead.
+
+Two separate Lambdas, as you said. The **Lambda** is fine; the **schema** on that
+target is the wrong one.
+
+### Two ways to fix it
+
+**Either** put the right schema back on the target (operationId anything but
+`execute_code` — `find_optimal_path`, `solve_maze`, `p`), **or** just deploy
+`round 4/pathfinding-lambda.py`, which ignores its input entirely and returns the
+route no matter what it is called with:
+
+```
+event {'parameters':[{'name':'code','value':'find optimal path'}]}  -> steps=105
+event {}                                                            -> steps=105
+event {'body':'{"code":"anything"}'}                                -> steps=105
+```
+
+The second is less correct but works today, and removes the wasted first call.
 
 ## What already works — do not touch
 
