@@ -38,7 +38,7 @@ and the game scores the guardrail's canned reply as **wrong** (−1 instead of
 | keys | grey c42, yellow c43 | red c40, green c41 |
 | new challenge | — | **Memory Trial c3** — counts tiles on the map |
 | guardrail | c1, +400 | c1, **+100**, four of them |
-| spikes | avoidable | **NOT avoidable** — 4 crossings are forced |
+| spikes | avoidable | **NOT avoidable** — both tiles forced, −2 total |
 | distraction c17 | present | gone |
 | start / treasure | A5 → J1 | **A1 → J1** |
 | route | 69 moves | **105 moves** |
