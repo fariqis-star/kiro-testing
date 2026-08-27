@@ -823,7 +823,16 @@ def _try_memory_r4(text):
 # Lambda answers navigation requests too. Costs nothing when unused.
 # ===========================================================================
 
-R4_PATH = [
+# ---------------------------------------------------------------------------
+# DO NOT SET THIS TO True. Skipping the red door is NOT an option - confirmed by
+# the user, who knows the game. Leave it False.
+#
+# The alternate 83-move route is kept only so nobody has to recompute it, and
+# because it documents that the west region (A5-D5, A7-B10) sits entirely behind
+# D6. The red door has to be SOLVED, not avoided.
+SKIP_RED_DOOR = False
+
+R4_PATH_FULL = [
     "down", "down", "right", "right", "right", "right", "right", "right",
     "right", "right", "right", "down", "down", "down", "down", "down", "down",
     "down", "up", "up", "up", "up", "up", "left", "left", "down", "down",
@@ -837,6 +846,20 @@ R4_PATH = [
     "right", "right", "right", "right", "right", "right", "right", "right",
     "right",
 ]
+
+R4_PATH_NO_RED = [
+    "down", "down", "right", "right", "right", "right", "right", "right",
+    "right", "right", "right", "down", "down", "down", "down", "down", "down",
+    "down", "up", "up", "up", "up", "up", "left", "left", "down", "down",
+    "down", "down", "down", "left", "left", "up", "up", "up", "up", "up",
+    "down", "down", "down", "down", "down", "left", "left", "up", "up", "up",
+    "down", "down", "down", "right", "right", "right", "right", "up", "up",
+    "up", "up", "up", "right", "right", "up", "up", "left", "left", "left",
+    "left", "left", "left", "left", "left", "left", "up", "up", "right",
+    "right", "right", "right", "right", "right", "right", "right", "right",
+]
+
+R4_PATH = R4_PATH_NO_RED if SKIP_RED_DOOR else R4_PATH_FULL
 
 
 def _try_path_request(text):
@@ -884,27 +907,37 @@ def _try_path_request(text):
 # "backwards" means walking the alphabet from the other end.
 #
 # ELIMINATED, each one cost -5 and the run:
-#   'reverse'  nepo       run 2
-#   'atbash'   lkvm       run 3
-#   'asis'     open       run 4
-#   'revnum'   12112213   run 5
+#   'reverse'     nepo       run 2
+#   'atbash'      lkvm       run 3
+#   'asis'        open       run 4
+#   'revnum'      12112213   run 5
+#   'revthennum'  1451615    run 6
 #
-# CURRENT: 'revthennum' -> 1451615
+# CURRENT: 'num' -> 1516514
 #
-# Reverse the word, THEN apply the rule the green door already proved:
-#     open  ->  nepo  ->  n14 e5 p16 o15  ->  1451615
+# Green's rule applied unchanged, treating "reading it backwards" as flavour text:
+#     open -> o15 p16 e5 n14 -> 1516514
 #
-# This is the most natural remaining reading. It follows the red door's literal
-# instruction ("reading it backwards") and then uses the transform the other door
-# demonstrably wants - green's text is "replacing letters with the numbers that
-# represent them in order" and fghi -> 6789 scored +1000. Both doors are then
-# letter-to-number; red just reverses first.
+# Why this one. Every failure so far invented a rule the game never demonstrated.
+# The single thing the game HAS been observed to implement is green's
+# letter-to-number concatenation: fghi -> 6789, +1000. So applying exactly that to
+# red is the last candidate backed by evidence rather than inference.
 #
-# Remaining ladder:
-#   'numthenrev'  4156151    map to numbers first, then reverse the digit string
-#   'thanks'      Thanks     lowest probability - a door pays +1000 for a code,
-#                            whereas "Thanks" is what a key pickup answers for +50
-RED_MODE = "revthennum"
+# SEPARATORS RULED OUT without spending a run. "open" maps to double digits
+# (o=15, p=16, n=14) so 1516514 is ambiguous and 15-16-5-14 is not - but green
+# scored +1000 with "6789" and no separators. Had the game used dashes, green would
+# have required "6-7-8-9". So no separator variant is worth testing.
+#
+# Test order after this:
+#   'numthenrev'  4156151   map to numbers, then reverse the digit string
+#   'digitrev'    5161541   reverse EACH letter's number: o15->51 p16->61 e5->5 n14->41
+#   'upper'       NEPO      reverse then uppercase
+#   'upper_asis'  OPEN      raw value uppercased
+#   'thanks'      Thanks    answer it like a key pickup
+#
+# The door cannot be skipped - it is the only way into the west region and the
+# user has confirmed avoiding it is not an option. It has to be solved.
+RED_MODE = "num"
 
 
 def _red_reverse(v):
@@ -963,6 +996,41 @@ def _red_thanks(v):
     return "Thanks"
 
 
+def _red_num(v):
+    """Green's rule applied unchanged - treat 'backwards' as flavour text."""
+    out = []
+    for ch in v:
+        if ch.isalpha():
+            out.append(str(ord(ch.lower()) - 96))
+        else:
+            out.append(ch)
+    return "".join(out)
+
+
+def _red_upper(v):
+    """Reverse, then uppercase."""
+    return v[::-1].upper()
+
+
+def _red_upper_asis(v):
+    """Raw value, uppercased."""
+    return v.upper()
+
+
+def _red_digitrev(v):
+    """Map each letter to its alphabet number, reversing that number's digits.
+
+    o=15 -> 51, p=16 -> 61, e=5 -> 5, n=14 -> 41
+    """
+    out = []
+    for ch in v:
+        if ch.isalpha():
+            out.append(str(ord(ch.lower()) - 96)[::-1])
+        else:
+            out.append(ch)
+    return "".join(out)
+
+
 _RED_MODES = {
     "reverse": _red_reverse,
     "atbash": _red_atbash,
@@ -971,6 +1039,10 @@ _RED_MODES = {
     "numthenrev": _red_numthenrev,
     "asis": _red_asis,
     "thanks": _red_thanks,
+    "num": _red_num,
+    "upper": _red_upper,
+    "upper_asis": _red_upper_asis,
+    "digitrev": _red_digitrev,
 }
 
 
