@@ -36,9 +36,41 @@ walking the alphabet from the other end rather than reversing the string.
 | `revthennum` | `1451615` | ❌ run 6 |
 | `thanks` | `Thanks` | ❌ run 7 |
 | `num` | `1516514` | ❌ run 8 |
-| **`numthenrev`** | **`4156151`** | **current** |
-| `digitrev` | `5161541` | next |
+| `numthenrev` | `4156151` | ❌ run 9 |
+| `t9` / `t9rev` | `6736` / `6376` | ❌ killed by green's text, no run spent |
+| **`reverse`** | **`nepo`** | **current — clean retest** |
+| `digitrev` | `5161541` | last resort |
 | `upper` / `upper_asis` | `NEPO` / `OPEN` | last resort, case only |
+
+### Both door descriptions are now known, and they are literal
+
+```
+GREEN (c31): "translate the code you receive by replacing letters with
+              the numbers that represent them in order"
+RED   (c30): "translate the code you receive by reading it backwards"
+```
+
+Green is the proof that this author writes instructions that mean exactly what they
+say — applied literally it produces the answer that scored +1000:
+
+```
+fghi  ->  f=6 g=7 h=8 i=9  ->  6789     +1000
+```
+
+So red's instruction should also mean exactly what it says: `open` → `nepo`.
+
+**This eliminates two whole branches with no runs spent:**
+
+- **T9 is dead.** Green's text says *"the numbers that represent them in order"* — that is alphabet position, stated explicitly. Neither door mentions a phone keypad, and T9 of `fghi` is `3444`, not `6789`.
+- **Numbers are dead for red.** Red's text never mentions numbers; that is green's rule, and the two descriptions are deliberately different. It's settled empirically too — if red were numeric, "backwards" has only two possible orderings and both are already dead (`revthennum` run 6, `numthenrev` run 9).
+
+### Why retest `nepo`
+
+It is the only candidate consistent with the literal text, **and** the only rung whose
+single failure came from a run we know was misconfigured. `DEPLOY-CHECKLIST.md` records
+that run 2 was still executing the **old Lambda** — that is precisely how it emitted
+`nepo` when `RED_MODE` had already been switched to `atbash`. Every other rung was
+tested on a known-good deployment. So `nepo` is the one value never cleanly tested.
 
 ### The green pair is the control experiment, and it disproves the red door's own text
 

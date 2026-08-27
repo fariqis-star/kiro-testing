@@ -918,33 +918,41 @@ def _try_path_request(text):
 #   'num'         1516514    run 8
 #   'numthenrev'  4156151    run 9
 #
-# CURRENT: 't9rev' -> 6376
+# CURRENT: 'reverse' -> nepo   (RETEST - see below, its one failure is contaminated)
 #
-# Telephone keypad (T9). Read the value backwards to nepo, then type it on a phone:
-#   n=6  e=3  p=7  o=6  ->  6376
+# BOTH DOOR DESCRIPTIONS ARE NOW KNOWN, and they are literal, precise, and DIFFERENT
+# from each other:
 #
-# HONEST HEALTH WARNING. This contradicts the green control:
-#   green key fghi under T9      -> 3444
-#   green key fghi under position -> 6789   <- this is what scored +1000
-# So if both doors share one cipher, T9 is already disproven and this run is spent.
+#   GREEN DOOR (c31): "translate the code you receive by replacing letters with the
+#                      numbers that represent them in order"
+#   RED DOOR   (c30): "translate the code you receive by reading it backwards"
 #
-# It is worth testing anyway for one specific reason: THE GREEN DOOR'S OWN
-# DESCRIPTION TEXT HAS NEVER BEEN READ. Only the red door's text is known ("reading
-# it backwards") and the red key's. If green's c31 text describes a DIFFERENT
-# transform - anything about alphabet position or letter values - then the two doors
-# are independent puzzles, green constrains nothing, and every candidate built on
-# "green's proven rule" (num, numthenrev, digitrev) was unfounded from the start.
+# Green is the proof that this author writes instructions that mean exactly what they
+# say. Its rule, applied literally, gives the answer that scored +1000:
+#   fghi -> f=6 g=7 h=8 i=9 -> 6789    +1000
 #
-# T9 also has a shape argument in its favour. Green's answer was 4 clean digits for
-# a 4-letter key. T9 always gives one digit per letter, so open -> 6376 keeps that
-# shape, whereas alphabet position gives the ragged 7-digit 1516514 because o=15 and
-# p=16 spill into two digits each.
+# So the red instruction should also mean exactly what it says:
+#   open -> read backwards -> nepo
 #
-# GET THE GREEN DOOR DESCRIPTION. It decides which half of the ladder is live and
-# costs no runs.
+# T9 IS NOW DEAD WITHOUT SPENDING A RUN. Green's text says "the numbers that
+# represent them in order" - that is alphabet position, explicitly. Neither door
+# mentions a phone keypad, and T9 of fghi is 3444, not 6789. The whole T9 branch
+# (6376, 6736) is eliminated on the text alone.
 #
-# Companion mode if this is close but wrong:
-#   't9'  6736  keypad WITHOUT reversing first
+# NUMBERS ARE DEAD FOR RED TOO. Red's text never mentions numbers - that is green's
+# rule, and the two descriptions are deliberately different. It is also settled
+# empirically: if red were numeric, "backwards" has only two possible orderings and
+# BOTH are already dead - revthennum 1451615 (run 6) and numthenrev 4156151 (run 9).
+#
+# That leaves 'nepo' as the ONLY candidate consistent with the literal text, and it
+# is also the ONLY rung whose failure came from a run we know was misconfigured:
+# DEPLOY-CHECKLIST records that run 2 was still executing the OLD Lambda, which is
+# exactly why it emitted nepo when RED_MODE had already been set to atbash. Every
+# other rung was tested on a known-good deployment. So nepo is the one value that
+# was never cleanly tested.
+#
+# The answer is 4 bare characters. See the supervisor prompt - the door grades on an
+# exact string, so ANY extra character, quote, capital or trailing word loses it.
 #
 # This is the one combination the ladder never covered: keep the ONLY rule the game
 # has ever paid out for (letters -> alphabet position, proven by green scoring
@@ -1007,7 +1015,7 @@ def _try_path_request(text):
 #
 # The door cannot be skipped - it is the only way into the west region and the
 # user has confirmed avoiding it is not an option. It has to be solved.
-RED_MODE = "t9rev"
+RED_MODE = "reverse"
 
 
 def _red_reverse(v):

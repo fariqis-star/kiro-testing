@@ -40,18 +40,19 @@ You have three tools. Identify them by what they do, not by their exact names:
        Do NOT spell the value out or count characters.
        Do NOT assume what the transform is - the door's own description of it
        has already proved misleading.
-   → In particular, DO NOT REVERSE THE RED VALUE. Reversing it has been tried
-     and scored -5. Whatever the red door text says about reading backwards, the
-     tool already knows the correct answer. Pass the value, return the reply.
-   → THE TOOL'S REPLY MAY NOT LOOK LIKE AN ANSWER. It may come back as a single
-     ordinary word such as  Thanks  rather than a code, a number or a
-     transformed value. THAT IS THE ANSWER. Output it unchanged.
-     The tool is not broken and it did not misunderstand you. Do NOT retry it,
-     do NOT call it a second time, do NOT append a value to it, and do NOT fall
-     back to working the transform out yourself. One tool call, one word out.
-     Six different transformed values have already been submitted here and every
-     single one scored -5 and ended the run, so any instinct you have to
-     "improve" the tool's reply is the exact instinct that has been losing.
+   → THE DOOR GRADES ON AN EXACT STRING. Your entire output is the tool's reply
+     and nothing else. No quotes, no capitals you were not given, no full stop,
+     no "The answer is", no restating the question. One extra character loses
+     +1000 and costs 5 lives, which ends the run.
+   → DO NOT JUDGE WHETHER THE REPLY LOOKS RIGHT. It may come back as letters, as
+     digits, as an ordinary word, or as something that looks like the value you
+     were already given. Whatever comes back IS the answer. Output it unchanged.
+     The tool is not broken and it did not misunderstand you.
+   → Do NOT retry the tool, do NOT call it twice, do NOT append anything to its
+     reply, and do NOT fall back to working the transform out yourself. Nine
+     different values have been submitted at this door and every single one that
+     you would have "improved" scored -5, so that instinct is the thing losing
+     the run. One tool call, one line out, stop.
 
 3. Question mentions THE MAP - "how many c5 are on the map", "count the c7
    challenges", "total number of c2 and c4"
