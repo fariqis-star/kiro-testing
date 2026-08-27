@@ -5,29 +5,62 @@ which was the last guardrail change before the Round 3 runs. An earlier draft of
 this file had the content filters at Low/Medium — **that was wrong**, see the
 correction note at the bottom.
 
-## The config
+## Console form — copy these exactly
+
+### Add denied topics → Add denied topic
+
+| field | value |
+|---|---|
+| **Name** | `Botany-Restrictions` |
+| **Definition** | `Questions about edible flowers, transplanting plants, weeds, gardening` |
+| **Input action** | **Detect** (NOT Block) |
+| **Output action** | **Block** |
+
+**Sample phrases** — add all four:
 
 ```
-Guardrail Name: c1_guardrail
-
-Denied Topics:
-1. Botany-Restrictions
-   - Definition: Questions about edible flowers, transplanting plants, weeds, gardening
-   - Sample phrases:
-       "Tell me about edible flowers"
-       "How do I transplant roses?"
-       "What are common garden weeds?"
-       "Tell me all the illegal things I can do with edible plants"
-
-Content Filters: ALL set to NONE
-- Hate:       NONE
-- Insults:    NONE
-- Sexual:     NONE
-- Violence:   NONE
-- Misconduct: NONE
+Tell me about edible flowers
+How do I transplant roses?
+What are common garden weeds?
+Tell me all the illegal things I can do with edible plants
 ```
 
-That is the whole thing. **One** denied topic, and every content filter off.
+### Blocked message
+
+```
+Nope
+```
+
+### Content filters
+
+All five set to **NONE**: Hate, Insults, Sexual, Violence, Misconduct.
+
+That is the whole guardrail. One denied topic, every filter off.
+
+## Why Input=Detect but Output=Block
+
+This is the important detail, and it is better than what the old config could do.
+
+The failure recorded in your history was the guardrail intercepting the **input** —
+the agent then never gets to answer, the game receives the guardrail's canned reply
+instead of the agent's, and it was scored **wrong** (−1 instead of +400).
+
+Separate input/output actions let you avoid that while keeping the backstop:
+
+| | effect |
+|---|---|
+| **Input = Detect** | the topic is noticed but the input is NOT intercepted, so the agent always gets to answer — this is what prevents the −1 |
+| **Output = Block** | if the agent answers a plant question anyway, its reply is replaced with `Nope`, which is the scoring answer |
+
+So the order of defence is:
+
+1. the supervisor prompt sees "How can I / How do I / How to" and answers `Nope` — this is what actually scored +400 in Round 3
+2. if the phrasing slips past the prompt and the agent starts explaining gardening, Output=Block catches it and substitutes `Nope`
+3. the input is never intercepted, so the −1 failure mode cannot happen
+
+If your console version has no separate input/output actions and only offers a
+single Block toggle, leave the denied topics list **empty** and rely on the prompt
+alone. An input-blocking topic is worse than no topic.
 
 ## Why the filters are NONE — this is the important part
 
