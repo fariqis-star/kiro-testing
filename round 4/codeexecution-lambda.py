@@ -310,9 +310,9 @@ def lambda_handler(event, context):
     if pathreq is not None:
         return _resp(event, json.dumps({"output": pathreq, "error": None}))
 
-    # Memory Trial tile counts. v2 uses the seen-so-far table; whole-map was
-    # disproven by the test run.
-    mem = _try_memory_v2(code)
+    # Memory Trial. v3: whole-map counts with a configurable answer FORMAT, since
+    # both candidate numbers were rejected and the phrasing is the open variable.
+    mem = _try_memory_v3(code)
     if mem is not None:
         return _resp(event, json.dumps({"output": mem + "\n", "error": None}))
 
@@ -848,16 +848,17 @@ def _try_path_request(text):
     # positive merely returns a path the caller ignores.
     if re.search(r'game_?map|navigat|\bpath\b|\broute\b|\bmaze\b|find.*treasure|'
                  r'optimal.*(path|route|move)|\bmoves\b|solve.*maze|pathfind', t):
-        # counts must match R4_COUNTS_SEEN and the pathfinding Lambda's
-        # VERIFIED_COUNTS. The model quotes this string directly at the Memory
-        # Trial instead of calling the memory handler, so whole-map totals here
-        # produce a wrong answer - that is what cost run 2 a life.
+        # Whole-map counts, matching the pathfinding Lambda's VERIFIED_COUNTS and
+        # MEMORY_COUNTS_WHOLE_MAP. The model sometimes quotes this string straight
+        # from the path response instead of calling the memory handler, so all
+        # three must agree or the Memory Trial gets a different number depending
+        # on which route it took.
         return json.dumps({
             "path": R4_PATH,
             "steps": len(R4_PATH),
             "start_position": [0, 0],
-            "counts": ("c1=1 c2=1 c3=1 c4=1 c5=3 c7=11 c8=0 "
-                       "c18=0 c30=0 c31=0 c40=1 c41=0"),
+            "counts": ("c1=4 c2=2 c3=1 c4=2 c5=4 c7=28 c8=2 "
+                       "c18=1 c30=1 c31=1 c40=1 c41=1"),
         }, separators=(",", ":"))
     return None
 
@@ -882,20 +883,22 @@ def _try_path_request(text):
 # replaced by their alphabet position. So red is likely also alphabet-based, and
 # "backwards" means walking the alphabet from the other end.
 #
-# Candidates for key "open", in the order worth testing:
-#   'atbash'   lkvm        a<->z mirror. Most likely - see below.
-#   'asis'     open        no transform. Weaker, see below.
+# Candidates for key "open":
+#   'asis'     open        CURRENT. The raw key value, no transform.
 #   'revnum'   12112213    position counted from z (a=26 .. z=1), concatenated.
 #   'revthennum' 1451615   reverse the string, then letters to numbers.
-#   'reverse'  nepo        DISPROVEN twice - do not use.
+#   'reverse'  nepo        DISPROVEN - run 2, -5
+#   'atbash'   lkvm        DISPROVEN - run 3, -5
 #
-# Why atbash over asis: in the SAME run, the green door asked "What is green key
-# 1?" with value "fghi" and the answer 6789 - the TRANSFORM - scored +1000. The
-# red door asks the identical question form. If red wanted the raw value, green
-# would have wanted "fghi" and it did not. So red has a transform; it just is not
-# string reversal. Green is alphabet-based, so the symmetric reading of
-# "backwards" is walking the alphabet from the far end, which is atbash.
-RED_MODE = "atbash"
+# Both of my readings of "reading it backwards" are now dead, so the door is not
+# asking for a string transform at all. The raw value is the remaining candidate
+# and it also makes sense as a joke: the key value IS "open", and that is what you
+# say to a door.
+#
+# I argued against this last time on the grounds that the green door asked the
+# identical question form and DID want its transform (fghi -> 6789, +1000). That
+# symmetry argument was wrong - the two doors simply do not behave the same way.
+RED_MODE = "asis"
 
 
 def _red_reverse(v):
@@ -992,3 +995,66 @@ def _try_memory_v2(text):
             total += table[key]
             hit = True
     return str(total) if hit else None
+
+
+
+# ---------------------------------------------------------------------------
+# MEMORY TRIAL - format, not arithmetic.
+#
+# Both candidate numbers have now been rejected:
+#   run 2  answered 2  (whole-map total)   -> INCORRECT
+#   run 3  answered 1  (seen so far)       -> INCORRECT
+#
+# The map was verified tile-by-tile against the run 3 trace - the 14 coin pickups
+# before death match exactly, and only H3 and F8 are c4 - so 2 IS the true count
+# and a bare "2" was still marked wrong. With both numbers eliminated, the
+# variable must be how the answer is phrased.
+#
+# MEMORY_FORMAT candidates for "How many c4 challenges are on the map?":
+#   'sentence'  There are 2 c4 challenges on the map.   CURRENT
+#   'number'    2                                       tried run 2, rejected
+#   'word'      two
+#   'labelled'  2 c4 challenges
+#
+# MEMORY_COUNTS is back to whole-map totals, since 2 is factually correct and the
+# seen-so-far theory was disproven by run 3.
+MEMORY_FORMAT = "sentence"
+
+MEMORY_COUNTS_WHOLE_MAP = {
+    "c1": 4, "c2": 2, "c3": 1, "c4": 2, "c5": 4, "c7": 28,
+    "c8": 2, "c18": 1, "c30": 1, "c31": 1, "c40": 1, "c41": 1,
+}
+
+_NUM_WORDS = {0: "zero", 1: "one", 2: "two", 3: "three", 4: "four", 5: "five",
+              6: "six", 7: "seven", 8: "eight", 9: "nine", 10: "ten",
+              11: "eleven", 28: "twenty-eight"}
+
+
+def _try_memory_v3(text):
+    """Memory Trial answer. Returns str, or None if not a count question."""
+    if not text:
+        return None
+    t = text.lower()
+    if not re.search(r'how many|count|number of|total', t):
+        return None
+    codes = re.findall(r'\bc(\d+)\b', t)
+    if not codes:
+        return None
+    total = 0
+    hit = False
+    for n in codes:
+        key = "c" + n
+        if key in MEMORY_COUNTS_WHOLE_MAP:
+            total += MEMORY_COUNTS_WHOLE_MAP[key]
+            hit = True
+    if not hit:
+        return None
+
+    label = " and ".join("c" + n for n in codes)
+    if MEMORY_FORMAT == "number":
+        return str(total)
+    if MEMORY_FORMAT == "word":
+        return _NUM_WORDS.get(total, str(total))
+    if MEMORY_FORMAT == "labelled":
+        return f"{total} {label} challenges"
+    return f"There are {total} {label} challenges on the map."

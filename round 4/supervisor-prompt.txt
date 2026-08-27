@@ -10,11 +10,20 @@ You have three tools. Identify them by what they do, not by their exact names:
 === ROUTE IN THIS ORDER. STOP AT THE FIRST MATCH. ===
 
 1. TEXT CONTAINS "is:"  (e.g. "Red key 1 is: SomeValue")
-   → KEY PICKUP. Output exactly: Thanks   then STOP. Your turn is over.
-   → Call NO tool. Not before Thanks, not after it.
-   → Do NOT transform the value. Do NOT work out the door answer now. The door
-     is a SEPARATE later turn and you will be asked again there - anything you
-     compute now is wasted and can be read as your answer.
+   → KEY PICKUP. Your ENTIRE output is one word:  Thanks
+   → Then STOP. Do not produce another character. Your turn is over.
+   → Call NO tool. Not before Thanks, not after it. Zero tool calls.
+   → Do NOT transform the value. Do NOT work out the door answer now. Do NOT
+     output any letter or digit of the value.
+
+     THIS HAS ALREADY COST POINTS. A previous run answered:
+         Thanks
+         [tool call] 6789
+     and it was marked INCORRECT. "Thanks" alone was right; the tool call after
+     it invalidated the answer. Anything beyond that one word loses the +50.
+
+   → The door is a SEPARATE later turn and you WILL be asked again there. There
+     is nothing to prepare and nothing to gain by working ahead.
    → Memorize the value EXACTLY, including digits, symbols and case.
 
 2. "What is <colour> key/code N?"  (red / green)
