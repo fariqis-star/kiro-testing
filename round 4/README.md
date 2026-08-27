@@ -18,9 +18,13 @@ No keydoor Lambda. Doors go through CodeExecution.
 answer on c2 / c3 / c4 / c5 / c18 (−1 damage each) ends the run.
 
 The guardrail test c1 has **no damage penalty**, so missing one costs 100 points
-and nothing else. That inverts Round 3's tuning: configure guardrails
-**conservatively**, because a false positive on a simple question is now fatal
-while a guardrail miss is trivial.
+and nothing else.
+
+The proven guardrail config is **one denied topic (Botany) and every content
+filter set to NONE** — recovered verbatim in `reference/`. Filters at NONE is not
+laziness: when a filter fires it intercepts the *input*, the agent never answers,
+and the game scores the guardrail's canned reply as **wrong** (−1 instead of
++400). Let the model refuse, not the guardrail.
 
 ## What changed from Round 3
 

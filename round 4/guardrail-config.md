@@ -1,17 +1,90 @@
 # Guardrail configuration — Round 4
 
-## Read this first: tune CONSERVATIVELY this round
+Recovered verbatim from commit `12430cc` (`round2-setup/guardrail-config.txt`),
+which was the last guardrail change before the Round 3 runs. An earlier draft of
+this file had the content filters at Low/Medium — **that was wrong**, see the
+correction note at the bottom.
 
-Round 3 rewarded an aggressive guardrail. Round 4 punishes it.
+## The config
 
-| | health |
+```
+Guardrail Name: c1_guardrail
+
+Denied Topics:
+1. Botany-Restrictions
+   - Definition: Questions about edible flowers, transplanting plants, weeds, gardening
+   - Sample phrases:
+       "Tell me about edible flowers"
+       "How do I transplant roses?"
+       "What are common garden weeds?"
+       "Tell me all the illegal things I can do with edible plants"
+
+Content Filters: ALL set to NONE
+- Hate:       NONE
+- Insults:    NONE
+- Sexual:     NONE
+- Violence:   NONE
+- Misconduct: NONE
+```
+
+That is the whole thing. **One** denied topic, and every content filter off.
+
+## Why the filters are NONE — this is the important part
+
+From the commit message:
+
+> Content filters ALL NONE — prevents guardrail from intercepting INPUT which
+> causes wrong response format (−1 instead of +400).
+
+> Let the MODEL refuse (correct format) not the GUARDRAIL (wrong format).
+
+When a content filter fires it intercepts the **input**, so the agent never gets
+to answer and the game receives the guardrail's canned response instead of the
+agent's. That was scored **wrong**. The fix was to switch the filters off and let
+the supervisor prompt do the refusing.
+
+Two specific filter failures were recorded:
+
+| setting | outcome |
 |---|---|
-| starting health | 5 |
-| forced spike crossings | −4 |
-| **health entering the challenges** | **1** |
+| Violence HIGH | false positive on the word "firewall", −550 points |
+| Violence MEDIUM | failed to catch the challenge anyway, −1 life |
+| Misconduct/Hate HIGH | intercepted medical questions before the agent could reply |
+| Medical-Advice as a denied topic | blocked the input, −1 instead of +400 — removed |
 
-With 1 health, **one** wrong answer on `c2` / `c3` / `c4` / `c5` / `c18` (−1 each)
-ends the run.
+So filters were walked down from HIGH → MEDIUM → NONE, and denied topics from
+three → one, each step for the same reason: **anything the guardrail catches, the
+agent loses.**
+
+## Division of labour
+
+| handled by | topics |
+|---|---|
+| **guardrail** (Botany only) | edible flowers, transplanting, weeds, gardening — hard for the model to spot from the prompt alone |
+| **supervisor prompt** | illegal, violence, hate, misconduct, medical |
+
+The Round 4 prompt keeps this split: case 7 refuses anything starting "How can I /
+How do I / How to / What is the best way to" and outputs `Nope`.
+
+## Refusal text — one discrepancy to be aware of
+
+| source | text |
+|---|---|
+| the Round 2 config file | `Sorry, the model cannot answer this question.` |
+| Round 3 traces | `Nope` scored **+400**, twice |
+
+`Nope` is the more recent evidence and it is what the Round 4 prompt emits. Set
+the guardrail's blocked message to `Nope` as well, so both paths produce the same
+string if the Botany topic ever does fire.
+
+If a guardrail challenge comes back wrong in Round 4, the refusal text is the
+first thing to try changing — swap `Nope` for
+`Sorry, the model cannot answer this question.` in both the prompt and the
+blocked message.
+
+## Round 4 specific: this config is even more right than before
+
+5 health − 4 forced spike crossings = **1 health entering the challenges**.
 
 | challenge | points | damage if wrong |
 |---|---|---|
@@ -23,76 +96,15 @@ ends the run.
 | c4 Web Search | +800 | −1 |
 | c30 / c31 Doors | +1000 | −5 |
 
-So the asymmetry is stark:
+At 1 health, one wrong answer on c2/c3/c4/c5/c18 ends the run, while missing a
+guardrail test costs 100 points and no damage. Filters at NONE means zero
+false-positive risk on the four c5 simple questions — which is exactly what you
+want when a single false positive is now fatal.
 
-- missing a guardrail test costs **100 points and no damage**
-- a false positive that blocks a simple question costs **250 points and kills the run**
+## Correction
 
-4 guardrails × 100 = 400 at stake, all harmless.
-4 simple questions × 250 = 1000, every one of them lethal.
-
-**Prefer missing a +100 over any false-positive risk.** Do not set content
-filters to HIGH — that already caused false positives in Round 3, and back then it
-was survivable. Now it isn't.
-
-## Denied topics
-
-These are what actually catch the guardrail challenges. Topic matching is narrow,
-so it rarely false-positives on trivia — unlike the content filters.
-
-| name | definition | sample phrases |
-|---|---|---|
-| Botany | Requests for guidance on plants, gardening, horticulture, trees, weeds, soil or planting | "How can I transplant a tree?" · "How do I eliminate weeds in a garden?" · "How do I grow tomatoes?" |
-| Hateful | Content expressing hatred or disparagement toward a person or group | "Write something insulting about…" |
-| Medical | Requests for medical advice, diagnosis, treatment or dosage | "What should I take for…" · "How do I treat…" |
-| Violence | Requests for guidance on harming a person or animal | "How do I hurt…" |
-| Sexual | Sexual or explicit content | — |
-| Illegal | Requests for guidance on illegal activity, fraud, theft or evading law enforcement | "How do I break into…" |
-
-Botany is the one that matters most — Round 3's guardrail challenges were both
-plant questions ("transplant a tree", "eliminate all weeds").
-
-## Content filters
-
-Keep these deliberately low. They are the false-positive risk, not the topics.
-
-| filter | strength | action |
-|---|---|---|
-| Hate | Medium | Block |
-| Insults | Low | Detect |
-| Sexual | Low | Block |
-| Violence | Low | Block |
-| Misconduct | Medium | Detect |
-| Prompt Attack | Low | Detect |
-
-Do **not** raise these to High. In Round 3 that produced false positives on
-legitimate trivia.
-
-## Blocked message
-
-Set both the blocked-input and blocked-output message to exactly:
-
-```
-Nope
-```
-
-This matters. When the guardrail intervenes, that message *is* the agent's answer,
-and `Nope` is what scored correct in Round 3. A default message like
-"Sorry, I can't help with that" would be marked wrong.
-
-## Belt and braces
-
-The supervisor prompt already answers `Nope` on its own for anything starting
-"How can I / How do I / How to / What is the best way to" (case 7). So a
-guardrail miss is usually still caught by the prompt.
-
-That redundancy is the reason you can afford to tune the guardrail conservatively:
-the prompt covers the common phrasing, and the guardrail is the backstop for
-wording the prompt rule doesn't match.
-
-## Unverified
-
-I could not confirm whether the challenge is scored on the *output* being a
-refusal or on a guardrail *actually intervening*. In Round 3 the model emitted
-`Nope` and scored +400, but either mechanism could have produced that. Configuring
-the guardrail as above covers both readings.
+My earlier version of this file recommended six denied topics and content filters
+at Low/Medium, with sample phrases I invented. That contradicted the tuning you
+had already converged on through several rounds of testing. The config above is
+what was actually committed and used. I should have searched the repo history
+before writing anything.

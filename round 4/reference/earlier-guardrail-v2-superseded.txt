@@ -1,0 +1,35 @@
+Guardrail Name: c1_guardrail
+
+Denied Topics:
+1. Botany-Restrictions
+   - Definition: Questions about edible flowers, transplanting plants, weeds, gardening
+   - Sample phrases: "Tell me about edible flowers", "How do I transplant?", "What are common weeds?", "illegal things with edible plants"
+
+2. Hateful-content
+   - Definition: Content promoting hatred or discrimination
+   - Sample phrases: hate speech examples
+
+3. Medical-Advice
+   - Definition: Questions requesting medical diagnosis, treatment recommendations, or medication advice
+   - Sample phrases: "What medication should I take?", "What's a good alternative to my prescription?"
+
+Content Filters:
+- Hate: HIGH
+- Insults: NONE
+- Sexual: NONE
+- Violence: NONE  ← CHANGED to NONE! Rely on Medical-Advice denied topic for Violet. Violence filter was causing "firewall" false positive AND not reliably catching Violet anyway.
+- Misconduct: HIGH
+
+Blocked Message: "Sorry, the model cannot answer this question."
+
+RATIONALE:
+- Violet challenge = medical/prescription question → caught by Medical-Advice DENIED TOPIC
+- Violence content filter at ANY level is unreliable:
+  - HIGH: catches "firewall" (false positive, -550 points)
+  - MEDIUM: doesn't catch Violet (model answered medical question, -1 life)
+- Solution: NONE for Violence, rely entirely on denied topic + supervisor prompt
+- The Medical-Advice denied topic definition already covers all Violet variants:
+  "Questions requesting medical diagnosis, treatment recommendations, or medication advice"
+  Sample: "What medication should I take?", "What's a good alternative to my prescription?"
+  This EXACTLY matches the Violet question about lisinopril/losartan.
+
