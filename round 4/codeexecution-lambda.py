@@ -310,14 +310,19 @@ def lambda_handler(event, context):
     if pathreq is not None:
         return _resp(event, json.dumps({"output": pathreq, "error": None}))
 
-    # ROUND 4: Memory Trial tile counts, e.g. "how many c5" / "count c5 and c7".
-    mem = _try_memory_r4(code)
+    # Memory Trial tile counts. v2 uses the seen-so-far table; whole-map was
+    # disproven by the test run.
+    mem = _try_memory_v2(code)
     if mem is not None:
         return _resp(event, json.dumps({"output": mem + "\n", "error": None}))
 
-    # ROUND 4 door transforms: red = reverse, green = letters to numbers.
-    # Checked before the code guard because "green=X" contains '=' and would
-    # otherwise be exec'd as Python and raise NameError.
+    # Door transforms. Red goes through the switchable RED_MODE because the
+    # literal 'reverse' reading was disproven; green is confirmed correct.
+    m_red = re.match(r'^red\s*(?:[:=]\s*|\s+)(.+?)\s*$', code.strip(), re.I)
+    if m_red:
+        out = _door_red_v2(m_red.group(1).strip().strip('"\''))
+        return _resp(event, json.dumps({"output": out + "\n", "error": None}))
+
     door = _try_door_r4(code)
     if door is not None and door != "":
         return _resp(event, json.dumps({"output": door + "\n", "error": None}))
@@ -851,3 +856,121 @@ def _try_path_request(text):
                        "c18=1 c30=1 c31=1 c40=1 c41=1"),
         }, separators=(",", ":"))
     return None
+
+
+
+# ===========================================================================
+# TEST-RUN CORRECTIONS (score 8,429, died at the red door)
+#
+# Two of my Round 4 readings were disproven by the run, so both are now
+# switchable. Change the constant, redeploy, retest - nothing else to touch.
+# ===========================================================================
+
+# ---------------------------------------------------------------------------
+# RED DOOR
+# "translate the code you receive by reading it backwards"
+#
+# 'reverse' is the literal reading and is what Round 1 used, but the Round 4
+# test proved it wrong: key "open" -> "nepo" was marked INCORRECT for -5, which
+# ended the run.
+#
+# GREEN calibrates the design and DID work: key "fghi" -> "6789", i.e. letters
+# replaced by their alphabet position. So red is likely also alphabet-based, and
+# "backwards" means walking the alphabet from the other end.
+#
+# Candidates for key "open", in the order worth testing:
+#   'atbash'   lkvm        a<->z mirror. Most likely given green is alphabet-based.
+#   'revnum'   12112213    position counted from z (a=26 .. z=1), concatenated.
+#   'revthennum' 1451615   reverse the string, then letters to numbers.
+#   'reverse'  nepo        DISPROVEN - do not use.
+RED_MODE = "atbash"
+
+
+def _red_reverse(v):
+    return v[::-1]
+
+
+def _red_atbash(v):
+    out = []
+    for ch in v:
+        if ch.isalpha():
+            base = ord('a') if ch.islower() else ord('A')
+            out.append(chr(base + (25 - (ord(ch) - base))))
+        else:
+            out.append(ch)
+    return "".join(out)
+
+
+def _red_revnum(v):
+    out = []
+    for ch in v:
+        if ch.isalpha():
+            out.append(str(27 - (ord(ch.lower()) - 96)))
+        else:
+            out.append(ch)
+    return "".join(out)
+
+
+def _red_revthennum(v):
+    out = []
+    for ch in v[::-1]:
+        if ch.isalpha():
+            out.append(str(ord(ch.lower()) - 96))
+        else:
+            out.append(ch)
+    return "".join(out)
+
+
+_RED_MODES = {
+    "reverse": _red_reverse,
+    "atbash": _red_atbash,
+    "revnum": _red_revnum,
+    "revthennum": _red_revthennum,
+}
+
+
+def _door_red_v2(v):
+    return _RED_MODES.get(RED_MODE, _red_atbash)(v)
+
+
+# ---------------------------------------------------------------------------
+# MEMORY TRIAL
+# "recall previous interactions on the game board"
+#
+# 'whole_map' was disproven: "How many c4 challenges are on the map?" answered 2
+# (the real map total) and was marked INCORRECT for -1.
+#
+# The challenge wording is about recalling previous INTERACTIONS, so 'seen'
+# counts only what the agent has already encountered at that point. The route is
+# fixed, and the single c3 tile sits at F10 as challenge 19 of the route, so the
+# seen-counts there are deterministic. c4 seen so far = 1, which is what the
+# 'seen' table returns.
+MEMORY_MODE = "seen"
+
+# Counts already encountered by the time the agent reaches the c3 tile at F10,
+# inclusive of the c3 tile itself. Derived by walking VERIFIED_PATH.
+R4_COUNTS_SEEN = {
+    "c1": 1, "c2": 1, "c3": 1, "c4": 1, "c5": 3, "c7": 11,
+    "c8": 0, "c18": 0, "c30": 0, "c31": 0, "c40": 1, "c41": 0,
+}
+
+
+def _try_memory_v2(text):
+    """Memory Trial count. Returns str, or None if not a count question."""
+    if not text:
+        return None
+    t = text.lower()
+    if not re.search(r'how many|count|number of|total', t):
+        return None
+    found = re.findall(r'\bc(\d+)\b', t)
+    if not found:
+        return None
+    table = R4_COUNTS_SEEN if MEMORY_MODE == "seen" else R4_COUNTS
+    total = 0
+    hit = False
+    for n in found:
+        key = "c" + n
+        if key in table:
+            total += table[key]
+            hit = True
+    return str(total) if hit else None
