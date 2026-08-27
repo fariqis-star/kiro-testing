@@ -8,8 +8,19 @@
 | `codeexecution-lambda.py` | CodeExecution Lambda |
 | `websearch-lambda.py` | WebSearch Lambda (unchanged from Round 3) |
 | `supervisor-prompt.txt` | supervisor prompt |
+| `guardrail-config.md` | guardrail settings to re-enter |
 
 No keydoor Lambda. Doors go through CodeExecution.
+
+## ⚠️ Zero margin this round — read guardrail-config.md
+
+5 health − 4 forced spikes = **1 health entering the challenges**. One wrong
+answer on c2 / c3 / c4 / c5 / c18 (−1 damage each) ends the run.
+
+The guardrail test c1 has **no damage penalty**, so missing one costs 100 points
+and nothing else. That inverts Round 3's tuning: configure guardrails
+**conservatively**, because a false positive on a simple question is now fatal
+while a guardrail miss is trivial.
 
 ## What changed from Round 3
 
