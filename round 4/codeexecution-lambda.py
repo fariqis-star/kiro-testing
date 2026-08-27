@@ -916,8 +916,35 @@ def _try_path_request(text):
 # ALSO ELIMINATED:
 #   'thanks'      Thanks     run 7
 #   'num'         1516514    run 8
+#   'numthenrev'  4156151    run 9
 #
-# CURRENT: 'numthenrev' -> 4156151
+# CURRENT: 't9rev' -> 6376
+#
+# Telephone keypad (T9). Read the value backwards to nepo, then type it on a phone:
+#   n=6  e=3  p=7  o=6  ->  6376
+#
+# HONEST HEALTH WARNING. This contradicts the green control:
+#   green key fghi under T9      -> 3444
+#   green key fghi under position -> 6789   <- this is what scored +1000
+# So if both doors share one cipher, T9 is already disproven and this run is spent.
+#
+# It is worth testing anyway for one specific reason: THE GREEN DOOR'S OWN
+# DESCRIPTION TEXT HAS NEVER BEEN READ. Only the red door's text is known ("reading
+# it backwards") and the red key's. If green's c31 text describes a DIFFERENT
+# transform - anything about alphabet position or letter values - then the two doors
+# are independent puzzles, green constrains nothing, and every candidate built on
+# "green's proven rule" (num, numthenrev, digitrev) was unfounded from the start.
+#
+# T9 also has a shape argument in its favour. Green's answer was 4 clean digits for
+# a 4-letter key. T9 always gives one digit per letter, so open -> 6376 keeps that
+# shape, whereas alphabet position gives the ragged 7-digit 1516514 because o=15 and
+# p=16 spill into two digits each.
+#
+# GET THE GREEN DOOR DESCRIPTION. It decides which half of the ladder is live and
+# costs no runs.
+#
+# Companion mode if this is close but wrong:
+#   't9'  6736  keypad WITHOUT reversing first
 #
 # This is the one combination the ladder never covered: keep the ONLY rule the game
 # has ever paid out for (letters -> alphabet position, proven by green scoring
@@ -980,7 +1007,7 @@ def _try_path_request(text):
 #
 # The door cannot be skipped - it is the only way into the west region and the
 # user has confirmed avoiding it is not an option. It has to be solved.
-RED_MODE = "numthenrev"
+RED_MODE = "t9rev"
 
 
 def _red_reverse(v):
@@ -1060,6 +1087,25 @@ def _red_upper_asis(v):
     return v.upper()
 
 
+# Standard ITU telephone keypad, the T9 layout. One digit per letter, so a
+# 4-letter key gives a clean 4-digit code - which is the shape green's answer had.
+_T9 = {}
+for _digit, _letters in (("2", "abc"), ("3", "def"), ("4", "ghi"), ("5", "jkl"),
+                         ("6", "mno"), ("7", "pqrs"), ("8", "tuv"), ("9", "wxyz")):
+    for _ch in _letters:
+        _T9[_ch] = _digit
+
+
+def _red_t9(v):
+    """Phone keypad digits, key value as-is.  open -> 6736"""
+    return "".join(_T9.get(ch, ch) for ch in v.lower())
+
+
+def _red_t9rev(v):
+    """Reverse first, then phone keypad digits.  open -> nepo -> 6376"""
+    return "".join(_T9.get(ch, ch) for ch in v.lower()[::-1])
+
+
 def _red_digitrev(v):
     """Map each letter to its alphabet number, reversing that number's digits.
 
@@ -1086,6 +1132,8 @@ _RED_MODES = {
     "upper": _red_upper,
     "upper_asis": _red_upper_asis,
     "digitrev": _red_digitrev,
+    "t9": _red_t9,
+    "t9rev": _red_t9rev,
 }
 
 
