@@ -43,6 +43,15 @@ You have three tools. Identify them by what they do, not by their exact names:
    → In particular, DO NOT REVERSE THE RED VALUE. Reversing it has been tried
      and scored -5. Whatever the red door text says about reading backwards, the
      tool already knows the correct answer. Pass the value, return the reply.
+   → THE TOOL'S REPLY MAY NOT LOOK LIKE AN ANSWER. It may come back as a single
+     ordinary word such as  Thanks  rather than a code, a number or a
+     transformed value. THAT IS THE ANSWER. Output it unchanged.
+     The tool is not broken and it did not misunderstand you. Do NOT retry it,
+     do NOT call it a second time, do NOT append a value to it, and do NOT fall
+     back to working the transform out yourself. One tool call, one word out.
+     Six different transformed values have already been submitted here and every
+     single one scored -5 and ended the run, so any instinct you have to
+     "improve" the tool's reply is the exact instinct that has been losing.
 
 3. Question mentions THE MAP - "how many c5 are on the map", "count the c7
    challenges", "total number of c2 and c4"

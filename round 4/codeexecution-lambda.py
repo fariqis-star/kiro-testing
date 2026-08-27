@@ -913,15 +913,23 @@ def _try_path_request(text):
 #   'revnum'      12112213   run 5
 #   'revthennum'  1451615    run 6
 #
-# CURRENT: 'num' -> 1516514
+# CURRENT: 'thanks' -> Thanks
 #
-# Green's rule applied unchanged, treating "reading it backwards" as flavour text:
-#     open -> o15 p16 e5 n14 -> 1516514
+# The user recalls that in Round 2 a plain "thanks" satisfied a DOOR, not just a
+# key pickup, and this run's own trace supports the shape of that: both key tiles
+# were cleared with a bare "Thanks" for +50 each with no value echoed back.
 #
-# Why this one. Every failure so far invented a rule the game never demonstrated.
-# The single thing the game HAS been observed to implement is green's
-# letter-to-number concatenation: fghi -> 6789, +1000. So applying exactly that to
-# red is the last candidate backed by evidence rather than inference.
+# It also explains every failure so far in one go. Six different value transforms
+# have been rejected - reverse, atbash, raw, and three number mappings. When that
+# many well-formed values all score -5, the more likely reading is that the door
+# is not asking to be given a value at all. The agent already holds the key, so
+# "What is red key 1?" may be an acknowledgement prompt rather than a quiz, in
+# which case no transform would ever have worked.
+#
+# Kept as the immediate fallback, because it is the only untested candidate whose
+# mechanism the game is KNOWN to implement - green scored +1000 with fghi -> 6789,
+# letters replaced by alphabet position:
+#   'num'         1516514   same rule as green, "backwards" treated as flavour
 #
 # SEPARATORS RULED OUT without spending a run. "open" maps to double digits
 # (o=15, p=16, n=14) so 1516514 is ambiguous and 15-16-5-14 is not - but green
@@ -929,15 +937,15 @@ def _try_path_request(text):
 # have required "6-7-8-9". So no separator variant is worth testing.
 #
 # Test order after this:
+#   'num'         1516514   green's rule unchanged
 #   'numthenrev'  4156151   map to numbers, then reverse the digit string
 #   'digitrev'    5161541   reverse EACH letter's number: o15->51 p16->61 e5->5 n14->41
 #   'upper'       NEPO      reverse then uppercase
 #   'upper_asis'  OPEN      raw value uppercased
-#   'thanks'      Thanks    answer it like a key pickup
 #
 # The door cannot be skipped - it is the only way into the west region and the
 # user has confirmed avoiding it is not an option. It has to be solved.
-RED_MODE = "num"
+RED_MODE = "thanks"
 
 
 def _red_reverse(v):
@@ -1107,10 +1115,10 @@ def _try_memory_v2(text):
 # variable must be how the answer is phrased.
 #
 # MEMORY_FORMAT candidates for "How many c4 challenges are on the map?":
-#   'word'      two                                     CURRENT
+#   'labelled'  2 c4 challenges                          CURRENT
 #   'number'    2                                        rejected run 2
 #   'sentence'  There are 2 c4 challenges on the map.     rejected run 5
-#   'labelled'  2 c4 challenges                          untested
+#   'word'      two                                       rejected run 6
 #
 # The count itself is not in doubt. 2 has been verified three ways: from the map,
 # from the trace tile-by-tile, and by checking the part of the route the run never
@@ -1125,7 +1133,7 @@ def _try_memory_v2(text):
 #
 # Keep it in proportion: memory is +550 and -1 damage. The red door is +1000 and
 # ends the run.
-MEMORY_FORMAT = "word"
+MEMORY_FORMAT = "labelled"
 
 MEMORY_COUNTS_WHOLE_MAP = {
     "c1": 4, "c2": 2, "c3": 1, "c4": 2, "c5": 4, "c7": 28,

@@ -29,10 +29,24 @@ walking the alphabet from the other end rather than reversing the string.
 
 | mode | `open` → | status |
 |---|---|---|
-| `atbash` | `lkvm` | **current default** — a↔z mirror |
-| `revnum` | `12112213` | position counted from z (a=26 … z=1) |
-| `revthennum` | `1451615` | reverse, then letters→numbers |
-| `reverse` | `nepo` | ❌ disproven, do not use |
+| `reverse` | `nepo` | ❌ run 2 |
+| `atbash` | `lkvm` | ❌ run 3 |
+| `asis` | `open` | ❌ run 4 |
+| `revnum` | `12112213` | ❌ run 5 |
+| `revthennum` | `1451615` | ❌ run 6 |
+| **`thanks`** | **`Thanks`** | **current** — answer it like a key pickup |
+| `num` | `1516514` | next — green's rule unchanged |
+| `numthenrev` | `4156151` | untested |
+| `digitrev` | `5161541` | untested |
+| `upper` | `NEPO` | untested |
+| `upper_asis` | `OPEN` | untested |
+
+Six value transforms have now been rejected. When that many well-formed values all
+score −5, the likelier reading is that the door is not asking for a value at all:
+the agent already holds the key, so *"What is red key 1?"* may be an
+acknowledgement prompt, the same shape as the key pickup that scores +50 for a
+bare `Thanks`. That is what `thanks` tests. If it fails, `num` is next — it is the
+only remaining candidate whose mechanism the game is known to implement.
 
 Change the constant, redeploy, retest. Nothing else to touch.
 
