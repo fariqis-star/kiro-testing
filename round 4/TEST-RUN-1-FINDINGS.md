@@ -34,19 +34,41 @@ walking the alphabet from the other end rather than reversing the string.
 | `asis` | `open` | ❌ run 4 |
 | `revnum` | `12112213` | ❌ run 5 |
 | `revthennum` | `1451615` | ❌ run 6 |
-| **`thanks`** | **`Thanks`** | **current** — answer it like a key pickup |
-| `num` | `1516514` | next — green's rule unchanged |
-| `numthenrev` | `4156151` | untested |
-| `digitrev` | `5161541` | untested |
-| `upper` | `NEPO` | untested |
-| `upper_asis` | `OPEN` | untested |
+| `thanks` | `Thanks` | ❌ run 7 |
+| **`num`** | **`1516514`** | **current** — the only rule the game has ever paid for |
+| `numthenrev` | `4156151` | next |
+| `digitrev` | `5161541` | after that |
+| `upper` / `upper_asis` | `NEPO` / `OPEN` | last resort, case only |
 
-Six value transforms have now been rejected. When that many well-formed values all
-score −5, the likelier reading is that the door is not asking for a value at all:
-the agent already holds the key, so *"What is red key 1?"* may be an
-acknowledgement prompt, the same shape as the key pickup that scores +50 for a
-bare `Thanks`. That is what `thanks` tests. If it fails, `num` is next — it is the
-only remaining candidate whose mechanism the game is known to implement.
+### The green pair is the control experiment, and it disproves the red door's own text
+
+Both descriptions are now known:
+
+- **Red door (c30):** *"translate the code you receive by reading it backwards"*
+- **Red key (c40):** *"Using memory, it will give you the information you need to unlock it. When receiving a key don't forget to say Thanks."*
+
+The key's "say Thanks" line is about the **key tile** — that is the +50 both key
+tiles paid. Answering `Thanks` at the *door* was applying the key's instruction at
+the wrong tile, and it scored −5. That reading is closed.
+
+The decisive part is green, because green is the same puzzle with a known outcome:
+
+| | |
+|---|---|
+| green key value | `fghi` |
+| "read backwards" would give | `ihgf` |
+| what actually scored **+1000** | `6789` |
+
+`6789` is `fghi` with each letter replaced by its alphabet position. So the
+"backwards" wording is boilerplate on the door tile type — it is **not** what the
+grader holds. The only transform this game has ever paid out for is
+letter → alphabet position, and it paid the full +1000.
+
+Applied to red: `open` → o15 p16 e5 n14 → **`1516514`**.
+
+All seven dead candidates were built either on the description's wording or on a
+rule the game has never rewarded. This is the only untested candidate built on the
+rule it demonstrably has.
 
 Change the constant, redeploy, retest. Nothing else to touch.
 

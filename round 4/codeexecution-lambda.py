@@ -913,39 +913,59 @@ def _try_path_request(text):
 #   'revnum'      12112213   run 5
 #   'revthennum'  1451615    run 6
 #
-# CURRENT: 'thanks' -> Thanks
+# ALSO ELIMINATED:
+#   'thanks'      Thanks     run 7
 #
-# The user recalls that in Round 2 a plain "thanks" satisfied a DOOR, not just a
-# key pickup, and this run's own trace supports the shape of that: both key tiles
-# were cleared with a bare "Thanks" for +50 each with no value echoed back.
+# CURRENT: 'num' -> 1516514
 #
-# It also explains every failure so far in one go. Six different value transforms
-# have been rejected - reverse, atbash, raw, and three number mappings. When that
-# many well-formed values all score -5, the more likely reading is that the door
-# is not asking to be given a value at all. The agent already holds the key, so
-# "What is red key 1?" may be an acknowledgement prompt rather than a quiz, in
-# which case no transform would ever have worked.
+# The two door descriptions are now both known, and read together they settle it.
 #
-# Kept as the immediate fallback, because it is the only untested candidate whose
-# mechanism the game is KNOWN to implement - green scored +1000 with fghi -> 6789,
-# letters replaced by alphabet position:
-#   'num'         1516514   same rule as green, "backwards" treated as flavour
+#   RED DOOR (c30):  "translate the code you receive by reading it backwards"
+#   RED KEY  (c40):  "Using memory, it will give you the information you need
+#                     to unlock it. When receiving a key don't forget to say
+#                     Thanks."
+#
+# The key description explains the +50 for "Thanks" and nothing more - it is about
+# the KEY tile, not the door. So 'thanks' at the door was answering the key's
+# instruction at the wrong tile, and it scored -5. That reading is closed.
+#
+# What matters is that the GREEN pair is the control experiment and it disproves
+# the red door's own description:
+#
+#   green key value      fghi
+#   read backwards       ihgf      <- what the description's rule would give
+#   ANSWER THAT SCORED   6789      <- +1000, letters -> alphabet position
+#
+# "Reading it backwards" is boilerplate attached to the door tile type. It is not
+# what the grader holds. The only transform this game has ever PAID OUT for is
+# letter -> alphabet position, and it paid the full +1000 for it. Applying that
+# same proven rule to red:
+#
+#   open -> o15 p16 e5 n14 -> 1516514
+#
+# Every one of the seven dead candidates was built on the description's wording or
+# on a rule the game has never once rewarded. This is the only untested candidate
+# built on the rule the game has actually rewarded.
 #
 # SEPARATORS RULED OUT without spending a run. "open" maps to double digits
 # (o=15, p=16, n=14) so 1516514 is ambiguous and 15-16-5-14 is not - but green
 # scored +1000 with "6789" and no separators. Had the game used dashes, green would
 # have required "6-7-8-9". So no separator variant is worth testing.
 #
-# Test order after this:
-#   'num'         1516514   green's rule unchanged
-#   'numthenrev'  4156151   map to numbers, then reverse the digit string
-#   'digitrev'    5161541   reverse EACH letter's number: o15->51 p16->61 e5->5 n14->41
-#   'upper'       NEPO      reverse then uppercase
-#   'upper_asis'  OPEN      raw value uppercased
+# Test order after this - both keep the proven letter->number rule and only vary
+# how the description's "backwards" is layered on top of it, which is the one
+# combination the ladder has not covered:
+#   'numthenrev'  4156151   letters -> numbers, THEN reverse the digit string
+#   'digitrev'    5161541   reverse each letter's own number: o15->51 p16->61
+#
+# Case variants are not worth a run. Graders lowercase before comparing, and even
+# if this one does not, 'NEPO' only differs from the already-dead 'nepo' by case:
+#   'upper'       NEPO      last resort only
+#   'upper_asis'  OPEN      last resort only
 #
 # The door cannot be skipped - it is the only way into the west region and the
 # user has confirmed avoiding it is not an option. It has to be solved.
-RED_MODE = "thanks"
+RED_MODE = "num"
 
 
 def _red_reverse(v):
@@ -1133,7 +1153,7 @@ def _try_memory_v2(text):
 #
 # Keep it in proportion: memory is +550 and -1 damage. The red door is +1000 and
 # ends the run.
-MEMORY_FORMAT = "labelled"
+MEMORY_FORMAT = "number"
 
 MEMORY_COUNTS_WHOLE_MAP = {
     "c1": 4, "c2": 2, "c3": 1, "c4": 2, "c5": 4, "c7": 28,
