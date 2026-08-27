@@ -10,13 +10,17 @@ the trace proves it:
 
 So both of last round's fixes are still waiting. Deploy in this order.
 
-## 1. CodeExecution Lambda — `codeexecution-lambda.py`
+## 1. `codeexecution-lambda.py` → BOTH Lambda functions
+
+Deploy it to the CodeExecution function **and** to the function behind
+`PathfindingLambdaTarget`. Section 4 explains why both.
 
 This one file carries every fix: the path fallback, `RED_MODE = atbash`,
 `MEMORY_MODE = seen`, doors, memory counts and maths.
 
 Confirm afterwards that the red door returns **`lkvm`** and the memory question
-returns **`1`**. If you still see `nepo` and `2`, it did not deploy.
+returns **`1`**. If you still see `nepo` or `2`, one of the two functions is still
+running the old code.
 
 ## 2. Guardrail — `guardrail-config.md`
 
@@ -40,16 +44,55 @@ Already carries the case 6/7 reorder so patient JSON cannot swallow a guardrail
 test. Lower priority than the two above, since the guardrail should now catch D8
 before the prompt is even consulted.
 
-## 4. Pathfinding gateway target
+## 4. Why "Pathfinding" answers door questions
 
-Still misconfigured. In run 2 it came through as
-`PathfindingLambdaTarget___execute_code` and returned door and memory answers — so
-that target is pointing at the **CodeExecution Lambda**, not the pathfinding one.
-There is currently no working pathfinding target at all; only the Lambda fallback is
-keeping the route alive.
+Your target *is* attached to the agent — that part is fine. The problem is what is
+**inside the Lambda function it points at**. From run 2:
 
-Not urgent while the fallback works, but it is why the model wastes a call every run
-and why run 1 died.
+| tool called | request | returned |
+|---|---|---|
+| `PathfindingLambdaTarget___execute_code` | green door | `6789` |
+| `PathfindingLambdaTarget___execute_code` | red door | `nepo` |
+| `PathfindingLambdaTarget___execute_code` | memory count | `2` |
+| `AgentCoreGatewayTool-CodeExecution___execute_code` | navigation | the 105-move path |
+
+A pathfinding Lambda cannot produce `6789` for a green door. Only the CodeExecution
+code knows that transform. So **the function behind `PathfindingLambdaTarget`
+contains code-execution code** — most likely a paste into the wrong function at some
+point.
+
+Worse, the two copies are different vintages:
+
+- `AgentCoreGatewayTool-CodeExecution` returned the path → it **has** the path
+  fallback → you deployed the **new** file there
+- `PathfindingLambdaTarget` returned `nepo` and `2` → **old** file, before
+  `RED_MODE` and `MEMORY_MODE`
+
+That is exactly why doors and memory were wrong while navigation was right: the
+model sent doors to the stale copy and navigation to the fresh one.
+
+### The fix: deploy `codeexecution-lambda.py` to BOTH functions
+
+Do not bother restoring pathfinding-specific code. `codeexecution-lambda.py` is a
+**superset** — it answers navigation, memory counts, both doors, maths and raw
+Python:
+
+```
+navigation   -> 105 moves, starts down
+memory count -> 1
+red door     -> lkvm
+green door   -> 6789
+maths        -> 437918130
+python       -> 1024
+```
+
+Put that one file in **both** Lambda functions and the whole routing confusion stops
+mattering — whichever target the model reaches for, every request type resolves. It
+also returns the tile counts in its path response, so nothing is lost by retiring
+`pathfinding-lambda.py`.
+
+`pathfinding-lambda.py` stays in the repo as the reference for the verified route and
+the map, but it does not need to be deployed anywhere.
 
 ## What already works — do not touch
 
