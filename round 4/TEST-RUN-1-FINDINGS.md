@@ -35,9 +35,9 @@ walking the alphabet from the other end rather than reversing the string.
 | `revnum` | `12112213` | ❌ run 5 |
 | `revthennum` | `1451615` | ❌ run 6 |
 | `thanks` | `Thanks` | ❌ run 7 |
-| **`num`** | **`1516514`** | **current** — the only rule the game has ever paid for |
-| `numthenrev` | `4156151` | next |
-| `digitrev` | `5161541` | after that |
+| `num` | `1516514` | ❌ run 8 |
+| **`numthenrev`** | **`4156151`** | **current** |
+| `digitrev` | `5161541` | next |
 | `upper` / `upper_asis` | `NEPO` / `OPEN` | last resort, case only |
 
 ### The green pair is the control experiment, and it disproves the red door's own text
@@ -64,11 +64,28 @@ The decisive part is green, because green is the same puzzle with a known outcom
 grader holds. The only transform this game has ever paid out for is
 letter → alphabet position, and it paid the full +1000.
 
-Applied to red: `open` → o15 p16 e5 n14 → **`1516514`**.
+Applied to red: `open` → o15 p16 e5 n14 → `1516514`. That died on run 8, so the
+"backwards" wording is not pure flavour after all — it applies to *something*.
 
-All seven dead candidates were built either on the description's wording or on a
-rule the game has never rewarded. This is the only untested candidate built on the
-rule it demonstrably has.
+### Now testing: green's rule, then "backwards" on the result
+
+`numthenrev` keeps the only rule the game has ever paid for and layers the door's
+own "backwards" onto the **output** instead of the input:
+
+```
+open  →  o15 p16 e5 n14  →  1516514  →  reverse the digits  →  4156151
+```
+
+The ordering is the entire point, because the opposite order is already dead:
+
+| mode | order | result | |
+|---|---|---|---|
+| `revthennum` | reverse first, then map | `nepo` → `1451615` | ❌ run 6 |
+| `numthenrev` | map first, then reverse | `1516514` → `4156151` | current |
+
+Same two operations, opposite order. Only this order applies green's proven rule to
+the value the key actually handed over. It is the one combination the ladder never
+covered.
 
 Change the constant, redeploy, retest. Nothing else to touch.
 

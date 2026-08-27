@@ -915,8 +915,23 @@ def _try_path_request(text):
 #
 # ALSO ELIMINATED:
 #   'thanks'      Thanks     run 7
+#   'num'         1516514    run 8
 #
-# CURRENT: 'num' -> 1516514
+# CURRENT: 'numthenrev' -> 4156151
+#
+# This is the one combination the ladder never covered: keep the ONLY rule the game
+# has ever paid out for (letters -> alphabet position, proven by green scoring
+# +1000 on fghi -> 6789), then layer the red door's own "backwards" on top of the
+# RESULT rather than on the input.
+#
+#   open -> o15 p16 e5 n14 -> 1516514 -> reverse the digit string -> 4156151
+#
+# Note the ordering, because it is the whole point. 'revthennum' reversed FIRST and
+# died on run 6:
+#   revthennum   open -> nepo -> 1451615     dead
+#   numthenrev   open -> 1516514 -> 4156151  this one
+# Same two operations, opposite order, and only this order leaves green's rule
+# applied to the value the key actually gave.
 #
 # The two door descriptions are now both known, and read together they settle it.
 #
@@ -965,7 +980,7 @@ def _try_path_request(text):
 #
 # The door cannot be skipped - it is the only way into the west region and the
 # user has confirmed avoiding it is not an option. It has to be solved.
-RED_MODE = "num"
+RED_MODE = "numthenrev"
 
 
 def _red_reverse(v):
