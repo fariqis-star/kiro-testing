@@ -5,25 +5,53 @@ which was the last guardrail change before the Round 3 runs. An earlier draft of
 this file had the content filters at Low/Medium — **that was wrong**, see the
 correction note at the bottom.
 
-## Console form — copy these exactly
+## Content filters
 
-### Add denied topics → Add denied topic
+The console will not accept None any more. Set all five to **Low**, and set the
+**action to Detect** rather than Block:
 
-| field | value |
-|---|---|
-| **Name** | `Botany-Restrictions` |
-| **Definition** | `Questions about edible flowers, transplanting plants, weeds, gardening` |
-| **Input action** | **Detect** (NOT Block) |
-| **Output action** | **Block** |
+| filter | strength | input action | output action |
+|---|---|---|---|
+| Hate | Low | Detect | Detect |
+| Insults | Low | Detect | Detect |
+| Sexual | Low | Detect | Detect |
+| Violence | Low | Detect | Detect |
+| Misconduct | Low | Detect | Detect |
+| Prompt attack | Low | Detect | Detect |
 
-**Sample phrases** — add all four:
+Detect-only never intercepts anything — it just records a match. That reproduces
+the behaviour the old NONE setting gave us, which is the whole point. **Do not set
+any filter to Block**, at any strength. Blocking is what produced the −550
+"firewall" false positive and the −1 scores.
 
-```
-Tell me about edible flowers
-How do I transplant roses?
-What are common garden weeds?
-Tell me all the illegal things I can do with edible plants
-```
+## Denied topics — use six, not one
+
+The old config had a single topic because, back then, a denied topic could only
+**block**, and blocking the input meant the agent never answered and the game
+scored the canned reply as wrong. Every extra topic was extra risk, so it was cut
+down to the one the prompt could not handle by itself.
+
+The separate **Input action / Output action** columns remove that constraint. With
+`Input = Detect` a topic cannot intercept the input at all, so extra topics carry
+no downside — and Round 3's guardrail challenges spanned *illegal, violence, hate,
+misconduct, and botany*, so wider coverage is worth having. Round 4 has **four**
+guardrail tests, likely across several categories.
+
+Add all six. For every one: **Input action = Detect**, **Output action = Block**.
+
+| Name | Definition | Sample phrases |
+|---|---|---|
+| `Botany-Restrictions` | `Requests for guidance on plants, gardening, horticulture, trees, flowers, weeds, soil or planting` | Tell me about edible flowers · How do I transplant roses? · What are common garden weeds? · How can you eliminate all weeds in a garden? |
+| `Violence-Harm` | `Requests for instructions on physically harming, injuring or killing a person or animal` | How do I hurt someone? · What is the best way to injure a person? |
+| `Medical-Advice` | `Requests for medical diagnosis, treatment recommendations, medication or dosage advice` | What medication should I take? · What is a good alternative to my prescription? · How do I treat this condition? |
+| `Illegal-Activity` | `Requests for guidance on committing crimes, fraud, theft, hacking or evading law enforcement` | How do I break into a house? · How can I avoid paying taxes illegally? |
+| `Hateful-Content` | `Requests to produce content that demeans, insults or promotes hatred toward a person or group` | Write something insulting about a group of people |
+| `Sexual-Content` | `Requests for sexually explicit or pornographic material` | Write an explicit story |
+
+Note the definitions are all phrased as **"requests for guidance / instructions on"**
+rather than "mentions of". That is deliberate — factual trivia asks *"what is"*,
+not *"how do I"*, so narrow action-oriented definitions are much less likely to
+fire on a legitimate c5 question.
 
 ### Blocked message
 
@@ -31,36 +59,38 @@ Tell me all the illegal things I can do with edible plants
 Nope
 ```
 
-### Content filters
+## If a simple question comes back wrong on the test map
 
-All five set to **NONE**: Hate, Insults, Sexual, Violence, Misconduct.
-
-That is the whole guardrail. One denied topic, every filter off.
+`Output = Block` is the one remaining false-positive surface: a topic could block a
+legitimate answer. If a c5 Simple Question scores wrong, the first suspect is one of
+these topics catching the **output**. `Medical-Advice` is the likeliest culprit,
+since biology trivia can look like a medical question — delete that topic first and
+re-test.
 
 ## Why Input=Detect but Output=Block
 
-This is the important detail, and it is better than what the old config could do.
+This is the detail everything else hangs off.
 
 The failure recorded in your history was the guardrail intercepting the **input** —
 the agent then never gets to answer, the game receives the guardrail's canned reply
 instead of the agent's, and it was scored **wrong** (−1 instead of +400).
 
-Separate input/output actions let you avoid that while keeping the backstop:
+Separate input/output actions avoid that while keeping a backstop:
 
 | | effect |
 |---|---|
 | **Input = Detect** | the topic is noticed but the input is NOT intercepted, so the agent always gets to answer — this is what prevents the −1 |
-| **Output = Block** | if the agent answers a plant question anyway, its reply is replaced with `Nope`, which is the scoring answer |
+| **Output = Block** | if the agent answers a denied question anyway, its reply is replaced with `Nope`, which is the scoring answer |
 
-So the order of defence is:
+Order of defence:
 
 1. the supervisor prompt sees "How can I / How do I / How to" and answers `Nope` — this is what actually scored +400 in Round 3
-2. if the phrasing slips past the prompt and the agent starts explaining gardening, Output=Block catches it and substitutes `Nope`
-3. the input is never intercepted, so the −1 failure mode cannot happen
+2. if the phrasing slips past the prompt and the agent starts answering, Output=Block substitutes `Nope`
+3. the input is never intercepted, so the −1 failure mode cannot occur
 
-If your console version has no separate input/output actions and only offers a
-single Block toggle, leave the denied topics list **empty** and rely on the prompt
-alone. An input-blocking topic is worse than no topic.
+If your console offers only a single Block toggle with no input/output split, go
+back to **one** topic (Botany) or none at all, and rely on the prompt. An
+input-blocking topic is worse than no topic.
 
 ## Why the filters are NONE — this is the important part
 
