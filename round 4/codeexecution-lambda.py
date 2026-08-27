@@ -883,22 +883,30 @@ def _try_path_request(text):
 # replaced by their alphabet position. So red is likely also alphabet-based, and
 # "backwards" means walking the alphabet from the other end.
 #
-# Candidates for key "open":
-#   'asis'     open        CURRENT. The raw key value, no transform.
-#   'revnum'   12112213    position counted from z (a=26 .. z=1), concatenated.
-#   'revthennum' 1451615   reverse the string, then letters to numbers.
-#   'reverse'  nepo        DISPROVEN - run 2, -5
-#   'atbash'   lkvm        DISPROVEN - run 3, -5
+# ELIMINATED, each one cost -5 and the run:
+#   'reverse'  nepo   run 2
+#   'atbash'  lkvm   run 3
+#   'asis'    open   run 4
 #
-# Both of my readings of "reading it backwards" are now dead, so the door is not
-# asking for a string transform at all. The raw value is the remaining candidate
-# and it also makes sense as a joke: the key value IS "open", and that is what you
-# say to a door.
+# CURRENT: 'revnum' -> 12112213
 #
-# I argued against this last time on the grounds that the green door asked the
-# identical question form and DID want its transform (fghi -> 6789, +1000). That
-# symmetry argument was wrong - the two doors simply do not behave the same way.
-RED_MODE = "asis"
+# The reasoning, from the one door that works. Green's text says "replacing
+# letters with the numbers that represent them IN ORDER" and fghi -> 6789 scored
+# +1000, so green is a=1, b=2 ... z=26. Red's text says "reading it BACKWARDS".
+# IN ORDER versus BACKWARDS is a deliberate pair, so the thing read backwards is
+# most likely the ALPHABET, not the code string:
+#     z=1, y=2 ... a=26     open -> o12 p11 e22 n13 -> 12112213
+# I originally read "backwards" as reversing the string, which is now dead.
+#
+# Remaining ladder if revnum also fails:
+#   'revthennum'  1451615    reverse the string, then a=1
+#   'numthenrev'  4156151    a=1, then reverse the digit string
+#   'thanks'      Thanks     lowest probability - see note below
+#
+# On 'thanks': green proves a door wants the transformed code and pays +1000 for
+# it, while "Thanks" is what a KEY pickup answers for +50. Worth trying only once
+# everything else is gone.
+RED_MODE = "revnum"
 
 
 def _red_reverse(v):
@@ -941,12 +949,30 @@ def _red_asis(v):
     return v
 
 
+def _red_numthenrev(v):
+    """a=1 mapping, then reverse the resulting digit string."""
+    out = []
+    for ch in v:
+        if ch.isalpha():
+            out.append(str(ord(ch.lower()) - 96))
+        else:
+            out.append(ch)
+    return "".join(out)[::-1]
+
+
+def _red_thanks(v):
+    """Answer a door the way a key pickup is answered."""
+    return "Thanks"
+
+
 _RED_MODES = {
     "reverse": _red_reverse,
     "atbash": _red_atbash,
     "revnum": _red_revnum,
     "revthennum": _red_revthennum,
+    "numthenrev": _red_numthenrev,
     "asis": _red_asis,
+    "thanks": _red_thanks,
 }
 
 
