@@ -2144,7 +2144,7 @@ def _try_memory_v2(text):
 #
 # Keep it in proportion: memory is +550 and -1 damage. The red door is +1000 and
 # ends the run.
-MEMORY_FORMAT = "number"
+MEMORY_FORMAT = "shotgun"
 
 # ---------------------------------------------------------------------------
 # MEMENTO AS A FREE DIAGNOSTIC
@@ -2188,7 +2188,7 @@ MEMORY_FORMAT = "number"
 #
 # The community-edition memento generator has five question shapes. Counts are dead,
 # so what remains is position answers and tile codes - a tiny candidate set:
-MEMORY_AUTO = True   # ladder len 1: always the shotgun
+MEMORY_AUTO = False  # OFF. The shotgun is pinned statelessly below.
 _MEM_STATE = "/tmp/r4_mem_idx"
 # POSITIONS, not counts. Every count is dead (1, 2, 4, 28) and so are [0,0] and [0,9].
 # The remaining shape in the memento question family is WHERE the tiles are, and the
@@ -2377,8 +2377,18 @@ def _try_memory_v3(text):
             hit = True
     if not hit:
         return None
+    # STATELESS PIN. The solved answer must never depend on a /tmp counter. With the
+    # ladder still live on a stale deployment it advanced from the shotgun to
+    # "The answer = 2" and lost the 550 - a solved tile broken by leftover diagnostic
+    # machinery. MEMORY_FORMAT = "shotgun" computes the answer directly, every call,
+    # with no state involved and no way to drift.
+    if MEMORY_FORMAT == "shotgun":
+        out = _memory_phrasings(t, "shotgun")
+        if out:
+            return out
+
     if MEMORY_AUTO:
-        # Diagnostic: every count is dead, so walk position renderings instead.
+        # Diagnostic only. Never enable this once a tile is solved.
         pick = _memory_next_from_ladder()
         if pick.startswith("PHR:"):
             out = _memory_phrasings(text, pick[4:])
