@@ -1095,7 +1095,7 @@ def _try_path_request(text):
 # tile it was copied from explains that exactly.
 #
 # If this scores, the red door has nothing to do with 'open' at all.
-RED_MODE = "reverse"
+RED_MODE = "opposite_reversed"
 
 # ---------------------------------------------------------------------------
 # AUTO-LADDER. Deploy ONCE, then just re-run the test map repeatedly.
@@ -1168,7 +1168,7 @@ RED_MODE = "reverse"
 # That is the one reproducible difference between a configuration that beat this
 # door and ours, and it costs 50 points to copy. The prompt now answers a RED key
 # with the reversed value; the door still answers 'reverse'.
-RED_AUTO = True
+RED_AUTO = False
 _RED_STATE = "/tmp/r4_red_idx"
 
 # Ordered by my estimate of probability. Everything here is untested.
@@ -1440,38 +1440,74 @@ _SEARCH_MODES.update({f"perm{i:02d}": (lambda i: (lambda v: _red_perm(v, i)))(i)
                       for i in range(24)})
 
 # This shadows the earlier RED_LADDER above; the later binding is the live one.
-# SEMANTIC OPPOSITE, THEN REVERSED. Never tried, and it is a real combination:
-# we tested the opposites FORWARD (shut, close, closed, locked) and we tested the
-# reverse of the key (nepo), but never the opposite read backwards. The door says
-# "translate the code you receive by reading it backwards" - if the author took the
-# code's MEANING as the thing to translate, "open" becomes "shut" and reading THAT
-# backwards gives "tuhs".
-_OPPOSITES = {
-    "open": ["shut", "close", "closed", "locked", "unlocked"],
-    "shut": ["open"], "close": ["open"], "closed": ["open"],
-    "locked": ["unlocked", "open"], "unlocked": ["locked", "shut"],
+# ===========================================================================
+# *** SOLVED ***   open -> shut -> tuhs   scored +1000
+#
+# THE RULE: take the key's semantic OPPOSITE, then read THAT backwards.
+#
+#     key           open
+#     opposite      shut
+#     backwards     tuhs        <- the answer
+#
+# The door's description is deliberately incomplete. It says only "translate the code
+# you receive by reading it backwards" and never mentions the opposite step, which is
+# why 70-odd character transforms of "open" all failed. Reversing the key gives "nepo";
+# you have to flip the MEANING first.
+#
+# Green is a different rule entirely and is unaffected: "replacing letters with the
+# numbers that represent them in order", fghi -> 6789.
+#
+# UNIVERSALITY IS THE PRIORITY NOW. The judge map's red key will be a different word,
+# so this needs a broad antonym table, not a single hardcoded pair. Door and key words
+# in this game are state words - open/shut, lock/unlock, in/out, up/down - so the table
+# below covers that space plus common general antonyms. If a key has no known opposite
+# we fall back to plain reverse, which is the best available guess.
+_ANTONYMS = {
+    # doors, locks, access - by far the likeliest family
+    "open": "shut", "shut": "open", "close": "open", "closed": "open",
+    "opened": "closed", "lock": "unlock", "unlock": "lock",
+    "locked": "unlocked", "unlocked": "locked", "enter": "exit",
+    "exit": "enter", "in": "out", "out": "in", "inside": "outside",
+    "outside": "inside", "on": "off", "off": "on",
+    # direction and position
+    "up": "down", "down": "up", "left": "right", "right": "left",
+    "top": "bottom", "bottom": "top", "north": "south", "south": "north",
+    "east": "west", "west": "east", "front": "back", "back": "front",
+    "near": "far", "far": "near", "high": "low", "low": "high",
+    "above": "below", "below": "above", "forward": "backward",
+    "backward": "forward",
+    # start and finish
+    "start": "stop", "stop": "start", "begin": "end", "end": "begin",
+    "first": "last", "last": "first", "push": "pull", "pull": "push",
+    "rise": "fall", "fall": "rise", "arrive": "depart", "depart": "arrive",
+    # general opposites
+    "yes": "no", "no": "yes", "true": "false", "false": "true",
+    "hot": "cold", "cold": "hot", "light": "dark", "dark": "light",
+    "day": "night", "night": "day", "big": "small", "small": "big",
+    "large": "small", "fast": "slow", "slow": "fast", "new": "old",
+    "old": "new", "good": "bad", "bad": "good", "hard": "soft",
+    "soft": "hard", "full": "empty", "empty": "full", "wet": "dry",
+    "dry": "wet", "clean": "dirty", "dirty": "clean", "black": "white",
+    "white": "black", "win": "lose", "lose": "win", "give": "take",
+    "take": "give", "buy": "sell", "sell": "buy", "more": "less",
+    "less": "more", "safe": "danger", "danger": "safe", "rich": "poor",
+    "poor": "rich", "true": "false", "alive": "dead", "dead": "alive",
 }
 
 
-def _red_opprev(v, idx):
-    opts = _OPPOSITES.get(v.lower())
-    if not opts:
-        return v[::-1]
-    return opts[idx % len(opts)][::-1]
+def _red_opposite_reversed(v):
+    """THE SOLVED RULE: opposite of the key, read backwards."""
+    word = v.strip().lower()
+    opp = _ANTONYMS.get(word)
+    if opp is None:
+        # Unknown word - fall back to plain reverse, the best remaining guess.
+        return word[::-1]
+    return opp[::-1]
 
 
-_SEARCH_MODES.update({f"opprev{i}": (lambda i: (lambda v: _red_opprev(v, i)))(i)
-                      for i in range(5)})
+_SEARCH_MODES["opposite_reversed"] = _red_opposite_reversed
 
-# Dead permutations so far: opne oepn oenp onpe poen peno pnoe.
-# 'onep' was in the ladder but never reported back, so it stays in.
-_DEAD_PERMS = {"opne", "oepn", "oenp", "onpe", "poen", "peno", "pnoe"}
-_PERM_TESTED |= _DEAD_PERMS
-
-RED_LADDER = (
-    [f"opprev{i}" for i in range(5)]        # tuhs esolc desolc dekcol dekcolnu
-    + [f"perm{i:02d}" for i in range(11)]   # the 11 arrangements still standing
-)
+RED_LADDER = ["opposite_reversed"]
 
 
 def _red_next_from_ladder(v):

@@ -180,3 +180,69 @@ tested. It is also the only thing both failing challenges have in common.
 
 Answer format required by the game: a single bare token, no explanation, exactly like
 `6789`.
+
+
+---
+
+# *** SOLVED ***  `open` → `shut` → **`tuhs`**  → +1000
+
+## The rule
+
+**Take the key's semantic OPPOSITE, then read THAT backwards.**
+
+```
+key         open
+opposite    shut
+backwards   tuhs      <- the answer
+```
+
+## Why 70 candidates missed it
+
+The door's description is **deliberately incomplete**:
+
+> *"Next, translate the code you receive by reading it backwards."*
+
+It never mentions the opposite step. Reversing the key gives `nepo`, and every one of
+the ~70 dead candidates was a character-level transform of `open` or `nepo` — reverse,
+atbash, ROT13, T9, alphabet positions in every ordering and punctuation, compression,
+anagrams, case, typos. All of it operated on the *letters*. The first step operates on
+the **meaning**, and no amount of letter-shuffling could ever reach it.
+
+The two ideas that cracked it both came from outside my own search:
+
+- the user's insistence that *"translate the code you receive"* was a clue we were
+  misreading — it was: the "code" had to be flipped in meaning first
+- the user's friend proposing the semantic opposite **then** reversed, when we had only
+  ever tested the opposites forward (`shut`, `close`, `closed`, `locked`) and the
+  reverse of the key (`nepo`), never the composition
+
+## Where I went wrong, for the record
+
+1. **I assumed the answer type from the question's wording** and then only varied
+   within that type. Same mistake on the memento: "how many" made me only try numbers.
+2. **I called it unsolvable** in `RED-DOOR-EXHAUSTED.md`. "I cannot find it" is not
+   "it is not there". The user pushed back and was right to.
+3. **I mispriced the search.** I costed every attempt at −3,361 points when test-map
+   runs cost only wall-clock time. Exhaustive sweeps were affordable from the start.
+4. **I revived a disproven theory** (the community bank) because a new finding made it
+   feel plausible, and had to withdraw it twice.
+
+## Universality for the judge map
+
+The judge map's red key will be a different word, so `RED_MODE = "opposite_reversed"`
+uses a broad antonym table rather than a hardcoded pair, biased toward the state words
+this game uses for doors and keys:
+
+```
+open->shut  shut->open  closed->open  locked->unlocked  unlock->lock
+in->out  up->down  on->off  start->stop  enter->exit  light->dark ...
+```
+
+If a key has no known opposite, it falls back to plain reverse — the best remaining
+guess. If the judge map's red door fails, the trace will show which word was passed and
+the fix is one entry in `_ANTONYMS`.
+
+## Green is untouched
+
+Green runs a completely different rule and still scores +1000:
+`fghi` → `6789`, letters replaced by alphabet position.
