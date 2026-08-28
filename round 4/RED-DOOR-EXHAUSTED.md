@@ -22,7 +22,7 @@ Grading: exact match. Damage: −5, which is always fatal.
 | semantic opposites | `shut`, `closed`, `close`, `locked` | dead |
 | case variants | `NEPO`, `Nepo` | dead |
 | typo / punctuation | `neop`, `"nepo"`, `nepo.` | dead |
-| sentence forms | `Red key 1 is nepo`, `red nepo`, `nepo :si 1 yeK deR` | dead |
+| sentence forms | `Red key 1 is nepo`, `red nepo` | dead |
 | green's values | `6789`, `9876`, `ihgf` | dead |
 | other | `Thanks`, `sknahT`, `2`, `1`, `30`, `c30`, 16-value shotgun | dead |
 
@@ -89,3 +89,39 @@ is what is currently deployed.
 
 Ask the group that cleared it what they answered, and on which map. One message ends
 this. Fifty eliminations is more than enough reason to ask.
+
+
+---
+
+# CORRECTION — this document was wrong, and the door is not exhausted
+
+Two errors above.
+
+**`nepo :si 1 yeK deR` was never run.** It sat at position 11 of an earlier ladder and
+the `/tmp` counter reset before reaching it. The reported results for that batch ended
+with `open` and `nepo` — repeats of positions 1 and 2, not positions 10 and 11. I
+recorded it as dead without checking the trace against the ladder order. It has been
+removed from the dead list above and is back in the ladder.
+
+**"The code" was never established.** Every candidate in the table assumed *the code*
+means `open`, the last token of the line. The key tile actually hands you:
+
+```
+Red Key 1 is: open
+```
+
+and the door says *"translate the code you receive"*. So *"reading it backwards"* has
+three readings, and only the first was ever tested:
+
+| | reading | status |
+|---|---|---|
+| 1 | reverse the characters of the value → `nepo` | dead |
+| 2 | reverse the characters of the whole line → `nepo :si 1 yeK deR` | live |
+| 3 | reverse the word order → `open is: 1 Key Red` | live |
+
+Reading 3 is the plain-English sense — when a person says "read it backwards" about a
+line of text, they reverse the words. Fifty runs went into reversing characters and
+none into the reading a human would actually use.
+
+**The conclusion in this file was premature.** "I could not find it" is not the same
+as "it is not there". `SKIP_RED_DOOR` is back to `False` in both Lambdas.

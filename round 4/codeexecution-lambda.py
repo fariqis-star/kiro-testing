@@ -1232,10 +1232,13 @@ _RED_STATE = "/tmp/r4_red_idx"
 # Every one of the ~50 dead candidates assumed "the code" was the last token, open.
 # That assumption has never been questioned, and it is the only untested axis left.
 #
-# "Reading it backwards" has three distinct meanings and we tested one and a half:
+# "Reading it backwards" has three distinct meanings and we tested exactly ONE:
 #     1. reverse the characters of the value        open -> nepo         dead
-#     2. reverse the characters of the whole line   nepo :si 1 yeK deR   dead
+#     2. reverse the characters of the whole line   nepo :si 1 yeK deR   NEVER RUN
 #     3. reverse the WORD ORDER                     open is: 1 Key Red   NEVER TESTED
+#
+# Meaning 2 was in an earlier ladder but the counter reset before reaching it, and I
+# wrote it up as dead without checking. Both 2 and 3 are live.
 #
 # Meaning 3 is the plain-English one. When a person says "read it backwards" about a
 # line of text, they reverse the words. We only ever reversed characters.
@@ -1250,6 +1253,15 @@ RED_LADDER = [
     "letters_dash",     # n-e-p-o              dashed letters
     "labelrev",         # 1 Key Red            just the label, word-reversed
     "wordpos_rev",      # 4321                 position within the word, reversed
+    # NEVER ACTUALLY RUN. This sat at position 11 of the earlier ladder and the /tmp
+    # counter reset before reaching it - the reported results for that batch ended in
+    # 'open' and 'nepo', which are repeats of positions 1-2, not positions 10-11. I
+    # then recorded it as dead in RED-DOOR-EXHAUSTED.md, which was wrong.
+    #
+    # It is also meaning 2 of "reading it backwards": character-reverse the ENTIRE
+    # line the key hands you, not just the value. That is a legitimate reading of
+    # "translate the code you receive" once "the code" is the whole line.
+    "fullmsgrev",       # nepo :si 1 yeK deR
 ]
 
 
