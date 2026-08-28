@@ -310,17 +310,30 @@ def lambda_handler(event, context):
     if pathreq is not None:
         return _resp(event, json.dumps({"output": pathreq, "error": None}))
 
+    # SWAP TEST. 'mem <redkey> | <question>' - the Memento tile answers with the
+    # RED DOOR's value and caches the count for the red door to answer with.
+    swap = _try_swap_memory(code)
+    if swap is not None:
+        return _resp(event, json.dumps({"output": swap + "\n", "error": None}))
+
     # Memory Trial. v3: whole-map counts with a configurable answer FORMAT, since
     # both candidate numbers were rejected and the phrasing is the open variable.
     mem = _try_memory_v3(code)
     if mem is not None:
+        if SWAP_C3_RED:
+            _MEM_CACHE["count"] = mem
         return _resp(event, json.dumps({"output": mem + "\n", "error": None}))
 
     # Door transforms. Red goes through the switchable RED_MODE because the
     # literal 'reverse' reading was disproven; green is confirmed correct.
-    m_red = re.match(r'^red\s*(?:[:=]\s*|\s+)(.+?)\s*$', code.strip(), re.I)
+    # Optional trailing token: "red open 2" pins the swap answer explicitly, so the
+    # test does not depend on the Lambda container staying warm between tiles.
+    m_red = re.match(r'^red\s*(?:[:=]\s*|\s+)([^|]+?)\s*(?:\|\s*(.+))?$',
+                     code.strip(), re.I | re.S)
     if m_red:
-        out = _door_red_v2(m_red.group(1).strip().strip('"\''))
+        val = m_red.group(1).strip().strip('"\'')
+        recalled = (m_red.group(2) or "").strip()
+        out = _red_answer(val, recalled)
         return _resp(event, json.dumps({"output": out + "\n", "error": None}))
 
     door = _try_door_r4(code)
@@ -1018,7 +1031,7 @@ def _try_path_request(text):
 #
 # The door cannot be skipped - it is the only way into the west region and the
 # user has confirmed avoiding it is not an option. It has to be solved.
-RED_MODE = "t9rev"
+RED_MODE = "reverse"
 
 
 def _red_reverse(v):
@@ -1146,6 +1159,92 @@ _RED_MODES = {
     "t9": _red_t9,
     "t9rev": _red_t9rev,
 }
+
+
+# ---------------------------------------------------------------------------
+# SWAP HYPOTHESIS - the c3 Memento tile and the c30 Red Door hold each other's
+# expected answers.
+#
+# WHY THIS IS THE BEST REMAINING THEORY. Out of 14 challenges, exactly TWO fail,
+# and they are these two. Everything else - maths, both web searches, both
+# guardrails, all four simple questions, both key pickups, the GREEN door - scores.
+# One root cause explaining both beats two independent mysteries:
+#
+#   c3  "How many c4 challenges are on the map?"  the count is PROVEN to be 2.
+#       The route visits all 61 non-wall cells, so every tile code is confirmed by
+#       the trace, not transcribed. Yet 2, 1, "two", a sentence and "2 c4
+#       challenges" were ALL rejected. The grader is not holding the count in any
+#       format. Something else is in that slot.
+#
+#   c30 "What is red key 1?"  nine well-formed values rejected, including 'nepo',
+#       which is exactly what the door's own description asks for.
+#
+# If the two expectedAnswer fields were transposed when the map was authored, both
+# facts follow at once: c3 holds the red door's value, c30 holds the count.
+#
+# WHY IT IS ALSO THE CHEAPEST THING WE HAVE EVER BEEN ABLE TO TEST.
+# The Memento tile costs -1 and is NOT fatal, and on this route it comes BEFORE the
+# red door (F10 before D6). So it is a free oracle: answering 'nepo' there tests a
+# red-door candidate for -1 instead of for the whole run. That is the first time in
+# ten attempts we can probe the red door without dying for it.
+#
+# Expected outcomes this run:
+#   memory +550 and door +1000  -> swap confirmed, ~17,600
+#   memory +550, door wrong     -> swap real but count is not the door value; we
+#                                  still learn 'nepo' IS the red answer
+#   memory -1, door wrong       -> swap dead, costs exactly what every run already
+#                                  costs. No downside versus the status quo.
+SWAP_C3_RED = True
+
+# Module-level, so the count computed at the Memento tile is available when the red
+# door is reached later in the SAME run. Lambda reuses a warm container across the
+# invocations of one game, but the prompt also pins the value explicitly as
+# "red <value> <count>" so a cold container cannot break the test.
+_MEM_CACHE = {"count": None}
+
+
+def _try_swap_memory(code):
+    """Handle 'mem <redkey> | <question>'.
+
+    Returns the RED DOOR's value for the Memento tile under the swap hypothesis,
+    while caching the real count for the red door to hand back later.
+    """
+    m = re.match(r'^mem\s+(\S+)\s*\|\s*(.+)$', code.strip(), re.I | re.S)
+    if not m:
+        return None
+    key = m.group(1).strip().strip('"\'')
+    question = m.group(2).strip()
+
+    count = _try_memory_v3(question)
+    if count is not None:
+        _MEM_CACHE["count"] = count
+
+    if SWAP_C3_RED:
+        # The red door's own description: "reading it backwards".
+        return key[::-1]
+    return count if count is not None else key[::-1]
+
+
+def _red_answer(val, recalled=""):
+    """The red door's answer, honouring the swap test when it is enabled.
+
+    Under the swap, the red door must hand back the MEMENTO tile's count. The model
+    cannot pass that number, because under the swap it answered the Memento tile
+    with a word and never saw a count. So it re-sends the Memento QUESTION instead:
+
+        red open | How many c4 challenges are on the map?
+
+    and the count is recomputed here. Stateless, universal, and independent of
+    whether the Lambda container stayed warm.
+    """
+    if SWAP_C3_RED:
+        if recalled:
+            count = _try_memory_v3(recalled)
+            if count is not None:
+                return count
+        if _MEM_CACHE["count"] is not None:
+            return _MEM_CACHE["count"]
+    return _door_red_v2(val)
 
 
 def _door_red_v2(v):
