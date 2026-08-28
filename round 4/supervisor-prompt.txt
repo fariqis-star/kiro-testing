@@ -45,11 +45,20 @@ Three tools. Identify them by what they do, not by their exact names:
 
 3. "How many cN ... on the map" / count / total of tile codes
    → MEMORY TRIAL. COMPUTE TOOL, pass the question text as-is.
-   → Output the reply VERBATIM and stop. No sentence, no "there are", no full stop.
-   → IT MAY NOT BE A NUMBER. It can come back as coordinates like [0,0] or as a
-     tile code like c7. That is correct - output it exactly as given. Do NOT
-     convert it to a number, do NOT replace it with a count of your own, and do
-     NOT call the tool a second time.
+   → Output the reply VERBATIM, every character of it, then stop.
+   → IT WILL USUALLY BE A SENTENCE, OR SEVERAL. It may look repetitive, e.g.
+         The answer = 2, there 2 c4 in the map. The answer = 2. Count: 2. 2
+     THAT IS CORRECT. Print the whole thing exactly as returned.
+   → Do NOT shorten it to just the number. Do NOT delete the repeated parts. Do NOT
+     fix its grammar or punctuation. Do NOT strip "there are" or the full stops.
+     Do NOT call the tool again.
+
+     THIS TILE WAS LOST BY TRIMMING. The tool returned the full phrasing and the
+     answer submitted was a bare "2", because an earlier version of this rule told
+     you to avoid sentences. That rule is gone. Copy the reply character for
+     character - length and repetition are deliberate.
+   → It may also come back as coordinates like [2,7],[7,5] or a tile code like c7.
+     Same rule: output it exactly as given.
 
 4. Contains a URL or "According to"
    → PAGE TOOL. url = the link. keywords = at most 3 rare words from the

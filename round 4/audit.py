@@ -138,8 +138,17 @@ def main():
     check("key pickup does not ask the model to transform",
           "SPELLED BACKWARDS" not in flat,
           "model echoed 'open' when asked to reverse - never ask it to transform")
-    check("prompt tells the model to output the memento reply verbatim",
-          "IT MAY NOT BE A NUMBER" in flat or "bare number" in flat)
+    if getattr(ce, "MEMORY_AUTO", False):
+        # The memento now returns sentences. The prompt must NOT forbid them, or the
+        # model trims the reply down to a bare number - which is how this tile was
+        # lost once already.
+        check("prompt does NOT forbid sentences in the memento reply",
+              "no sentence" not in flat.lower())
+        check("prompt says the memento reply may be a sentence",
+              "IT WILL USUALLY BE A SENTENCE" in flat)
+    else:
+        check("prompt tells the model to output the memento reply verbatim",
+              "bare number" in flat or "VERBATIM" in flat)
     check("guardrail checked before patient JSON", "BEFORE CASE 7" in flat)
     check("never invent a path", "NEVER INVENT A PATH" in flat)
     print()
