@@ -1440,8 +1440,38 @@ _SEARCH_MODES.update({f"perm{i:02d}": (lambda i: (lambda v: _red_perm(v, i)))(i)
                       for i in range(24)})
 
 # This shadows the earlier RED_LADDER above; the later binding is the live one.
-# perm00 opne, perm01 oepn, perm02 oenp are now dead. Resume at perm03.
-RED_LADDER = [f"perm{i:02d}" for i in range(3, 18)]
+# SEMANTIC OPPOSITE, THEN REVERSED. Never tried, and it is a real combination:
+# we tested the opposites FORWARD (shut, close, closed, locked) and we tested the
+# reverse of the key (nepo), but never the opposite read backwards. The door says
+# "translate the code you receive by reading it backwards" - if the author took the
+# code's MEANING as the thing to translate, "open" becomes "shut" and reading THAT
+# backwards gives "tuhs".
+_OPPOSITES = {
+    "open": ["shut", "close", "closed", "locked", "unlocked"],
+    "shut": ["open"], "close": ["open"], "closed": ["open"],
+    "locked": ["unlocked", "open"], "unlocked": ["locked", "shut"],
+}
+
+
+def _red_opprev(v, idx):
+    opts = _OPPOSITES.get(v.lower())
+    if not opts:
+        return v[::-1]
+    return opts[idx % len(opts)][::-1]
+
+
+_SEARCH_MODES.update({f"opprev{i}": (lambda i: (lambda v: _red_opprev(v, i)))(i)
+                      for i in range(5)})
+
+# Dead permutations so far: opne oepn oenp onpe poen peno pnoe.
+# 'onep' was in the ladder but never reported back, so it stays in.
+_DEAD_PERMS = {"opne", "oepn", "oenp", "onpe", "poen", "peno", "pnoe"}
+_PERM_TESTED |= _DEAD_PERMS
+
+RED_LADDER = (
+    [f"opprev{i}" for i in range(5)]        # tuhs esolc desolc dekcol dekcolnu
+    + [f"perm{i:02d}" for i in range(11)]   # the 11 arrangements still standing
+)
 
 
 def _red_next_from_ladder(v):
