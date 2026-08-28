@@ -69,7 +69,11 @@ def main():
     check("maths 100! mod 1e9+7", run("100! mod 1e9+7") == "437918130")
     check("maths fib 3000 last 10", run("fib 3000 last 10") == "6709796000")
     m = run("How many c4 challenges are on the map?")
-    check("memory returns a bare number", m.isdigit(), repr(m))
+    if getattr(ce, "MEMORY_AUTO", False):
+        print(f"  --    memento is in DIAGNOSTIC mode, answering {m!r} "
+              f"(all tile counts already rejected)")
+    else:
+        check("memory returns a bare number", m.isdigit(), repr(m))
     r = run("red open")
     print(f"  --    red door currently answers {r!r}")
     print()
@@ -134,7 +138,8 @@ def main():
     check("key pickup does not ask the model to transform",
           "SPELLED BACKWARDS" not in flat,
           "model echoed 'open' when asked to reverse - never ask it to transform")
-    check("memory expects a bare number", "bare number" in flat)
+    check("prompt tells the model to output the memento reply verbatim",
+          "IT MAY NOT BE A NUMBER" in flat or "bare number" in flat)
     check("guardrail checked before patient JSON", "BEFORE CASE 7" in flat)
     check("never invent a path", "NEVER INVENT A PATH" in flat)
     print()

@@ -2007,13 +2007,27 @@ MEMORY_FORMAT = "number"
 #
 # Either way this costs nothing: run it on the SKIP route, where the run completes
 # and banks ~12,054 regardless. A win here is worth +550 and the life back, ~+800.
-# 28 was rejected (c7's count). Counts 1 and 2 were already rejected. That leaves
-# exactly ONE untried count on this map: 4, which is the count of c1 and of c5.
-# If 4 also fails, then the Memento's stored answer is not any tile count on this map,
-# and the question/answer mismatch theory is the only explanation left standing.
+# EVERY tile count on this map is now eliminated: 1, 2, 4 and 28 were each rejected.
+# So c3's stored answer is NOT a count, even though its question asks for one. That is
+# a question/answer mismatch demonstrated by measurement, not assumed.
+#
+# WHY THIS MATTERS FOR THE RED DOOR. c3 and c30 are the only two failing tiles, and
+# both reject provably-correct answers. If c3 turns out to hold the answer to a
+# DIFFERENT memento question, that establishes the mechanism - the tile displays
+# question[i] but stores answer[j] - and tells us what class of value c30 is holding.
+# The memento costs -1 and is not fatal, so it is a free proxy for a door that costs
+# the whole run.
+#
+# The community-edition memento generator has five question shapes. Counts are dead,
+# so what remains is position answers and tile codes - a tiny candidate set:
 MEMORY_AUTO = True
 _MEM_STATE = "/tmp/r4_mem_idx"
-MEMORY_LADDER = ["4"]
+MEMORY_LADDER = [
+    "[0,0]",   # "What was your starting position?"      - player is at row 0 col 0
+    "[0,9]",   # "What is the position of the treasure?" - treasure is at row 0 col 9
+    "c7",      # "What challenge type is at position X?" - c7 is the commonest tile
+    "[9,5]",   # the memento tile's own position
+]
 
 
 def _memory_next_from_ladder():

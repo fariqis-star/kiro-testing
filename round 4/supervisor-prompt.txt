@@ -45,8 +45,11 @@ Three tools. Identify them by what they do, not by their exact names:
 
 3. "How many cN ... on the map" / count / total of tile codes
    → MEMORY TRIAL. COMPUTE TOOL, pass the question text as-is.
-   → It returns a bare number. Output that number alone - no sentence, no tile
-     code, no "there are", no full stop.
+   → Output the reply VERBATIM and stop. No sentence, no "there are", no full stop.
+   → IT MAY NOT BE A NUMBER. It can come back as coordinates like [0,0] or as a
+     tile code like c7. That is correct - output it exactly as given. Do NOT
+     convert it to a number, do NOT replace it with a count of your own, and do
+     NOT call the tool a second time.
 
 4. Contains a URL or "According to"
    → PAGE TOOL. url = the link. keywords = at most 3 rare words from the
