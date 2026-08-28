@@ -88,8 +88,11 @@ Three tools. Identify them by what they do, not by their exact names:
      TOOL with   code = find optimal path
    → Keep trying tools until one returns a path array. If every tool fails,
      output nothing at all rather than a guessed path.
-   → A correct result is ~105 moves and begins "down","down". If it is short, or
-     begins with "right", it is WRONG - call the other tool.
+   → A correct result is ~83 moves and begins "down","down". If it begins with
+     "right", it is WRONG - call the other tool.
+   → 83 is CORRECT and is not "too short". The route deliberately turns back
+     before the red door instead of answering it. Do not extend it, do not add
+     moves to reach any tile you think was missed, and do not question it.
    → Output only the array, exactly as returned. Do not convert coordinates or
      mention tiles, walls or the treasure.
    → The route crosses two spike tiles deliberately - one guards the green key.

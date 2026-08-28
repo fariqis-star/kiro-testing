@@ -44,7 +44,15 @@ INTERNAL_MAP = [
 START = [0, 0]        # A1
 TREASURE = [0, 9]     # J1
 
-VERIFIED_PATH = [
+# TRUE: turn back before the red door and head for the treasure instead. Must match
+# SKIP_RED_DOOR in the CodeExecution Lambda, because either tool can answer a
+# navigation request and the two must never hand back different routes.
+SKIP_RED_DOOR = True
+
+# 105 moves, every scoring tile including the 13 behind the red door. Only usable if
+# the red door can actually be answered - and after twelve rejected candidates it
+# cannot, so this route ends the run at D6 for 8,593.
+PATH_FULL = [
     "down", "down", "right", "right", "right", "right", "right", "right",
     "right", "right", "right", "down", "down", "down", "down", "down", "down",
     "down", "up", "up", "up", "up", "up", "left", "left", "down", "down",
@@ -58,6 +66,24 @@ VERIFIED_PATH = [
     "right", "right", "right", "right", "right", "right", "right", "right",
     "right",
 ]
+
+# 83 moves, never steps on D6. Verified by verify_route.py: 0 walls, treasure never
+# touched early, ends on J1, red key and green key both collected, green key before
+# the green door, and only ONE spike taken instead of two because the A6 spike sits
+# in the region behind the door. ~12,040 against 8,593 for dying at the door.
+PATH_NO_RED = [
+    "down", "down", "right", "right", "right", "right", "right", "right",
+    "right", "right", "right", "down", "down", "down", "down", "down", "down",
+    "down", "up", "up", "up", "up", "up", "left", "left", "down", "down",
+    "down", "down", "down", "left", "left", "up", "up", "up", "up", "up",
+    "down", "down", "down", "down", "down", "left", "left", "up", "up", "up",
+    "down", "down", "down", "right", "right", "right", "right", "up", "up",
+    "up", "up", "up", "right", "right", "up", "up", "left", "left", "left",
+    "left", "left", "left", "left", "left", "left", "up", "up", "right",
+    "right", "right", "right", "right", "right", "right", "right", "right",
+]
+
+VERIFIED_PATH = PATH_NO_RED if SKIP_RED_DOOR else PATH_FULL
 
 # Whole-map tile counts, for the Memory Trial challenge (c3).
 #

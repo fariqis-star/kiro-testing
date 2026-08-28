@@ -843,7 +843,24 @@ def _try_memory_r4(text):
 # The alternate 83-move route is kept only so nobody has to recompute it, and
 # because it documents that the west region (A5-D5, A7-B10) sits entirely behind
 # D6. The red door has to be SOLVED, not avoided.
-SKIP_RED_DOOR = False
+# TRUE: turn back before the red door and head for the treasure instead.
+#
+# Twelve candidates have now been rejected at that door and a wrong answer there is
+# unconditionally fatal - the best possible arrival has 5 lives and the door deals
+# -5, leaving 0, which is a loss. So the door can only be solved or avoided, never
+# survived, and dying on it forfeits the treasure and the life bonus on top of the
+# door's own 1000.
+#
+# Verified by verify_route.py: 83 moves, 0 walls, never steps on D6, never touches
+# the treasure early, ends on J1, red key and green key both collected, green key
+# before the green door. It also dodges the A6 spike, so only ONE spike is taken
+# instead of two - an extra life worth 250.
+#
+#   skip the door : ~12,040   (9,350 tiles + 750 life + 1,000 treasure + ~940 token)
+#   die on it     :   8,593
+#
+# Set back to False to resume testing red door candidates on the test map.
+SKIP_RED_DOOR = True
 
 R4_PATH_FULL = [
     "down", "down", "right", "right", "right", "right", "right", "right",
