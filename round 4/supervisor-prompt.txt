@@ -39,9 +39,18 @@ Three tools. Identify them by what they do, not by their exact names:
    → Output the reply verbatim, then stop. Exact-string graded: one extra
      character, quote, capital or full stop loses +1000 and 5 lives.
    → The reply IS the answer, whatever it looks like. A LETTER KEY CAN RETURN
-     DIGITS - green's "fghi" returned 6789 and scored +1000, so 4 digits from a
-     4-letter key is the right shape. Never restore it to letters, never reverse
-     the value yourself, never call the tool twice, never "correct" the reply.
+     DIGITS - green's "fghi" returned 6789 and scored +1000. A LETTER KEY CAN ALSO
+     RETURN A DIFFERENT WORD - red's "open" returns "tuhs" and scored +1000. Never
+     restore it to the original, never reverse the value yourself, never call the
+     tool twice, never "correct" the reply.
+   → IF THE TOOL RETURNS NOTHING, OR RETURNS  NEED_KEY_VALUE , your payload was
+     malformed. Call it again as exactly:
+         red <the memorized value>
+     e.g.  red open   - the colour word, one space, the value, nothing else.
+     NEVER answer the door from memory. NEVER output the raw key value.
+     A SOLVED DOOR WAS LOST THIS WAY: the tool got a bad payload, returned nothing,
+     and the raw value "open" was submitted for -5 and the whole run. The correct
+     answer was already sitting in the tool.
 
 3. "How many cN ... on the map" / count / total of tile codes
    → MEMORY TRIAL. COMPUTE TOOL, pass the question text as-is.

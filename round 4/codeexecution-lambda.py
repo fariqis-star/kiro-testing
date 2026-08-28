@@ -311,6 +311,17 @@ def lambda_handler(event, context):
     if pathreq is not None:
         return _resp(event, json.dumps({"output": pathreq, "error": None}))
 
+    # RED DOOR FIRST, if the payload actually STARTS with the colour word. Otherwise a
+    # payload like "red open | how many c4 ..." gets swallowed by the memory handler
+    # below, which matches on "how many", and the door receives a count instead of its
+    # answer. Starting-with is the safe test: it cannot capture a genuine memento
+    # question that merely mentions the word red.
+    if re.match(r'^\s*red\b', code, re.I):
+        early_red = _red_door_dispatch(code)
+        if early_red is not None:
+            return _resp(event, json.dumps({"output": early_red + "\n",
+                                            "error": None}))
+
     # SWAP TEST. 'mem <redkey> | <question>' - the Memento tile answers with the
     # RED DOOR's value and caches the count for the red door to answer with.
     swap = _try_swap_memory(code)
@@ -329,13 +340,14 @@ def lambda_handler(event, context):
     # literal 'reverse' reading was disproven; green is confirmed correct.
     # Optional trailing token: "red open 2" pins the swap answer explicitly, so the
     # test does not depend on the Lambda container staying warm between tiles.
-    m_red = re.match(r'^red\s*(?:[:=]\s*|\s+)([^|]+?)\s*(?:\|\s*(.+))?$',
-                     code.strip(), re.I | re.S)
-    if m_red:
-        val = m_red.group(1).strip().strip('"\'')
-        recalled = (m_red.group(2) or "").strip()
-        out = _red_answer(val, recalled)
-        return _resp(event, json.dumps({"output": out + "\n", "error": None}))
+    # RED DOOR - deliberately permissive. This handler used to return EMPTY for any
+    # payload that was not exactly "red <value>", and an empty reply is the worst
+    # possible outcome: the model decides the tool is broken and answers the door from
+    # memory with the raw key. That is exactly how a solved door scored -5 and ended a
+    # run. Accept every shape the model plausibly sends, and never return nothing.
+    red_out = _red_door_dispatch(code)
+    if red_out is not None:
+        return _resp(event, json.dumps({"output": red_out + "\n", "error": None}))
 
     door = _try_door_r4(code)
     if door is not None and door != "":
@@ -1992,6 +2004,34 @@ def _try_swap_memory(code):
         # The red door's own description: "reading it backwards".
         return key[::-1]
     return count if count is not None else key[::-1]
+
+
+# Words that are never the key value, so they can be stripped out of a sloppy payload
+# like "what is red key 1? open" or "red key 1 is open".
+_RED_NOISE = {"red", "key", "code", "is", "what", "the", "door", "answer",
+              "for", "of", "a", "an", "value", "1", "2", "3"}
+
+
+def _red_door_dispatch(code):
+    """Return the red door answer for ANY red-door-shaped payload, or None.
+
+    Never returns an empty string. If the payload clearly concerns the red door but
+    carries no usable key value, it returns NEED_KEY_VALUE so the supervisor prompt can
+    recognise it and retry with the value, instead of guessing.
+    """
+    t = (code or "").strip()
+    if not t:
+        return None
+    low = t.lower()
+    if not re.search(r'\bred\b', low):
+        return None
+    # Anything after a pipe is the recalled memento question, kept for the swap test.
+    head, _, recalled = t.partition("|")
+    tokens = re.findall(r"[A-Za-z0-9_]+", head)
+    vals = [w for w in tokens if w.lower() not in _RED_NOISE]
+    if not vals:
+        return "NEED_KEY_VALUE"
+    return _red_answer(vals[-1].strip("\"'"), recalled.strip())
 
 
 def _red_answer(val, recalled=""):
