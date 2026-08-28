@@ -1168,7 +1168,7 @@ RED_MODE = "reverse"
 # That is the one reproducible difference between a configuration that beat this
 # door and ours, and it costs 50 points to copy. The prompt now answers a RED key
 # with the reversed value; the door still answers 'reverse'.
-RED_AUTO = True
+RED_AUTO = False
 _RED_STATE = "/tmp/r4_red_idx"
 
 # Ordered by my estimate of probability. Everything here is untested.
@@ -1350,58 +1350,36 @@ _SEARCH_MODES = {
     "sortdescthen_ld": lambda v: _cat([n % 10 for n in sorted(_positions(v), reverse=True)]),
 }
 # ===========================================================================
-# THE QUESTION BANK. Found in the official community-edition repo at
-# frontend/src/data/questionBank.ts, and it changes the whole problem.
+# WITHDRAWN: the community-edition question bank does NOT govern this map.
 #
-#   c40 Red Key    : "Red Key 1 is: open" | "...sesame" | "...alpha"   THREE options
-#   c30 Red Door   : expectedAnswer "nepo"                            ONE answer
+# I found frontend/src/data/questionBank.ts, saw that its c40 list contains the word
+# "open", and built a theory that our door holds the reverse of a different entry from
+# that list - emases, ahpla, kcolnu and so on. That was wrong, and my own control
+# experiment disproves it:
 #
-#   c41 Green Key  : unlock | emerald | bravo        c31 Green Door : "kcolnu"
-#   c42 Grey Key   : silver | steel   | charlie      c32 Grey Door  : "revlis"
-#   c43 Yellow Key : gold   | sunshine| delta        c33 Yellow Door: "dlog"
+#   bank c41 green keys : unlock | emerald | bravo      bank c31 answer : "kcolnu"
+#   OUR green key       : fghi                          OUR green answer: "6789"
 #
-# Two facts fall straight out of that.
+#   fghi is in NO bank list, and 6789 is not a reverse of anything. Every bank door
+#   answer is a plain reverse; ours is a letters-to-numbers translation that appears
+#   nowhere in the bank or in challenge_generator.py.
 #
-# 1. THE RULE IS REVERSE, CONFIRMED. Every stock door answer is the reverse of its
-#    key list's FIRST entry: nepo/open, kcolnu/unlock, revlis/silver, dlog/gold. So
-#    "reading it backwards" means exactly what it says, and 65 candidates were spent
-#    replacing a rule that was correct from the start.
+# So this map is custom-authored, "open" appearing in the bank is a coincidence of
+# word choice, and reverses of sesame/alpha/unlock have no connection to our door.
+# Those seven candidates were unfounded and are not worth a run.
 #
-# 2. THE PAIRING IS STRUCTURALLY BROKEN. The key tile chooses from THREE options; the
-#    door holds ONE fixed answer. If the key tile lands on option 2 or 3, the door
-#    expects the reverse of a word you were never shown. That is not a puzzle - it is
-#    a bug in the bank, and it explains a door that rejects every correct-looking
-#    answer.
+# What the repo DOES legitimately establish:
+#   - tile semantics match ours exactly: c30 +1000/-5, c40 +50
+#   - its predefined maps prove door questions can carry the rule INLINE, e.g.
+#     "What is grey code 1? Give first 2 characters + last 2 characters concatenated."
+#     Ours reads only "What is red key 1?", with the rule in the tile legend instead.
+#   - it corroborates the Round 3 values we already had (AWSisAwesome -> AWme), so it
+#     is a real reflection of the game engine - just not of THIS map's content.
 #
-# Our key tile shows "open", which is option 1, so nepo *should* work. It does not.
-# So the door is holding the reverse of a DIFFERENT entry - and the bank tells us
-# exactly which ones are possible. The search space collapses from infinite to five.
-#
-# In-list first, then cross-colour in case answers were mixed between doors. Green is
-# excluded from suspicion: our green key is "fghi", which is in NO bank list, so the
-# green pair was custom-authored and its stock answer "kcolnu" went unused - which is
-# precisely the kind of orphan value that ends up on the wrong tile.
-_BANK_CANDIDATES = {
-    "bank_sesame": "emases",    # reverse of sesame, red key option 2
-    "bank_alpha": "ahpla",      # reverse of alpha,  red key option 3
-    "bank_unlock": "kcolnu",    # the stock GREEN door answer, orphaned on our map
-    "bank_emerald": "dlareme",
-    "bank_bravo": "ovarb",
-    "bank_silver": "revlis",    # stock GREY door answer
-    "bank_gold": "dlog",        # stock YELLOW door answer
-}
-_SEARCH_MODES.update({k: (lambda val: (lambda v: val))(val)
-                      for k, val in _BANK_CANDIDATES.items()})
-
-RED_LADDER = [
-    "bank_sesame",   # emases   same list as our key, option 2
-    "bank_alpha",    # ahpla    same list as our key, option 3
-    "bank_unlock",   # kcolnu   orphaned green-door answer
-    "bank_silver",   # revlis   orphaned grey-door answer
-    "bank_gold",     # dlog     orphaned yellow-door answer
-    "bank_emerald",  # dlareme
-    "bank_bravo",    # ovarb
-]
+# No justified candidate remains. RED_MODE stays pinned to 'reverse' because that is
+# what the door's own description asks for and what the prior-round setup scored with.
+# The ladder is OFF - guessing further without new evidence just burns runs.
+RED_LADDER = ["reverse"]
 
 
 def _red_next_from_ladder(v):
