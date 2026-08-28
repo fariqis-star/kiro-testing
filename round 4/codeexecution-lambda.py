@@ -1203,11 +1203,37 @@ _RED_STATE = "/tmp/r4_red_idx"
 # If all four miss, the door is not answerable from anything the game shows us and
 # the skip route is the correct submission. Flip SKIP_RED_DOOR to True in BOTH
 # Lambdas for a verified ~12,054.
+# COMPRESSION BRANCH, and it is the best lead since green itself.
+#
+# Every numeric answer we ever submitted was 7 or 8 characters, because open maps to
+# 15, 16, 5, 14. Green's answer was 4 characters. That mismatch was staring at us the
+# whole time and I dismissed it as a coincidence of f-i being single digits.
+#
+# It is not a coincidence - it is the CLUE. If the author squashes each position to
+# one digit, then:
+#     fghi -> 6,7,8,9 -> 6789     unchanged, because they are already single digits
+#     nepo -> 14,5,16,15 -> 5,5,7,6 -> 5576
+# Green scoring 6789 is EQUALLY consistent with plain positions and with compression.
+# The control experiment cannot tell them apart, so compression was never eliminated.
+#
+# This branch satisfies every constraint we have at once, which nothing else has:
+#   - green's proven letters-to-numbers rule
+#   - green's proven 4-character output shape
+#   - red's own instruction to read it backwards
+#   - and it explains why all seven-digit forms were rejected
+#
+# 'blank' is removed: the model will not emit an empty answer. Given a space it
+# decided the tool was broken and replied "open" from memory, so that idea is
+# untestable through an LLM and cost a run to discover.
 RED_LADDER = [
-    "blank",          # (a single space)
-    "thanksrev",      # sknahT
-    "tilecode",       # 30
-    "tilecodec",      # c30
+    "dr_rev",      # 5576      nepo, digital root      <- all four constraints met
+    "ld_rev",      # 4565      nepo, last digit
+    "dr_fwd",      # 6755      open, digital root
+    "ld_fwd",      # 5654      open, last digit
+    "atbash_rev",  # mvkl      atbash AFTER reversing (we only tried atbash(open))
+    "z1_dr",       # 4423      z=1 + digital root
+    "z1_ld",       # 3212      z=1 + last digit
+    "z1_raw",      # 13221112  z=1 raw
 ]
 
 
@@ -1517,13 +1543,53 @@ _RED_MODES = {
     "typo_swap": lambda v: _swap_last_two(v[::-1]),      # nepo -> neop
     "quoted": lambda v: '"' + v[::-1] + '"',             # "nepo" with the quotes
     "dotted": lambda v: v[::-1] + ".",                   # nepo.
-    # LAST IDEAS. Each explains the one thing nothing else does: that 42 well-formed
-    # answers were all rejected.
-    "blank": lambda v: " ",
     "thanksrev": lambda v: "sknahT",
     "tilecode": lambda v: "30",
     "tilecodec": lambda v: "c30",
+    # COMPRESSION BRANCH. Green's rule, then squash each position to ONE digit so the
+    # answer is 4 characters like green's was. Verified compatible with green: 6,7,8,9
+    # are already single digits, so compressing fghi still yields exactly 6789.
+    "dr_rev": lambda v: _compress(v[::-1], "dr"),      # nepo -> 5576
+    "ld_rev": lambda v: _compress(v[::-1], "ld"),      # nepo -> 4565
+    "dr_fwd": lambda v: _compress(v, "dr"),            # open -> 6755
+    "ld_fwd": lambda v: _compress(v, "ld"),            # open -> 5654
+    # Atbash applied AFTER reversing. We only ever tested atbash(open) = lkvm.
+    "atbash_rev": lambda v: _red_atbash(v[::-1]),      # nepo -> mvkl
+    # Z=1 (a=26 ... z=1) variants. These FAIL the green control - fghi under Z=1 gives
+    # 3219, not 6789 - so they sit at the bottom, but they are cheap and untested.
+    "z1_dr": lambda v: _compress_z(v[::-1], "dr"),     # nepo -> 4423
+    "z1_ld": lambda v: _compress_z(v[::-1], "ld"),     # nepo -> 3212
+    "z1_raw": lambda v: "".join(str(27 - (ord(c.lower()) - 96))
+                                for c in v[::-1] if c.isalpha()),   # 13221112
 }
+
+
+def _digital_root(n):
+    while n > 9:
+        n = sum(int(d) for d in str(n))
+    return n
+
+
+def _compress(word, how):
+    """Alphabet positions, each squashed to a single digit."""
+    out = []
+    for ch in word:
+        if not ch.isalpha():
+            continue
+        p = ord(ch.lower()) - 96
+        out.append(str(_digital_root(p) if how == "dr" else p % 10))
+    return "".join(out)
+
+
+def _compress_z(word, how):
+    """Same, but counting the alphabet from z=1 instead of a=1."""
+    out = []
+    for ch in word:
+        if not ch.isalpha():
+            continue
+        p = 27 - (ord(ch.lower()) - 96)
+        out.append(str(_digital_root(p) if how == "dr" else p % 10))
+    return "".join(out)
 
 
 def _swap_last_two(s):
