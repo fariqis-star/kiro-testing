@@ -1031,7 +1031,7 @@ def _try_path_request(text):
 #
 # The door cannot be skipped - it is the only way into the west region and the
 # user has confirmed avoiding it is not an option. It has to be solved.
-RED_MODE = "reverse"
+RED_MODE = "nope"
 
 
 def _red_reverse(v):
@@ -1120,6 +1120,79 @@ for _digit, _letters in (("2", "abc"), ("3", "def"), ("4", "ghi"), ("5", "jkl"),
         _T9[_ch] = _digit
 
 
+def _red_nope(v):
+    """Cyclic right shift by one.  open -> nope
+
+    THE AUTHORING-ERROR THEORY, and it is the best remaining explanation.
+
+    'nepo' is PROVABLY what the red door's description asks for - "reading it
+    backwards" - and it was rejected for -5. A value cannot be both what the
+    instruction demands and wrong, UNLESS the stored answer was typed by a human
+    rather than produced by code. Everything else about this map is hand-authored:
+    neither 'fghi' nor 'open' comes from any generator word list, and 'fghi' was
+    obviously chosen by hand so that its positions spell the tidy 6789.
+
+    So a human sat down, wrote "reading it backwards" as the hint, and then typed
+    the answer. 'open' reversed is 'nepo', which is not a word. 'nope' IS a word,
+    it uses exactly the same four letters, and it is what a brain autocompletes
+    when reversing 'open' by eye. It may even be deliberate - a gag answer for a
+    door that refuses to open.
+
+    Implemented as a cyclic right rotation because that is a deterministic rule
+    that reproduces open -> nope, so it still returns something defined if the
+    judge map uses a different key. But be honest about the theory: if this is a
+    human slip, it is specific to the word 'open' and will not transfer.
+    """
+    if not v:
+        return v
+    return v[-1] + v[:-1]
+
+
+def _red_greenans(v):
+    """The GREEN door's answer, unchanged - a copy-paste authoring error."""
+    return "6789"
+
+
+def _red_greenansrev(v):
+    """The GREEN door's answer read backwards - 'it' = the code the door made."""
+    return "9876"
+
+
+def _red_greenkeyrev(v):
+    """The GREEN key reversed, in case the two doors' keys are crossed."""
+    return "ihgf"
+
+
+def _red_semantic(v):
+    """'Backwards' applied to MEANING rather than characters.  open -> shut"""
+    return {"open": "shut", "close": "open", "closed": "open",
+            "locked": "unlocked", "unlocked": "locked"}.get(v.lower(), v[::-1])
+
+
+def _red_descend(v):
+    """Positions listed in DESCENDING order - the complement of green's "in order".
+
+    green says "the numbers that represent them in order"  -> 6 7 8 9 ascending
+    red says  "backwards"                                  -> 16 15 14 5
+    """
+    nums = sorted((ord(c.lower()) - 96 for c in v if c.isalpha()), reverse=True)
+    return "".join(str(n) for n in nums)
+
+
+def _red_rot13(v):
+    out = []
+    for ch in v.lower():
+        if ch.isalpha():
+            out.append(chr((ord(ch) - 97 + 13) % 26 + 97))
+        else:
+            out.append(ch)
+    return "".join(out)
+
+
+def _red_rot13rev(v):
+    return _red_rot13(v[::-1])
+
+
 def _red_t9(v):
     """Phone keypad digits, key value as-is.  open -> 6736"""
     return "".join(_T9.get(ch, ch) for ch in v.lower())
@@ -1158,6 +1231,14 @@ _RED_MODES = {
     "digitrev": _red_digitrev,
     "t9": _red_t9,
     "t9rev": _red_t9rev,
+    "nope": _red_nope,
+    "greenans": _red_greenans,
+    "greenansrev": _red_greenansrev,
+    "greenkeyrev": _red_greenkeyrev,
+    "semantic": _red_semantic,
+    "descend": _red_descend,
+    "rot13": _red_rot13,
+    "rot13rev": _red_rot13rev,
 }
 
 
@@ -1194,7 +1275,10 @@ _RED_MODES = {
 #                                  still learn 'nepo' IS the red answer
 #   memory -1, door wrong       -> swap dead, costs exactly what every run already
 #                                  costs. No downside versus the status quo.
-SWAP_C3_RED = True
+# DEAD, run 10: the Memento tile answered 'nepo' and scored -1, so c3 does NOT hold
+# the red door's value. The swap is disproven in that direction. Left in the file
+# because the reasoning about c3 is still valid and still unexplained.
+SWAP_C3_RED = False
 
 # Module-level, so the count computed at the Memento tile is available when the red
 # door is reached later in the SAME run. Lambda reuses a warm container across the

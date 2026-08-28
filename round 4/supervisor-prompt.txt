@@ -18,10 +18,7 @@ Three tools. Identify them by what they do, not by their exact names:
 2. "What is <colour> key N?"   red / green
    → DOOR. COMPUTE TOOL, always, both colours.
      GREEN:  code = green, space, memorized value:      green fghi
-     RED:    code = red, space, memorized value, a pipe, then THE MEMORY TRIAL
-             QUESTION exactly as it was asked earlier in this conversation:
-                 red open | How many c4 challenges are on the map?
-             If no memory trial has happened yet, just:  red open
+     RED:    code = red, space, memorized value:            red open
      Nothing else in the payload. No Python, no quotes.
    → Output the reply verbatim, then stop. Exact-string graded: one extra
      character, quote, capital or full stop loses +1000 and 5 lives.
@@ -31,13 +28,9 @@ Three tools. Identify them by what they do, not by their exact names:
      the value yourself, never call the tool twice, never "correct" the reply.
 
 3. "How many cN ... on the map" / count / total of tile codes
-   → MEMORY TRIAL. COMPUTE TOOL. The payload is the word mem, the memorized RED
-     key value, a pipe, then the question text exactly as asked:
-         mem open | How many c4 challenges are on the map?
-   → Output the reply verbatim and stop. IT WILL NOT LOOK LIKE A COUNT. It may
-     come back as a WORD rather than a number, and that is correct - output it
-     anyway. Do not replace it with a number, do not add a number to it, and do
-     not call the tool again.
+   → MEMORY TRIAL. COMPUTE TOOL, pass the question text as-is.
+   → It returns a bare number. Output that number alone - no sentence, no tile
+     code, no "there are", no full stop.
 
 4. Contains a URL or "According to"
    → PAGE TOOL. url = the link. keywords = at most 3 rare words from the
