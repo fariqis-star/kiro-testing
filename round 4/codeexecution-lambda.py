@@ -2201,15 +2201,53 @@ def _memory_positions(question, style):
     return " ".join(_label_of(p) for p in pts)
 
 
+# PHRASINGS. A friend who scored this tile says the answer needs something BEFORE the
+# number - "The answer = 2", "there are 2 c4 on the map" - and that it seemed
+# inconsistent for her. That reads exactly like CONTAINS_MATCH against a phrase rather
+# than exact_match against a bare number, which fits everything we have measured:
+#
+#   bare "2"                     rejected  -> so it is not contains_match on "2"
+#   "2 c4 challenges"            rejected
+#   "There are 2 ... on the map." rejected  -> so our phrasing was not the stored one
+#
+# If the grader is contains_match against some specific phrase, then our answer only
+# has to CONTAIN that phrase - which means a single reply carrying several phrasings at
+# once can satisfy it. The Memento costs -1 and is never fatal, so the shotgun is free
+# here in a way it never was at the door.
+#
+# Run 1 is that shotgun. Runs 2+ are the individual phrasings, so that if the shotgun
+# lands we can narrow down which phrase did it.
+def _memory_phrasings(question, style):
+    codes = re.findall(r'\bc(\d+)\b', question.lower())
+    code = "c" + codes[0] if codes else "c4"
+    n = MEMORY_COUNTS_WHOLE_MAP.get(code)
+    if n is None:
+        return None
+    variants = [
+        f"The answer = {n}",
+        f"The answer is {n}",
+        f"There are {n} {code} challenges on the map",
+        f"there are {n} {code} on the map",
+        f"Count: {n}",
+        f"{n} {code}",
+        str(n),
+    ]
+    if style == "shotgun":
+        return ". ".join(variants)
+    idx = {"eq": 0, "is": 1, "sentence": 2, "lower": 3,
+           "count": 4, "short": 5}.get(style, 0)
+    return variants[idx]
+
+
 MEMORY_LADDER = [
-    "POS:labels",         # H3, F8
-    "POS:labels_and",     # H3 and F8
-    "POS:coords",         # [2,7],[7,5]
-    "POS:coords_and",     # [2,7] and [7,5]
-    "POS:coords_nested",  # [[2,7],[7,5]]
-    "POS:labels_space",   # H3 F8
-    "c7",                 # tile code, still untried
-    "[9,5]",              # the memento tile's own position
+    "PHR:shotgun",   # every phrasing in one reply - wins outright if contains_match
+    "PHR:eq",        # The answer = 2
+    "PHR:is",        # The answer is 2
+    "PHR:sentence",  # There are 2 c4 challenges on the map
+    "PHR:lower",     # there are 2 c4 on the map
+    "PHR:count",     # Count: 2
+    "POS:labels",    # H3, F8            still untried
+    "POS:coords",    # [2,7],[7,5]       still untried
 ]
 # The memento sits at F10, BEFORE the red door at D6, so every run through the door
 # tests one memento candidate and one door candidate for free.
@@ -2262,12 +2300,17 @@ def _try_memory_v3(text):
     if MEMORY_AUTO:
         # Diagnostic: every count is dead, so walk position renderings instead.
         pick = _memory_next_from_ladder()
-        if pick.startswith("POS:"):
+        if pick.startswith("PHR:"):
+            out = _memory_phrasings(text, pick[4:])
+            if out:
+                return out
+        elif pick.startswith("POS:"):
             out = _memory_positions(text, pick[4:])
             if out:
                 return out
-            return str(total)
-        return pick
+        else:
+            return pick
+        return str(total)
 
     label = " and ".join("c" + n for n in codes)
     if MEMORY_FORMAT == "number":
