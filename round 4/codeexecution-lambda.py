@@ -1440,7 +1440,8 @@ _SEARCH_MODES.update({f"perm{i:02d}": (lambda i: (lambda v: _red_perm(v, i)))(i)
                       for i in range(24)})
 
 # This shadows the earlier RED_LADDER above; the later binding is the live one.
-RED_LADDER = [f"perm{i:02d}" for i in range(18)]
+# perm00 opne, perm01 oepn, perm02 oenp are now dead. Resume at perm03.
+RED_LADDER = [f"perm{i:02d}" for i in range(3, 18)]
 
 
 def _red_next_from_ladder(v):
@@ -2083,13 +2084,69 @@ MEMORY_FORMAT = "number"
 # so what remains is position answers and tile codes - a tiny candidate set:
 MEMORY_AUTO = True
 _MEM_STATE = "/tmp/r4_mem_idx"
-MEMORY_LADDER = [
-    "[0,9]",   # "What is the position of the treasure?" - treasure is at row 0 col 9
-    "c7",      # "What challenge type is at position X?" - c7 is the commonest tile
-    "[9,5]",   # the memento tile's own position
+# POSITIONS, not counts. Every count is dead (1, 2, 4, 28) and so are [0,0] and [0,9].
+# The remaining shape in the memento question family is WHERE the tiles are, and the
+# c4 positions are confirmed straight from the combat log:
+#     H3 = row 2, col 7      (Web Search challenge)
+#     F8 = row 7, col 5      (Web Search challenge)
+# Derived from the grid below rather than hardcoded, so it works on any map and any
+# tile code the question happens to ask about.
+R4_GRID = [
+    ["player", "path", "c7", "c7", "c7", "c5", "c7", "c7", "c1", "treasure"],
+    ["path", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall"],
+    ["c2", "path", "c7", "c5", "c7", "path", "c7", "c4", "path", "c7"],
+    ["wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "c7"],
+    ["c7", "c7", "c7", "c7", "wall", "c41", "wall", "path", "c7", "c7"],
+    ["c8", "wall", "wall", "c30", "wall", "c7", "wall", "c5", "wall", "c1"],
+    ["c1", "c2", "wall", "c7", "wall", "c8", "wall", "path", "wall", "path"],
+    ["c7", "c7", "wall", "c1", "wall", "c4", "wall", "c7", "wall", "c5"],
+    ["c7", "c7", "wall", "c31", "wall", "path", "wall", "c7", "wall", "c7"],
+    ["c18", "c7", "wall", "path", "c7", "c3", "path", "c7", "wall", "c40"],
 ]
-# [0,0] rejected. The memento sits at F10, BEFORE the red door at D6, so each run
-# through the door tests one memento candidate and one door candidate for free.
+
+
+def _positions_of(code):
+    return [(r, c) for r in range(10) for c in range(10)
+            if R4_GRID[r][c] == code]
+
+
+def _label_of(rc):
+    return f"{chr(ord('A') + rc[1])}{rc[0] + 1}"
+
+
+def _memory_positions(question, style):
+    """Where the asked-about tile code sits, in one of several renderings."""
+    codes = re.findall(r'\bc(\d+)\b', question.lower())
+    if not codes:
+        return None
+    pts = _positions_of("c" + codes[0])
+    if not pts:
+        return None
+    if style == "coords":
+        return ",".join(f"[{r},{c}]" for r, c in pts)
+    if style == "coords_and":
+        return " and ".join(f"[{r},{c}]" for r, c in pts)
+    if style == "coords_nested":
+        return "[" + ",".join(f"[{r},{c}]" for r, c in pts) + "]"
+    if style == "labels":
+        return ", ".join(_label_of(p) for p in pts)
+    if style == "labels_and":
+        return " and ".join(_label_of(p) for p in pts)
+    return " ".join(_label_of(p) for p in pts)
+
+
+MEMORY_LADDER = [
+    "POS:labels",         # H3, F8
+    "POS:labels_and",     # H3 and F8
+    "POS:coords",         # [2,7],[7,5]
+    "POS:coords_and",     # [2,7] and [7,5]
+    "POS:coords_nested",  # [[2,7],[7,5]]
+    "POS:labels_space",   # H3 F8
+    "c7",                 # tile code, still untried
+    "[9,5]",              # the memento tile's own position
+]
+# The memento sits at F10, BEFORE the red door at D6, so every run through the door
+# tests one memento candidate and one door candidate for free.
 
 
 def _memory_next_from_ladder():
@@ -2137,9 +2194,14 @@ def _try_memory_v3(text):
     if not hit:
         return None
     if MEMORY_AUTO:
-        # Diagnostic: the true count is 2 and it was rejected, so walk the other
-        # counts present on this map. See the note by MEMORY_LADDER.
-        return _memory_next_from_ladder()
+        # Diagnostic: every count is dead, so walk position renderings instead.
+        pick = _memory_next_from_ladder()
+        if pick.startswith("POS:"):
+            out = _memory_positions(text, pick[4:])
+            if out:
+                return out
+            return str(total)
+        return pick
 
     label = " and ".join("c" + n for n in codes)
     if MEMORY_FORMAT == "number":
