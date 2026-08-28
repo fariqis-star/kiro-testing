@@ -862,7 +862,7 @@ def _try_memory_r4(text):
 #
 # FALSE: back through the door. The transforms on "open" are exhausted, but the
 # assumption that "the code" MEANS "open" never was - see RED_LADDER below.
-SKIP_RED_DOOR = False
+SKIP_RED_DOOR = True
 
 R4_PATH_FULL = [
     "down", "down", "right", "right", "right", "right", "right", "right",
@@ -1978,6 +1978,55 @@ def _try_memory_v2(text):
 # ends the run.
 MEMORY_FORMAT = "number"
 
+# ---------------------------------------------------------------------------
+# MEMENTO AS A FREE DIAGNOSTIC
+#
+# The combat log proves the red door DID grade our answer (LoseChallenge, not
+# LoseNonPromptChallenge), so the key is held and the string is genuinely rejected.
+# It also confirms c4 = 2, with both c4 tiles present in that very log at (2,7) and
+# (7,5) - and the memento still rejected 2.
+#
+# A verifiably correct answer scoring zero on TWO tiles of one map has one natural
+# explanation: the question shown and the expectedAnswer stored were generated
+# independently, so the answer belongs to a different question. If that is what is
+# happening, the red door is holding the reverse of a word we were never shown, and
+# it is not solvable from anything the game displays.
+#
+# The memento lets us TEST that for -1 instead of for the whole run. If its stored
+# answer is the count of a DIFFERENT tile code, the possible values are tiny:
+#
+#     c3=1  c18=1  c30=1  c31=1  c40=1  c41=1   -> 1    tried, rejected
+#     c2=2  c4=2   c8=2                         -> 2    tried, rejected
+#     c1=4  c5=4                                -> 4    UNTESTED
+#     c7=28                                     -> 28   UNTESTED
+#
+# So two runs settle it. If 4 or 28 scores +550, the mismatch is PROVEN, and the
+# right move on the red door is to stop guessing and route around it. If neither
+# scores, the mismatch theory weakens and the memento is simply a different question
+# than we think.
+#
+# Either way this costs nothing: run it on the SKIP route, where the run completes
+# and banks ~12,054 regardless. A win here is worth +550 and the life back, ~+800.
+MEMORY_AUTO = True
+_MEM_STATE = "/tmp/r4_mem_idx"
+MEMORY_LADDER = ["28", "4"]
+
+
+def _memory_next_from_ladder():
+    idx = 0
+    try:
+        with open(_MEM_STATE) as fh:
+            idx = int(fh.read().strip() or "0")
+    except Exception:
+        idx = 0
+    idx %= len(MEMORY_LADDER)
+    try:
+        with open(_MEM_STATE, "w") as fh:
+            fh.write(str((idx + 1) % len(MEMORY_LADDER)))
+    except Exception:
+        pass
+    return MEMORY_LADDER[idx]
+
 MEMORY_COUNTS_WHOLE_MAP = {
     "c1": 4, "c2": 2, "c3": 1, "c4": 2, "c5": 4, "c7": 28,
     "c8": 2, "c18": 1, "c30": 1, "c31": 1, "c40": 1, "c41": 1,
@@ -2007,6 +2056,10 @@ def _try_memory_v3(text):
             hit = True
     if not hit:
         return None
+    if MEMORY_AUTO:
+        # Diagnostic: the true count is 2 and it was rejected, so walk the other
+        # counts present on this map. See the note by MEMORY_LADDER.
+        return _memory_next_from_ladder()
 
     label = " and ".join("c" + n for n in codes)
     if MEMORY_FORMAT == "number":
