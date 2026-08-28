@@ -2223,31 +2223,36 @@ def _memory_phrasings(question, style):
     n = MEMORY_COUNTS_WHOLE_MAP.get(code)
     if n is None:
         return None
+    # Ordered to match the friend's description as literally as possible. She wrote
+    # "The answer = 2, there 2 c4 in the map" - note "IN the map", not "on the map",
+    # and no "are". Both of those are things we would have naturally written the other
+    # way, so they are exactly the kind of detail worth copying verbatim.
     variants = [
-        f"The answer = {n}",
+        f"The answer = {n}, there {n} {code} in the map",   # her phrasing, combined
+        f"The answer = {n}",                                # her phrasing, first half
+        f"there {n} {code} in the map",                     # her phrasing, second half
+        f"There are {n} {code} in the map",                 # grammatical, "in"
         f"The answer is {n}",
-        f"There are {n} {code} challenges on the map",
-        f"there are {n} {code} on the map",
+        f"There are {n} {code} challenges on the map",       # already rejected alone
         f"Count: {n}",
-        f"{n} {code}",
-        str(n),
+        str(n),                                             # already rejected alone
     ]
     if style == "shotgun":
         return ". ".join(variants)
-    idx = {"eq": 0, "is": 1, "sentence": 2, "lower": 3,
-           "count": 4, "short": 5}.get(style, 0)
+    idx = {"combined": 0, "eq": 1, "her_short": 2, "in_map": 3,
+           "is": 4, "sentence": 5, "count": 6, "short": 7}.get(style, 0)
     return variants[idx]
 
 
 MEMORY_LADDER = [
-    "PHR:shotgun",   # every phrasing in one reply - wins outright if contains_match
-    "PHR:eq",        # The answer = 2
-    "PHR:is",        # The answer is 2
-    "PHR:sentence",  # There are 2 c4 challenges on the map
-    "PHR:lower",     # there are 2 c4 on the map
-    "PHR:count",     # Count: 2
-    "POS:labels",    # H3, F8            still untried
-    "POS:coords",    # [2,7],[7,5]       still untried
+    "PHR:shotgun",    # every phrasing at once - wins outright if contains_match
+    "PHR:combined",   # The answer = 2, there 2 c4 in the map     <- her exact wording
+    "PHR:eq",         # The answer = 2
+    "PHR:her_short",  # there 2 c4 in the map
+    "PHR:in_map",     # There are 2 c4 in the map
+    "PHR:is",         # The answer is 2
+    "PHR:count",      # Count: 2
+    "POS:labels",     # H3, F8        your position idea, still untried
 ]
 # The memento sits at F10, BEFORE the red door at D6, so every run through the door
 # tests one memento candidate and one door candidate for free.
