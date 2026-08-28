@@ -862,7 +862,7 @@ def _try_memory_r4(text):
 #
 # FALSE: back through the door. The transforms on "open" are exhausted, but the
 # assumption that "the code" MEANS "open" never was - see RED_LADDER below.
-SKIP_RED_DOOR = True
+SKIP_RED_DOOR = False
 
 R4_PATH_FULL = [
     "down", "down", "right", "right", "right", "right", "right", "right",
@@ -1168,7 +1168,7 @@ RED_MODE = "reverse"
 # That is the one reproducible difference between a configuration that beat this
 # door and ours, and it costs 50 points to copy. The prompt now answers a RED key
 # with the reversed value; the door still answers 'reverse'.
-RED_AUTO = False
+RED_AUTO = True
 _RED_STATE = "/tmp/r4_red_idx"
 
 # Ordered by my estimate of probability. Everything here is untested.
@@ -1379,7 +1379,37 @@ _SEARCH_MODES = {
 # No justified candidate remains. RED_MODE stays pinned to 'reverse' because that is
 # what the door's own description asks for and what the prior-round setup scored with.
 # The ladder is OFF - guessing further without new evidence just burns runs.
-RED_LADDER = ["reverse"]
+# BACK ON THE DOOR. The memento result partially revives the bank-cross theory I
+# withdrew, so these are ordered by what the evidence now supports.
+#
+# What changed: the memento has now rejected 1, 2, 4, 28 AND [0,0]. Its question asks
+# for a count and its stored answer is provably not a count. So this map DOES contain
+# tiles whose stored answer does not match the question shown. That is the mechanism I
+# was accused of inventing, and it is now measured.
+#
+# Which matters here because our red key value, "open", IS the first entry of the
+# community bank's c40 list, and that bank's c30 answer is the reverse of that first
+# entry. If this map was built with that tooling and the answers got crossed the same
+# way the memento's did, the door holds the reverse of a DIFFERENT entry in the same
+# list - and the list has only three.
+#
+# Honest confidence: low. The green pair (fghi -> 6789) is custom-authored and appears
+# in no bank, so this map is at least partly hand-made. But 'emases' and 'ahpla' are
+# the only candidates left with ANY evidential support, and the memento finding is
+# real evidence rather than a hunch.
+_RED_MODES.update({
+    "bank_sesame": lambda v: "emases",   # reverse of sesame - same key list as ours
+    "bank_alpha": lambda v: "ahpla",     # reverse of alpha  - same key list as ours
+    "alphabetical": lambda v: "".join(sorted(v.lower())),   # enop - letters "in order"
+    "bank_unlock": lambda v: "kcolnu",   # orphaned green-door answer from the bank
+})
+
+RED_LADDER = [
+    "bank_sesame",   # emases
+    "bank_alpha",    # ahpla
+    "alphabetical",  # enop    - green says "in order"; alphabetical was never tried
+    "bank_unlock",   # kcolnu
+]
 
 
 def _red_next_from_ladder(v):
@@ -2023,11 +2053,12 @@ MEMORY_FORMAT = "number"
 MEMORY_AUTO = True
 _MEM_STATE = "/tmp/r4_mem_idx"
 MEMORY_LADDER = [
-    "[0,0]",   # "What was your starting position?"      - player is at row 0 col 0
     "[0,9]",   # "What is the position of the treasure?" - treasure is at row 0 col 9
     "c7",      # "What challenge type is at position X?" - c7 is the commonest tile
     "[9,5]",   # the memento tile's own position
 ]
+# [0,0] rejected. The memento sits at F10, BEFORE the red door at D6, so each run
+# through the door tests one memento candidate and one door candidate for free.
 
 
 def _memory_next_from_ladder():
