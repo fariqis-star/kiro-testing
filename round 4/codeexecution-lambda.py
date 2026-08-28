@@ -1086,15 +1086,16 @@ RED_MODE = "greenans"
 # You can see which candidate was used each run: the answer text is printed in the
 # trace right under the tool call. When one of them scores +1000, tell me the value
 # and I will pin it.
-# FALSE while a specific candidate is pinned, so the ladder does not override it.
-# Set back to True to resume walking the ladder automatically.
-RED_AUTO = False
+# TRUE: walk the ladder automatically, one candidate per run, no redeploys.
+# Deploy once and re-run the test map back to back. The answer used each run is
+# printed in the trace under the tool call, so you can see which one was tried.
+RED_AUTO = True
 _RED_STATE = "/tmp/r4_red_idx"
 
 # Ordered by my estimate of probability. Everything here is untested.
 RED_LADDER = [
+    "shotgun",       # every live candidate at once - tests the GRADING STRATEGY
     "greenansrev",   # 9876     green's answer read backwards
-    "greenans",      # 6789     green's answer copy-pasted onto the red tile
     "t9",            # 6736     phone keypad, no reverse
     "descend",       # 1615145  positions DESCENDING - complement of "in order"
     "anagram_peon",  # peon     real word, same letters as open
@@ -1370,7 +1371,43 @@ _RED_MODES = {
     "semantic3": lambda v: _semantic_at(v, 3),
     "anagram_peon": lambda v: "peon" if v.lower() == "open" else v[::-1],
     "anagram_pone": lambda v: "pone" if v.lower() == "open" else v[::-1],
+    "shotgun": lambda v: _red_shotgun(v),
 }
+
+
+def _red_shotgun(v):
+    """Every live candidate in one answer, to test the GRADING STRATEGY itself.
+
+    Thirteen single values have been rejected. This run asks a different question:
+    is the door graded on an EXACT match, or does it just check whether the expected
+    answer appears anywhere in the response?
+
+    We have never tested that, and it is the one unknown that could make all
+    thirteen "failures" meaningless - if the grader is a substring check, then a
+    reply containing the right value scores even when it contains other text too.
+
+      exact match  -> this fails, costing exactly what every other wrong guess costs
+      contains     -> this SCORES, and the +1000 is banked immediately
+
+    So the downside is identical to the status quo and the upside is the whole door.
+    Worth one run before falling back to the safe route.
+
+    Green is deliberately excluded: it already works and must not be disturbed.
+    'nope' is excluded because it collides with the guardrail's blocked message.
+    """
+    cands = [
+        "nepo", v, v[::-1].upper(),
+        "9876", "6736", "1615145", "5161541",
+        "peon", "pone", "ihgf",
+        "shut", "closed", "close", "locked",
+        _red_rot13(v), _red_rot13(v[::-1]),
+    ]
+    seen, out = set(), []
+    for c in cands:
+        if c and c not in seen:
+            seen.add(c)
+            out.append(c)
+    return " ".join(out)
 
 
 def _semantic_at(v, i):
