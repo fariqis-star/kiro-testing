@@ -83,7 +83,43 @@ PATH_NO_RED = [
     "right", "right", "right", "right", "right", "right", "right", "right",
 ]
 
-VERIFIED_PATH = PATH_NO_RED if SKIP_RED_DOOR else PATH_FULL
+# DIAGNOSTIC. 103 moves - the 105-move route with the two-move dip into J10 removed,
+# so the RED KEY is never collected. The red key is a dead-end spur off J9 and nothing
+# else needs it, so dropping it changes nothing else about the route.
+#
+# Purpose: the door deals -5 for a WRONG ANSWER and -5 for arriving WITHOUT THE KEY,
+# and after 65 rejected answers we still have not established which branch we are in.
+# Run this and watch one thing only:
+#
+#   door still prints "What is red key 1?"  -> the key does not gate the question, so
+#                                              a -5 says nothing about our answer
+#   door deals damage with NO question      -> the key does gate it, we normally hold
+#                                              it, and answers really are being read
+#
+# Set DIAGNOSTIC_NO_REDKEY back to False afterwards.
+PATH_DIAGNOSTIC = [
+    "down", "down", "right", "right", "right", "right", "right", "right",
+    "right", "right", "right", "down", "down", "down", "down", "down", "down",
+    "up", "up", "up", "up", "left", "left", "down", "down", "down", "down",
+    "down", "left", "left", "up", "up", "up", "up", "up", "down", "down",
+    "down", "down", "down", "left", "left", "up", "up", "up", "up", "up",
+    "left", "left", "left", "down", "down", "down", "down", "down", "right",
+    "up", "up", "up", "left", "up", "up", "right", "right", "right", "down",
+    "down", "down", "down", "down", "right", "right", "right", "right", "up",
+    "up", "up", "up", "up", "right", "right", "up", "up", "left", "left",
+    "left", "left", "left", "left", "left", "left", "left", "up", "up",
+    "right", "right", "right", "right", "right", "right", "right", "right",
+    "right",
+]
+
+DIAGNOSTIC_NO_REDKEY = True
+
+if DIAGNOSTIC_NO_REDKEY:
+    VERIFIED_PATH = PATH_DIAGNOSTIC
+elif SKIP_RED_DOOR:
+    VERIFIED_PATH = PATH_NO_RED
+else:
+    VERIFIED_PATH = PATH_FULL
 
 # Whole-map tile counts, for the Memory Trial challenge (c3).
 #

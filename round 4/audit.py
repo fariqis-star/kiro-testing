@@ -103,9 +103,19 @@ def main():
           GREEN_KEY in cells and GREEN_DOOR in cells
           and cells.index(GREEN_KEY) < cells.index(GREEN_DOOR))
 
+    diag = getattr(ce, "DIAGNOSTIC_NO_REDKEY", False)
+    check("DIAGNOSTIC_NO_REDKEY matches across both Lambdas",
+          diag == getattr(pf, "DIAGNOSTIC_NO_REDKEY", False))
+
     on_red = RED_DOOR in visited
-    check(f"red door visited matches SKIP flag (skip={ce.SKIP_RED_DOOR})",
-          on_red == (not ce.SKIP_RED_DOOR), f"visited={on_red}")
+    if diag:
+        RED_KEY = (9, 9)
+        check("DIAGNOSTIC: red key NOT collected", RED_KEY not in visited)
+        check("DIAGNOSTIC: red door still reached", on_red)
+        print("  --   diagnostic run: watch whether the door still asks its question")
+    else:
+        check(f"red door visited matches SKIP flag (skip={ce.SKIP_RED_DOOR})",
+              on_red == (not ce.SKIP_RED_DOOR), f"visited={on_red}")
 
     spikes = {p for p in visited if GRID[p[0]][p[1]] == "c8"}
     memento = sum(1 for p in visited if GRID[p[0]][p[1]] == "c3")
@@ -119,8 +129,8 @@ def main():
     print("=== PROMPT CONSISTENCY ===")
     p = open("supervisor-prompt.txt").read()
     flat = " ".join(p.split())
-    check("prompt accepts the deployed route length",
-          (("83" in flat) if ce.SKIP_RED_DOOR else ("105" in flat)))
+    want = "103" if diag else ("83" if ce.SKIP_RED_DOOR else "105")
+    check(f"prompt accepts the deployed route length ({want})", want in flat)
     check("key pickup does not ask the model to transform",
           "SPELLED BACKWARDS" not in flat,
           "model echoed 'open' when asked to reverse - never ask it to transform")

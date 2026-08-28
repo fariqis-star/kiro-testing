@@ -891,7 +891,32 @@ R4_PATH_NO_RED = [
     "right", "right", "right", "right", "right", "right", "right", "right",
 ]
 
-R4_PATH = R4_PATH_NO_RED if SKIP_RED_DOOR else R4_PATH_FULL
+# DIAGNOSTIC: 103 moves, the full route minus the two-move dip into J10, so the RED
+# KEY is never collected. Must match DIAGNOSTIC_NO_REDKEY in the Pathfinding Lambda.
+# See that file for what this test establishes.
+R4_PATH_DIAGNOSTIC = [
+    "down", "down", "right", "right", "right", "right", "right", "right",
+    "right", "right", "right", "down", "down", "down", "down", "down", "down",
+    "up", "up", "up", "up", "left", "left", "down", "down", "down", "down",
+    "down", "left", "left", "up", "up", "up", "up", "up", "down", "down",
+    "down", "down", "down", "left", "left", "up", "up", "up", "up", "up",
+    "left", "left", "left", "down", "down", "down", "down", "down", "right",
+    "up", "up", "up", "left", "up", "up", "right", "right", "right", "down",
+    "down", "down", "down", "down", "right", "right", "right", "right", "up",
+    "up", "up", "up", "up", "right", "right", "up", "up", "left", "left",
+    "left", "left", "left", "left", "left", "left", "left", "up", "up",
+    "right", "right", "right", "right", "right", "right", "right", "right",
+    "right",
+]
+
+DIAGNOSTIC_NO_REDKEY = True
+
+if DIAGNOSTIC_NO_REDKEY:
+    R4_PATH = R4_PATH_DIAGNOSTIC
+elif SKIP_RED_DOOR:
+    R4_PATH = R4_PATH_NO_RED
+else:
+    R4_PATH = R4_PATH_FULL
 
 
 def _try_path_request(text):

@@ -111,9 +111,9 @@ Three tools. Identify them by what they do, not by their exact names:
      TOOL with   code = find optimal path
    → Keep trying tools until one returns a path array. If every tool fails,
      output nothing at all rather than a guessed path.
-   → A correct result begins "down","down" and is EITHER 83 or 105 moves. Both
-     lengths are correct - 83 turns back before the red door, 105 goes through it.
-     Whichever the tool gives you is the right one.
+   → A correct result begins "down","down" and is 83, 103 or 105 moves. All three
+     lengths are correct - 83 turns back before the red door, 103 skips the red key
+     deliberately, 105 goes through the door. Whichever the tool gives you is right.
    → If it begins with "right", it is WRONG - call the other tool.
    → Never treat 83 as "too short". Do not extend the array, do not add moves to
      reach a tile you think was missed, and do not question the length.
