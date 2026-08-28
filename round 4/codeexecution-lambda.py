@@ -1264,6 +1264,76 @@ RED_LADDER = [
     "fullmsgrev",       # nepo :si 1 yeK deR
 ]
 
+# ---------------------------------------------------------------------------
+# SEARCH RESULT. solve_red2.py enumerates pipelines, keeps only those that
+# reproduce the green control (fghi -> 6789), then inserts red's "backwards"
+# modifier at every stage it could apply. Exactly SIX base pipelines survive green,
+# and they yield exactly six untested answers for open.
+#
+# The discovery is a THIRD green blind spot, after separators and compression:
+#
+#     green: "replacing letters with the numbers that represent them IN ORDER"
+#
+# "In order" can mean sorted order. fghi -> 6,7,8,9 is ALREADY sorted, so sorted and
+# as-is are the same string for green. Green cannot distinguish them - just as it
+# could not distinguish bare from separated, or plain from compressed.
+#
+# And if green means ascending, then red's "reading it backwards" is DESCENDING,
+# which is the natural English opposite of "in order":
+#
+#     open -> 15,16,5,14 -> sort descending -> 16,15,14,5
+#         bare            1615145     already rejected
+#         digital root    7,6,5,5  -> 7655      <- untested
+#         last digit      6,5,4,5  -> 6545      <- untested
+#
+# 7655 and 6545 satisfy every constraint at once: green's proven a=1 mapping, green's
+# "in order" as sorting, red's "backwards" as descending, and green's 4-character
+# output shape. Nothing tried so far has satisfied all four.
+
+
+def _positions(v):
+    return [ord(c.lower()) - 96 for c in v if c.isalpha()]
+
+
+def _dr_list(ns):
+    out = []
+    for n in ns:
+        while n > 9:
+            n = sum(int(d) for d in str(n))
+        out.append(n)
+    return out
+
+
+def _cat(ns):
+    return "".join(str(n) for n in ns)
+
+
+_SEARCH_MODES = {
+    # descending sort = "backwards" applied to green's "in order"
+    "sortdesc_dr": lambda v: _cat(_dr_list(sorted(_positions(v), reverse=True))),
+    "sortdesc_ld": lambda v: _cat([n % 10 for n in sorted(_positions(v), reverse=True)]),
+    # ascending variants, for the case where "in order" is not sorting after all
+    "sortasc_dr": lambda v: _cat(sorted(_dr_list(_positions(v)))),
+    "sortasc_ld": lambda v: _cat(sorted(n % 10 for n in _positions(v))),
+    "sortasc_bare": lambda v: _cat(sorted(_positions(v))),
+    "sortasc_bare_rev": lambda v: _cat(sorted(_positions(v)))[::-1],
+    # Compress AFTER sorting rather than before. Same two operations, opposite order,
+    # and they give different answers once the values are multi-digit - which is
+    # exactly the class of distinction green is blind to.
+    "sortthen_ld": lambda v: _cat([n % 10 for n in sorted(_positions(v))]),
+    "sortthen_dr": lambda v: _cat(_dr_list(sorted(_positions(v)))),
+    "sortdescthen_ld": lambda v: _cat([n % 10 for n in sorted(_positions(v), reverse=True)]),
+}
+RED_LADDER = [
+    "sortdesc_dr",       # 7655     descending + digital root   <- all four constraints
+    "sortdesc_ld",       # 6545     descending + last digit     <- all four constraints
+    "sortasc_dr",        # 5567
+    "sortasc_ld",        # 4556     compress, then sort
+    "sortthen_ld",       # 5456     sort, then compress
+    "sortasc_bare",      # 5141516
+    "sortasc_bare_rev",  # 6151415
+]
+
 
 def _red_next_from_ladder(v):
     """Return the next untried candidate and advance the counter.
@@ -1769,6 +1839,13 @@ def _red_answer(val, recalled=""):
         if _MEM_CACHE["count"] is not None:
             return _MEM_CACHE["count"]
     return _door_red_v2(val)
+
+
+# Registered here rather than at the definition site, because _SEARCH_MODES is
+# declared alongside RED_LADDER near the top of the file, which runs before this dict
+# exists. Doing the update there raised NameError and would have taken the whole
+# Lambda down on the first call.
+_RED_MODES.update(_SEARCH_MODES)
 
 
 def _door_red_v2(v):
