@@ -860,10 +860,8 @@ def _try_memory_r4(text):
 #   skip the door : ~12,040   (9,350 tiles + 750 life + 1,000 treasure + ~940 token)
 #   die on it     :   8,593
 #
-# TRUE: skip the door. 'nepo' has now been cleanly tested THREE times on the Round 4
-# map and rejected every time, so the reverse rule - correct on the Round 1/2 map -
-# does not hold here. ~31 candidates eliminated. Verified 83-move route, ~12,040.
-SKIP_RED_DOOR = True
+# FALSE: hunting the door again. Flip BOTH Lambdas back to True to bank ~12,054.
+SKIP_RED_DOOR = False
 
 R4_PATH_FULL = [
     "down", "down", "right", "right", "right", "right", "right", "right",
@@ -1144,7 +1142,7 @@ RED_MODE = "reverse"
 # That is the one reproducible difference between a configuration that beat this
 # door and ours, and it costs 50 points to copy. The prompt now answers a RED key
 # with the reversed value; the door still answers 'reverse'.
-RED_AUTO = False
+RED_AUTO = True
 _RED_STATE = "/tmp/r4_red_idx"
 
 # Ordered by my estimate of probability. Everything here is untested.
@@ -1173,15 +1171,29 @@ _RED_STATE = "/tmp/r4_red_idx"
 # because 6789 has no letters in it. If the stored answer is "Nepo" or "NEPO" and
 # the grader is case-sensitive, every lowercase attempt we have made was wrong for
 # a reason that has nothing to do with the transform.
+# NONE of these has ever been run. The previous ladder was replaced by RED_AUTO=False
+# in commit 47aba15 before it got past its first entry, so all eight survived.
+#
+# The theory driving the order: 'reverse' is almost certainly the right RULE. The old
+# #1 setup used it on key "open" and collected +1000, and it is what this door's own
+# description asks for. What we have never varied is the SURFACE FORM of nepo - its
+# case, its punctuation, its spelling. Green cannot constrain any of that, because
+# 6789 has no letters, no case and no awkward spelling to get wrong.
+#
+# And 'nepo' is a nonsense word typed by hand into a form field. That is precisely
+# where case slips, stray quotes and letter transpositions come from.
 RED_LADDER = [
-    "upper",          # NEPO       never actually reached
-    "titlecase",      # Nepo       sentence-case, the way a human types an answer
-    "atbashnumrev",   # 31221121   a=26 mapping, digit string reversed
-    "anagram_pone",   # pone       never actually reached
+    "upper",          # NEPO                 case - never probed even once
+    "titlecase",      # Nepo                 sentence-case, how a human types
+    "typo_swap",      # neop                 letter transposition
+    "quoted",         # "nepo"               author typed the quotes into the field
+    "dotted",         # nepo.                trailing full stop
+    "atbashnumrev",   # 31221121             a=26 mapping, digits reversed
+    "anagram_pone",   # pone
     "sentence",       # Red key 1 is nepo
-    "keynum",         # 1          "the code" = the key NUMBER, reversed
     "prefixed",       # red nepo
-    "fullmsgrev",     # nepo :si 1 yeK deR   the whole key line, backwards
+    "keynum",         # 1                    "the code" = the key NUMBER
+    "fullmsgrev",     # nepo :si 1 yeK deR   whole key line backwards
 ]
 
 
@@ -1208,8 +1220,12 @@ def _red_next_from_ladder(v):
         idx = None
 
     if idx is None:
-        # Cold container: pick by clock so we do not repeat candidate 0.
-        idx = int(time.time() // 90) % len(RED_LADDER)
+        # Cold container: start at the TOP of the ladder, not at a clock position.
+        # The list is ordered by probability, so if the container keeps recycling we
+        # want it retesting the most likely candidate rather than scattering across
+        # the weak tail. Watch the trace: if you see the same answer twice in a row,
+        # the container is cold every run and the remaining ones need pinning by hand.
+        idx = 0
 
     idx %= len(RED_LADDER)
     mode = RED_LADDER[idx]
@@ -1482,7 +1498,17 @@ _RED_MODES = {
     "titlecase": lambda v: v[::-1].capitalize(),
     "prefixed": lambda v: f"red {v[::-1]}",
     "fullmsgrev": lambda v: f"Red Key 1 is: {v}"[::-1],
+    # Transcription slips. The answer was typed by a human into a form field, and
+    # 'nepo' is an awkward non-word to type - these are the ways it goes wrong.
+    "typo_swap": lambda v: _swap_last_two(v[::-1]),      # nepo -> neop
+    "quoted": lambda v: '"' + v[::-1] + '"',             # "nepo" with the quotes
+    "dotted": lambda v: v[::-1] + ".",                   # nepo.
 }
+
+
+def _swap_last_two(s):
+    """neop from nepo - the commonest kind of typing slip on a nonsense word."""
+    return s[:-2] + s[-1] + s[-2] if len(s) >= 2 else s
 
 
 def _pos_list(v):
