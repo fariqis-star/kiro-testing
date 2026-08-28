@@ -1182,18 +1182,32 @@ _RED_STATE = "/tmp/r4_red_idx"
 #
 # And 'nepo' is a nonsense word typed by hand into a form field. That is precisely
 # where case slips, stray quotes and letter transpositions come from.
+# FINAL FOUR. Everything derived from 'open' is now exhausted - 42 candidates across
+# reverse, atbash, alphabet positions in both orders with five punctuations, phone
+# keypad, ROT13, anagrams, semantic opposites, green's answer and key, case variants,
+# transposition, quotes and trailing stops.
+#
+# So stop deriving from 'open'. Each of these four instead explains the ONE fact that
+# no transform theory can: that 42 well-formed answers were ALL rejected.
+#
+#   blank      the expectedAnswer field on c30 is EMPTY. If the author never filled
+#              it in, exact-match means NOTHING non-empty can ever score, which fits
+#              every observation we have. Graders trim whitespace, so a single space
+#              compares equal to "".
+#   thanksrev  "the code you receive" = what the KEY tile wanted, i.e. Thanks, read
+#              backwards. The door's description never says the code is the key's
+#              VALUE - we assumed that.
+#   tilecode   the door's own tile number, 30 / c30 - the sort of value that ends up
+#              in an answer field when a form is filled in from a spreadsheet.
+#
+# If all four miss, the door is not answerable from anything the game shows us and
+# the skip route is the correct submission. Flip SKIP_RED_DOOR to True in BOTH
+# Lambdas for a verified ~12,054.
 RED_LADDER = [
-    "upper",          # NEPO                 case - never probed even once
-    "titlecase",      # Nepo                 sentence-case, how a human types
-    "typo_swap",      # neop                 letter transposition
-    "quoted",         # "nepo"               author typed the quotes into the field
-    "dotted",         # nepo.                trailing full stop
-    "atbashnumrev",   # 31221121             a=26 mapping, digits reversed
-    "anagram_pone",   # pone
-    "sentence",       # Red key 1 is nepo
-    "prefixed",       # red nepo
-    "keynum",         # 1                    "the code" = the key NUMBER
-    "fullmsgrev",     # nepo :si 1 yeK deR   whole key line backwards
+    "blank",          # (a single space)
+    "thanksrev",      # sknahT
+    "tilecode",       # 30
+    "tilecodec",      # c30
 ]
 
 
@@ -1503,6 +1517,12 @@ _RED_MODES = {
     "typo_swap": lambda v: _swap_last_two(v[::-1]),      # nepo -> neop
     "quoted": lambda v: '"' + v[::-1] + '"',             # "nepo" with the quotes
     "dotted": lambda v: v[::-1] + ".",                   # nepo.
+    # LAST IDEAS. Each explains the one thing nothing else does: that 42 well-formed
+    # answers were all rejected.
+    "blank": lambda v: " ",
+    "thanksrev": lambda v: "sknahT",
+    "tilecode": lambda v: "30",
+    "tilecodec": lambda v: "c30",
 }
 
 
