@@ -860,9 +860,10 @@ def _try_memory_r4(text):
 #   skip the door : ~12,040   (9,350 tiles + 750 life + 1,000 treasure + ~940 token)
 #   die on it     :   8,593
 #
-# Currently FALSE: back on the 105-move route to take another shot at the door.
-# Flip to True to ship the safe 83-move route again (verified ~12,040).
-SKIP_RED_DOOR = False
+# TRUE: skip the door. 'nepo' has now been cleanly tested THREE times on the Round 4
+# map and rejected every time, so the reverse rule - correct on the Round 1/2 map -
+# does not hold here. ~31 candidates eliminated. Verified 83-move route, ~12,040.
+SKIP_RED_DOOR = True
 
 R4_PATH_FULL = [
     "down", "down", "right", "right", "right", "right", "right", "right",

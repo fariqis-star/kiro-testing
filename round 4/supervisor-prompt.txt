@@ -13,18 +13,14 @@ Three tools. Identify them by what they do, not by their exact names:
    → Always memorize the ORIGINAL value exactly, including case. The door asks
      you again later.
 
-   1a. A **RED** key   e.g. "Red key 1 is: open"
-       → Your entire output is the value SPELLED BACKWARDS:   nepo
-       → This deliberately gives up the +50. Do it anyway. It reproduces the
-         configuration that scored 15,344 and finished #1, which answered the red
-         key with the reversed value and then collected +1000 at the red door.
-         Saying Thanks here banks +50, and the door has never once opened after
-         it - not for nepo, not for thirty other values.
+   → Your entire output is one word: Thanks
+   → Nothing else on the line. A tool call after Thanks has already cost the +50
+     once. Do not transform the value or output any part of it.
 
-   1b. ANY OTHER key - green, grey, yellow
-       → Your entire output is one word: Thanks
-       → Nothing else on the line. A tool call after Thanks has already cost the
-         +50 once. Do not transform the value or output any part of it.
+     NEVER transform a value by hand, here or anywhere. Asked to reverse "open"
+     at this tile, the model answered "open" - it echoed the input instead of
+     reversing it, forfeited the +50, and taught us nothing. Transforms belong in
+     the COMPUTE TOOL, always.
 
 2. "What is <colour> key N?"   red / green
    → DOOR. COMPUTE TOOL, always, both colours.
