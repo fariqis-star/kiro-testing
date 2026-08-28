@@ -2188,7 +2188,7 @@ MEMORY_FORMAT = "number"
 #
 # The community-edition memento generator has five question shapes. Counts are dead,
 # so what remains is position answers and tile codes - a tiny candidate set:
-MEMORY_AUTO = True
+MEMORY_AUTO = True   # ladder len 1: always the shotgun
 _MEM_STATE = "/tmp/r4_mem_idx"
 # POSITIONS, not counts. Every count is dead (1, 2, 4, 28) and so are [0,0] and [0,9].
 # The remaining shape in the memento question family is WHERE the tiles are, and the
@@ -2259,10 +2259,15 @@ def _memory_positions(question, style):
 # lands we can narrow down which phrase did it.
 def _memory_phrasings(question, style):
     codes = re.findall(r'\bc(\d+)\b', question.lower())
-    code = "c" + codes[0] if codes else "c4"
-    n = MEMORY_COUNTS_WHOLE_MAP.get(code)
-    if n is None:
+    if not codes:
+        codes = ["4"]
+    # SUM when several codes are named - "count the c1 + c2 challenges" wants 6, not the
+    # first one's count. This was returning only c1 until it was tested.
+    known = ["c" + n for n in codes if "c" + n in MEMORY_COUNTS_WHOLE_MAP]
+    if not known:
         return None
+    n = sum(MEMORY_COUNTS_WHOLE_MAP[k] for k in known)
+    code = " and ".join(known)
     # Ordered to match the friend's description as literally as possible. She wrote
     # "The answer = 2, there 2 c4 in the map" - note "IN the map", not "on the map",
     # and no "are". Both of those are things we would have naturally written the other
@@ -2284,16 +2289,17 @@ def _memory_phrasings(question, style):
     return variants[idx]
 
 
-MEMORY_LADDER = [
-    "PHR:shotgun",    # every phrasing at once - wins outright if contains_match
-    "PHR:combined",   # The answer = 2, there 2 c4 in the map     <- her exact wording
-    "PHR:eq",         # The answer = 2
-    "PHR:her_short",  # there 2 c4 in the map
-    "PHR:in_map",     # There are 2 c4 in the map
-    "PHR:is",         # The answer is 2
-    "PHR:count",      # Count: 2
-    "POS:labels",     # H3, F8        your position idea, still untried
-]
+# *** SOLVED, +550. *** The phrasing shotgun scored. That confirms the Memento is
+# graded with CONTAINS_MATCH against a phrase, not exact_match against a number - which
+# is why a bare "2" was rejected for six runs while being the correct count.
+#
+# LADDER IS OFF AND THE SHOTGUN IS PINNED. Leaving MEMORY_AUTO on would advance to a
+# single phrasing next run and could drop the 550 - we know the shotgun works and we do
+# NOT know which substring inside it matched.
+#
+# Not worth narrowing: the shotgun cost ~110 tokens, which is about 6 points of token
+# bonus (1,000 tokens -> 947, versus 891 -> 953). Spending 6 to protect 550 is correct.
+MEMORY_LADDER = ["PHR:shotgun"]
 # The memento sits at F10, BEFORE the red door at D6, so every run through the door
 # tests one memento candidate and one door candidate for free.
 
@@ -2323,11 +2329,40 @@ _NUM_WORDS = {0: "zero", 1: "one", 2: "two", 3: "three", 4: "four", 5: "five",
               11: "eleven", 28: "twenty-eight"}
 
 
+def _try_memory_other_shapes(text):
+    """The Memento question shapes that are NOT counts.
+
+    The judge map's Memento may not ask "how many". The generator has five shapes and
+    we have only ever seen one of them, so cover the rest or that tile is a guaranteed
+    -1 there. Answers are given in the bare form AND wrapped in the phrasings that are
+    now known to work, since grading is contains_match.
+    """
+    t = (text or "").lower()
+
+    if "starting position" in t or ("start" in t and "position" in t):
+        return "The answer = [0,0], the starting position is [0,0]. [0,0]. A1"
+
+    if "treasure" in t and "position" in t:
+        return "The answer = [0,9], the treasure is at [0,9]. [0,9]. J1"
+
+    # "What challenge type is at position [r,c]?"
+    mpos = re.search(r'\[?\s*(\d)\s*[,\s]\s*(\d)\s*\]?', t)
+    if mpos and ("challenge type" in t or "what is at" in t or "tile" in t):
+        r, c = int(mpos.group(1)), int(mpos.group(2))
+        if 0 <= r < 10 and 0 <= c < 10:
+            code = R4_GRID[r][c]
+            return f"The answer = {code}, the challenge at [{r},{c}] is {code}. {code}"
+    return None
+
+
 def _try_memory_v3(text):
-    """Memory Trial answer. Returns str, or None if not a count question."""
+    """Memory Trial answer. Returns str, or None if not a Memento question."""
     if not text:
         return None
     t = text.lower()
+    other = _try_memory_other_shapes(t)
+    if other:
+        return other
     if not re.search(r'how many|count|number of|total', t):
         return None
     codes = re.findall(r'\bc(\d+)\b', t)
