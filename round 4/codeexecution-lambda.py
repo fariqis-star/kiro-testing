@@ -1086,6 +1086,39 @@ RED_MODE = "greenans"
 # You can see which candidate was used each run: the answer text is printed in the
 # trace right under the tool call. When one of them scores +1000, tell me the value
 # and I will pin it.
+#
+# ---------------------------------------------------------------------------
+# WHY 'reverse' -> nepo IS BACK AT THE TOP OF THE LADDER
+#
+# Two new facts, and together they overturn the whole elimination list.
+#
+# 1. ANOTHER TEAM PASSED THIS DOOR FOR 17k. So the answer is derivable from what
+#    the game shows you. The "challenge is broken / independently authored"
+#    theory is dead, and so is the argument for permanently routing around it.
+#
+# 2. THE SHOTGUN PROVED THE GRADER IS AN EXACT MATCH. A reply containing nepo as
+#    its very first token scored -5, so the door is not a substring check. That
+#    matters more than it looks: it means the shotgun did NOT individually clear
+#    the twelve other values inside it. Only the concatenated string was tested.
+#    9876, 6736, 1615145, 5161541, peon, pone, ihgf, closed, close, locked, bcra
+#    and arcb are all still individually untested, which is why the ladder below
+#    is still worth walking.
+#
+# And the thing I should have caught earlier: 'nepo' has never had a clean test.
+#   - run 2 emitted nepo from a STALE Lambda. DEPLOY-CHECKLIST.md records that the
+#     deployment was still the old code, which is exactly why it returned nepo when
+#     RED_MODE had already been switched to atbash. That run proves nothing about
+#     the answer, only about the deployment.
+#   - commit 7b58fff set RED_MODE = "reverse" specifically as a clean retest, and
+#     commit e6fd696 - the very next commit - replaced it with t9rev before it was
+#     ever run.
+#   - commit d59112d set "reverse" again, but only as the cold-container fallback
+#     while SWAP_C3_RED was on, so that run answered the door with the count '2'.
+#
+# So the one value the description explicitly demands, on a map another team has
+# already beaten, has never been submitted from a known-good build. That is the
+# most likely explanation for all of this: we crossed off the right answer on the
+# strength of a broken run, then spent thirteen attempts inventing replacements.
 # TRUE: walk the ladder automatically, one candidate per run, no redeploys.
 # Deploy once and re-run the test map back to back. The answer used each run is
 # printed in the trace under the tool call, so you can see which one was tried.
@@ -1094,7 +1127,9 @@ _RED_STATE = "/tmp/r4_red_idx"
 
 # Ordered by my estimate of probability. Everything here is untested.
 RED_LADDER = [
-    "shotgun",       # every live candidate at once - tests the GRADING STRATEGY
+    # FIRST, because it has never actually been tested on a good deployment and it
+    # is what the door's own description asks for. See the note below.
+    "reverse",       # nepo
     "greenansrev",   # 9876     green's answer read backwards
     "t9",            # 6736     phone keypad, no reverse
     "descend",       # 1615145  positions DESCENDING - complement of "in order"
