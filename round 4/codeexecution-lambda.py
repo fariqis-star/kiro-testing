@@ -2007,9 +2007,13 @@ MEMORY_FORMAT = "number"
 #
 # Either way this costs nothing: run it on the SKIP route, where the run completes
 # and banks ~12,054 regardless. A win here is worth +550 and the life back, ~+800.
+# 28 was rejected (c7's count). Counts 1 and 2 were already rejected. That leaves
+# exactly ONE untried count on this map: 4, which is the count of c1 and of c5.
+# If 4 also fails, then the Memento's stored answer is not any tile count on this map,
+# and the question/answer mismatch theory is the only explanation left standing.
 MEMORY_AUTO = True
 _MEM_STATE = "/tmp/r4_mem_idx"
-MEMORY_LADDER = ["28", "4"]
+MEMORY_LADDER = ["4"]
 
 
 def _memory_next_from_ladder():
