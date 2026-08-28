@@ -1031,7 +1031,11 @@ def _try_path_request(text):
 #
 # The door cannot be skipped - it is the only way into the west region and the
 # user has confirmed avoiding it is not an option. It has to be solved.
-RED_MODE = "nope"
+# WITHDRAWN before testing: 'nope' collides with the GUARDRAIL's configured blocked
+# message, which is also "Nope". Outputting it at the red door would be
+# indistinguishable from a guardrail block, so the result could not be interpreted
+# even if it scored. Never test this one.
+RED_MODE = "semantic"
 
 
 def _red_reverse(v):
@@ -1163,10 +1167,41 @@ def _red_greenkeyrev(v):
     return "ihgf"
 
 
+# Which semantic opposite to try. 'shut' is first because it is the only one that
+# keeps green's proven shape: 4 characters in, 4 characters out.
+#   0 shut     4 chars, matches green's shape          <- start here
+#   1 closed   6 chars
+#   2 close    5 chars
+#   3 locked   6 chars, "backwards" as door STATE rather than antonym
+SEMANTIC_PICK = 0
+_SEMANTIC = {
+    "open": ["shut", "closed", "close", "locked"],
+    "close": ["open", "open", "open", "unlocked"],
+    "closed": ["open", "open", "open", "unlocked"],
+    "locked": ["unlocked", "unlocked", "open", "open"],
+    "unlocked": ["locked", "locked", "shut", "closed"],
+}
+
+
 def _red_semantic(v):
-    """'Backwards' applied to MEANING rather than characters.  open -> shut"""
-    return {"open": "shut", "close": "open", "closed": "open",
-            "locked": "unlocked", "unlocked": "locked"}.get(v.lower(), v[::-1])
+    """'Backwards' applied to MEANING rather than to characters.  open -> shut
+
+    Every one of the eleven dead candidates treated the key as a string to be
+    permuted or re-encoded. This branch reads the instruction differently: the key
+    value is an ENGLISH WORD with an opposite, and a door that is 'open' read
+    backwards is a door that is 'shut'.
+
+    Two things make this more than a pun. First, 'nepo' is provably what a literal
+    character reverse produces and it was rejected, so the literal reading is dead
+    by measurement. Second, the author chose 'open' deliberately - it is a door
+    word, not a random code like green's 'fghi', and reversing it yields a
+    non-word. A hand-authored puzzle whose key is a meaningful word, on a tile
+    whose whole job is opening, is exactly where a semantic answer would live.
+    """
+    opts = _SEMANTIC.get(v.lower())
+    if opts:
+        return opts[min(SEMANTIC_PICK, len(opts) - 1)]
+    return v[::-1]
 
 
 def _red_descend(v):
