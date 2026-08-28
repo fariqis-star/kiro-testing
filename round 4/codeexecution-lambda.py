@@ -1397,24 +1397,50 @@ _SEARCH_MODES = {
 # in no bank, so this map is at least partly hand-made. But 'emases' and 'ahpla' are
 # the only candidates left with ANY evidential support, and the memento finding is
 # real evidence rather than a hunch.
-# Registered into _SEARCH_MODES, NOT _RED_MODES. _RED_MODES is declared much further
-# down the file, so touching it here raises NameError on import and takes the whole
-# Lambda offline - which it did once already. _SEARCH_MODES exists by this point and is
-# merged into _RED_MODES at the bottom.
-_SEARCH_MODES.update({
-    "bank_sesame": lambda v: "emases",   # reverse of sesame - same key list as ours
-    "bank_alpha": lambda v: "ahpla",     # reverse of alpha  - same key list as ours
-    "alphabetical": lambda v: "".join(sorted(v.lower())),   # enop - letters "in order"
-    "bank_unlock": lambda v: "kcolnu",   # orphaned green-door answer from the bank
-})
+# ===========================================================================
+# EXHAUSTIVE PERMUTATION SWEEP over the ACTUAL key letters.
+#
+# WITHDRAWN, again and for good: emases / ahpla / kcolnu. Those are reverses of
+# 'sesame', 'alpha' and 'unlock' - words from the community-edition bank that this map
+# demonstrably does not use, since our green pair (fghi -> 6789) appears in no bank
+# list and is not a reverse. I disproved that bank once, then revived it because the
+# memento mismatch made it feel plausible. Feeling plausible is not evidence. Our key
+# is "open"; guesses must be derived from "open".
+#
+# ALSO CORRECTED: I kept pricing each attempt at -3,361 points. That is only true on
+# the JUDGE run. On the TEST map a failed door attempt costs about two minutes and
+# nothing else. So exhaustive search is the correct tool and I should have reached for
+# it long ago instead of hand-picking candidates.
+#
+# There are exactly 24 arrangements of o/p/e/n. Five are already dead (open, nepo,
+# peon, pone, neop). 'nope' is excluded because it collides with the guardrail's
+# blocked message and its result would be uninterpretable. That leaves 18 runs, about
+# 40 minutes, and the set is EXHAUSTIVE for any rule that rearranges the key letters -
+# reverse, sort, rotate, swap, transposition, or a hand-typing slip.
+#
+# If all 18 fail, we will have PROVEN the answer is not a rearrangement of the key,
+# which is a real result rather than another dead guess.
+_PERM_TESTED = {"open", "nepo", "peon", "pone", "neop", "nope"}
+
+
+def _red_perm(v, idx):
+    from itertools import permutations
+    base = v.lower()
+    opts = []
+    seen = set()
+    for p in permutations(base):
+        s = "".join(p)
+        if s not in seen and s not in _PERM_TESTED:
+            seen.add(s)
+            opts.append(s)
+    return opts[idx % len(opts)] if opts else v[::-1]
+
+
+_SEARCH_MODES.update({f"perm{i:02d}": (lambda i: (lambda v: _red_perm(v, i)))(i)
+                      for i in range(24)})
 
 # This shadows the earlier RED_LADDER above; the later binding is the live one.
-RED_LADDER = [
-    "bank_sesame",   # emases
-    "bank_alpha",    # ahpla
-    "alphabetical",  # enop    - green says "in order"; alphabetical was never tried
-    "bank_unlock",   # kcolnu
-]
+RED_LADDER = [f"perm{i:02d}" for i in range(18)]
 
 
 def _red_next_from_ladder(v):
