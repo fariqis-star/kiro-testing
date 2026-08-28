@@ -1397,13 +1397,18 @@ _SEARCH_MODES = {
 # in no bank, so this map is at least partly hand-made. But 'emases' and 'ahpla' are
 # the only candidates left with ANY evidential support, and the memento finding is
 # real evidence rather than a hunch.
-_RED_MODES.update({
+# Registered into _SEARCH_MODES, NOT _RED_MODES. _RED_MODES is declared much further
+# down the file, so touching it here raises NameError on import and takes the whole
+# Lambda offline - which it did once already. _SEARCH_MODES exists by this point and is
+# merged into _RED_MODES at the bottom.
+_SEARCH_MODES.update({
     "bank_sesame": lambda v: "emases",   # reverse of sesame - same key list as ours
     "bank_alpha": lambda v: "ahpla",     # reverse of alpha  - same key list as ours
     "alphabetical": lambda v: "".join(sorted(v.lower())),   # enop - letters "in order"
     "bank_unlock": lambda v: "kcolnu",   # orphaned green-door answer from the bank
 })
 
+# This shadows the earlier RED_LADDER above; the later binding is the live one.
 RED_LADDER = [
     "bank_sesame",   # emases
     "bank_alpha",    # ahpla
