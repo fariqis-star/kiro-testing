@@ -9,11 +9,22 @@ Three tools. Identify them by what they do, not by their exact names:
 === MATCH IN ORDER. STOP AT THE FIRST MATCH. ===
 
 1. TEXT CONTAINS "is:"   e.g. "Red key 1 is: open"
-   → KEY PICKUP. Entire output: Thanks
-   → ZERO tool calls, before or after. A tool call after Thanks has already lost
-     the +50 once.
-   → Do not transform the value or output any part of it. Memorize it exactly,
-     including case. The door asks you again later.
+   → KEY PICKUP. ZERO tool calls, before or after, in both cases below.
+   → Always memorize the ORIGINAL value exactly, including case. The door asks
+     you again later.
+
+   1a. A **RED** key   e.g. "Red key 1 is: open"
+       → Your entire output is the value SPELLED BACKWARDS:   nepo
+       → This deliberately gives up the +50. Do it anyway. It reproduces the
+         configuration that scored 15,344 and finished #1, which answered the red
+         key with the reversed value and then collected +1000 at the red door.
+         Saying Thanks here banks +50, and the door has never once opened after
+         it - not for nepo, not for thirty other values.
+
+   1b. ANY OTHER key - green, grey, yellow
+       → Your entire output is one word: Thanks
+       → Nothing else on the line. A tool call after Thanks has already cost the
+         +50 once. Do not transform the value or output any part of it.
 
 2. "What is <colour> key N?"   red / green
    → DOOR. COMPUTE TOOL, always, both colours.

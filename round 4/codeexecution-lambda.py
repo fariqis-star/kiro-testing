@@ -1054,7 +1054,8 @@ def _try_path_request(text):
 # message, which is also "Nope". Outputting it at the red door would be
 # indistinguishable from a guardrail block, so the result could not be interpreted
 # even if it scored. Never test this one.
-# PINNED: 'greenans' -> 6789, the GREEN door's answer used at the RED door.
+# PINNED: 'reverse' -> nepo, which the #1 setup proved correct for key "open".
+# Was: 'greenans' -> 6789, the GREEN door's answer used at the RED door.
 #
 # The case for it is an authoring error rather than a cipher. c30 and c31 are
 # adjacent tile codes for the same mechanic, almost certainly created one after the
@@ -1069,7 +1070,7 @@ def _try_path_request(text):
 # tile it was copied from explains that exactly.
 #
 # If this scores, the red door has nothing to do with 'open' at all.
-RED_MODE = "greenans"
+RED_MODE = "reverse"
 
 # ---------------------------------------------------------------------------
 # AUTO-LADDER. Deploy ONCE, then just re-run the test map repeatedly.
@@ -1120,10 +1121,29 @@ RED_MODE = "greenans"
 # already beaten, has never been submitted from a known-good build. That is the
 # most likely explanation for all of this: we crossed off the right answer on the
 # strength of a broken run, then spent thirteen attempts inventing replacements.
-# TRUE: walk the ladder automatically, one candidate per run, no redeploys.
-# Deploy once and re-run the test map back to back. The answer used each run is
-# printed in the trace under the tool call, so you can see which one was tried.
-RED_AUTO = True
+# FALSE: the ladder is off. We are no longer guessing.
+#
+# The Round 1/2 setup that scored 15,344 and finished #1 is in the repo, and its
+# supervisor prompt says, verbatim:
+#
+#     c30 -> Reverse the key code. "open" -> "nepo".
+#
+# Same key value, same tile code, and it paid +1000. So the transform was never the
+# problem - 'reverse' is correct and always was.
+#
+# What that setup ALSO did, from its own README:
+#
+#     Red Key: Model says "nepo" (-0) which allows "nepo" at Red Door (+1,000)
+#
+# It answered the RED KEY tile with "nepo" instead of "Thanks", accepting -0 there.
+# Its notes credit that for the door opening. We have always said "Thanks" at the
+# key, banked the +50, and then had the door reject every single value including
+# nepo itself - twice.
+#
+# That is the one reproducible difference between a configuration that beat this
+# door and ours, and it costs 50 points to copy. The prompt now answers a RED key
+# with the reversed value; the door still answers 'reverse'.
+RED_AUTO = False
 _RED_STATE = "/tmp/r4_red_idx"
 
 # Ordered by my estimate of probability. Everything here is untested.
