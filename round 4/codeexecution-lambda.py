@@ -1126,23 +1126,32 @@ RED_AUTO = True
 _RED_STATE = "/tmp/r4_red_idx"
 
 # Ordered by my estimate of probability. Everything here is untested.
+# SEPARATORS FIRST. This is a branch I wrongly eliminated without ever testing it.
+#
+# I argued that green scoring bare "6789" proved the author uses no separators. That
+# was a reasoning error. fghi maps to 6, 7, 8, 9 - every value a SINGLE digit - so
+# the bare form and the separated form are the same string for green. Green cannot
+# distinguish the two rules and never could.
+#
+# Red is the only tile that can, because open maps to 15, 16, 5, 14. And the bare
+# answer we submitted, 1451615, is genuinely ambiguous: it parses as 14-5-16-15, or
+# 1-45-16-15, or 14-51-61-5. An author who wrote an ambiguous answer would separate
+# it. So every separated form is live and untested.
+#
+# Ordered by probability, and kept SHORT on purpose: the ladder restarted last time
+# because the Lambda container went cold, so the top entries are the ones most worth
+# retesting if the counter resets.
 RED_LADDER = [
-    # FIRST, because it has never actually been tested on a good deployment and it
-    # is what the door's own description asks for. See the note below.
-    "reverse",       # nepo
-    "greenansrev",   # 9876     green's answer read backwards
-    "t9",            # 6736     phone keypad, no reverse
-    "descend",       # 1615145  positions DESCENDING - complement of "in order"
-    "anagram_peon",  # peon     real word, same letters as open
-    "greenkeyrev",   # ihgf     the GREEN key reversed
-    "semantic1",     # closed
-    "semantic2",     # close
-    "semantic3",     # locked
-    "rot13",         # bcra
-    "rot13rev",      # arcb
-    "digitrev",      # 5161541  each position with its digits reversed
-    "anagram_pone",  # pone     real word, same letters
-    "upper",         # NEPO     case variant, untestable from green
+    "sep_rev_space",  # 14 5 16 15    reversed, spaces
+    "sep_rev_dash",   # 14-5-16-15    reversed, dashes
+    "sep_fwd_space",  # 15 16 5 14    forward, spaces
+    "sep_fwd_dash",   # 15-16-5-14    forward, dashes
+    "sep_rev_comma",  # 14,5,16,15    reversed, commas
+    "atbashnumrev",   # 31221121      a=26 mapping, digit string reversed
+    "anagram_pone",   # pone          never reached - ladder reset before it
+    "upper",          # NEPO          never reached - ladder reset before it
+    "sentence",       # Red key 1 is nepo
+    "keynum",         # 1             "the code" = the key NUMBER, reversed = 1
 ]
 
 
@@ -1407,7 +1416,26 @@ _RED_MODES = {
     "anagram_peon": lambda v: "peon" if v.lower() == "open" else v[::-1],
     "anagram_pone": lambda v: "pone" if v.lower() == "open" else v[::-1],
     "shotgun": lambda v: _red_shotgun(v),
+    # Separator variants. See the note on RED_LADDER: green could never reveal
+    # these, because 6 7 8 9 are all single digits and bare/separated are the same
+    # string. open gives 15 and 16, so red is the only place a separator can show.
+    "sep_rev_space": lambda v: " ".join(_pos_list(v)[::-1]),
+    "sep_rev_dash": lambda v: "-".join(_pos_list(v)[::-1]),
+    "sep_rev_comma": lambda v: ",".join(_pos_list(v)[::-1]),
+    "sep_fwd_space": lambda v: " ".join(_pos_list(v)),
+    "sep_fwd_dash": lambda v: "-".join(_pos_list(v)),
+    # Atbash positions, then the digit string reversed. The only ordering of the
+    # a=26 mapping that has not been tried: revnum gave 12112213 on run 5.
+    "atbashnumrev": lambda v: "".join(str(27 - (ord(c.lower()) - 96))
+                                      for c in v if c.isalpha())[::-1],
+    "keynum": lambda v: "1",
+    "sentence": lambda v: f"Red key 1 is {v[::-1]}",
 }
+
+
+def _pos_list(v):
+    """['15','16','5','14'] for 'open' - alphabet positions, unpadded."""
+    return [str(ord(c.lower()) - 96) for c in v if c.isalpha()]
 
 
 def _red_shotgun(v):
