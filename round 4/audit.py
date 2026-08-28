@@ -69,9 +69,18 @@ def main():
     check("maths 100! mod 1e9+7", run("100! mod 1e9+7") == "437918130")
     check("maths fib 3000 last 10", run("fib 3000 last 10") == "6709796000")
     m = run("How many c4 challenges are on the map?")
-    if getattr(ce, "MEMORY_AUTO", False):
-        print(f"  --    memento is in DIAGNOSTIC mode, answering {m!r} "
-              f"(all tile counts already rejected)")
+    if getattr(ce, "MEMORY_FORMAT", "") == "shotgun":
+        # SOLVED at +550: contains_match against a phrase, so the reply is several
+        # phrasings in one string. It must be identical on every call - a stateful
+        # ladder already broke this tile once by advancing to a single phrasing.
+        again = [run("How many c4 challenges are on the map?") for _ in range(3)]
+        check("memento is the phrase shotgun (proven +550)",
+              "The answer =" in m and m.count("=") + m.count("are") > 1, m[:50])
+        check("memento answer is STATELESS - identical on repeated calls",
+              all(x == m for x in again))
+        check("memento ladder is OFF", not getattr(ce, "MEMORY_AUTO", False))
+    elif getattr(ce, "MEMORY_AUTO", False):
+        print(f"  --    memento is in DIAGNOSTIC mode, answering {m!r}")
     else:
         check("memory returns a bare number", m.isdigit(), repr(m))
     r = run("red open")
@@ -138,7 +147,7 @@ def main():
     check("key pickup does not ask the model to transform",
           "SPELLED BACKWARDS" not in flat,
           "model echoed 'open' when asked to reverse - never ask it to transform")
-    if getattr(ce, "MEMORY_AUTO", False):
+    if getattr(ce, "MEMORY_AUTO", False) or getattr(ce, "MEMORY_FORMAT", "") == "shotgun":
         # The memento now returns sentences. The MEMENTO CASE must not forbid them, or
         # the model trims the reply to a bare number - how this tile was lost once.
         # Scope the check to case 3: "never a sentence" is correct in the web-search
