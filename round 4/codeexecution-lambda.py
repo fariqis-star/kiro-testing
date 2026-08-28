@@ -12,6 +12,7 @@ AWS Lambda - Code Execution tool for Bedrock Agent Game (OPTIMIZED).
 import json
 import sys
 import signal
+import time
 import traceback
 import re
 from io import StringIO
@@ -1141,34 +1142,59 @@ _RED_STATE = "/tmp/r4_red_idx"
 # Ordered by probability, and kept SHORT on purpose: the ladder restarted last time
 # because the Lambda container went cold, so the top entries are the ones most worth
 # retesting if the counter resets.
+# SEPARATORS ARE NOW DEAD TOO - all five forms tested and rejected:
+#   14 5 16 15   14-5-16-15   15 16 5 14   15-16-5-14   14,5,16,15
+# Combined with the bare forms, that closes out the entire letters-to-numbers
+# family in both orderings and every punctuation. Roughly 30 candidates are gone.
+#
+# What survives here is the tail that keeps getting cut off by container resets,
+# plus the case variants - and case is the one dimension green can NEVER constrain,
+# because 6789 has no letters in it. If the stored answer is "Nepo" or "NEPO" and
+# the grader is case-sensitive, every lowercase attempt we have made was wrong for
+# a reason that has nothing to do with the transform.
 RED_LADDER = [
-    "sep_rev_space",  # 14 5 16 15    reversed, spaces
-    "sep_rev_dash",   # 14-5-16-15    reversed, dashes
-    "sep_fwd_space",  # 15 16 5 14    forward, spaces
-    "sep_fwd_dash",   # 15-16-5-14    forward, dashes
-    "sep_rev_comma",  # 14,5,16,15    reversed, commas
-    "atbashnumrev",   # 31221121      a=26 mapping, digit string reversed
-    "anagram_pone",   # pone          never reached - ladder reset before it
-    "upper",          # NEPO          never reached - ladder reset before it
+    "upper",          # NEPO       never actually reached
+    "titlecase",      # Nepo       sentence-case, the way a human types an answer
+    "atbashnumrev",   # 31221121   a=26 mapping, digit string reversed
+    "anagram_pone",   # pone       never actually reached
     "sentence",       # Red key 1 is nepo
-    "keynum",         # 1             "the code" = the key NUMBER, reversed = 1
+    "keynum",         # 1          "the code" = the key NUMBER, reversed
+    "prefixed",       # red nepo
+    "fullmsgrev",     # nepo :si 1 yeK deR   the whole key line, backwards
 ]
 
 
 def _red_next_from_ladder(v):
-    """Return the next untried candidate and advance the on-disk counter."""
-    idx = 0
+    """Return the next untried candidate and advance the counter.
+
+    HYBRID, because /tmp alone kept losing its place. The counter lives in /tmp,
+    which survives between invocations in one warm container - but the last two
+    ladders both restarted from the top partway through, so the container is being
+    recycled between test runs more often than expected. Each reset burned a run
+    retesting something already eliminated.
+
+    So when /tmp has no counter, fall back to a TIME BUCKET rather than to zero.
+    Runs are ~2 minutes apart, so a 90-second bucket lands consecutive cold starts
+    on different candidates instead of repeating the first one forever.
+    """
+    idx = None
     try:
         with open(_RED_STATE) as fh:
-            idx = int(fh.read().strip() or "0")
+            raw = fh.read().strip()
+        if raw:
+            idx = int(raw)
     except Exception:
-        idx = 0
-    if idx >= len(RED_LADDER):
-        idx = len(RED_LADDER) - 1
+        idx = None
+
+    if idx is None:
+        # Cold container: pick by clock so we do not repeat candidate 0.
+        idx = int(time.time() // 90) % len(RED_LADDER)
+
+    idx %= len(RED_LADDER)
     mode = RED_LADDER[idx]
     try:
         with open(_RED_STATE, "w") as fh:
-            fh.write(str(idx + 1))
+            fh.write(str((idx + 1) % len(RED_LADDER)))
     except Exception:
         pass
     return _RED_MODES.get(mode, _red_reverse)(v)
@@ -1430,6 +1456,11 @@ _RED_MODES = {
                                       for c in v if c.isalpha())[::-1],
     "keynum": lambda v: "1",
     "sentence": lambda v: f"Red key 1 is {v[::-1]}",
+    # Case variants. Green cannot rule these out - 6789 contains no letters, so the
+    # grader's case sensitivity has never been probed even once.
+    "titlecase": lambda v: v[::-1].capitalize(),
+    "prefixed": lambda v: f"red {v[::-1]}",
+    "fullmsgrev": lambda v: f"Red Key 1 is: {v}"[::-1],
 }
 
 
