@@ -860,10 +860,9 @@ def _try_memory_r4(text):
 #   skip the door : ~12,040   (9,350 tiles + 750 life + 1,000 treasure + ~940 token)
 #   die on it     :   8,593
 #
-# TRUE. ~50 candidates rejected, including the one the door's own description
-# mandates. The search space of transforms on "open" is exhausted. See
-# RED-DOOR-EXHAUSTED.md for the full list and the reasoning.
-SKIP_RED_DOOR = True
+# FALSE: back through the door. The transforms on "open" are exhausted, but the
+# assumption that "the code" MEANS "open" never was - see RED_LADDER below.
+SKIP_RED_DOOR = False
 
 R4_PATH_FULL = [
     "down", "down", "right", "right", "right", "right", "right", "right",
@@ -1227,15 +1226,30 @@ _RED_STATE = "/tmp/r4_red_idx"
 # 'blank' is removed: the model will not emit an empty answer. Given a space it
 # decided the tool was broken and replied "open" from memory, so that idea is
 # untestable through an LLM and cost a run to discover.
+# "TRANSLATE THE CODE YOU RECEIVE" - the clue is what counts as "the code".
+#
+# The key tile hands you an entire line:   Red Key 1 is: open
+# Every one of the ~50 dead candidates assumed "the code" was the last token, open.
+# That assumption has never been questioned, and it is the only untested axis left.
+#
+# "Reading it backwards" has three distinct meanings and we tested one and a half:
+#     1. reverse the characters of the value        open -> nepo         dead
+#     2. reverse the characters of the whole line   nepo :si 1 yeK deR   dead
+#     3. reverse the WORD ORDER                     open is: 1 Key Red   NEVER TESTED
+#
+# Meaning 3 is the plain-English one. When a person says "read it backwards" about a
+# line of text, they reverse the words. We only ever reversed characters.
+#
+# Also in here: separators applied to the reversed LETTERS. We tested every
+# punctuation on the digit forms - spaces, dashes, commas - and never once on nepo
+# itself.
 RED_LADDER = [
-    "dr_rev",      # 5576      nepo, digital root      <- all four constraints met
-    "ld_rev",      # 4565      nepo, last digit
-    "dr_fwd",      # 6755      open, digital root
-    "ld_fwd",      # 5654      open, last digit
-    "atbash_rev",  # mvkl      atbash AFTER reversing (we only tried atbash(open))
-    "z1_dr",       # 4423      z=1 + digital root
-    "z1_ld",       # 3212      z=1 + last digit
-    "z1_raw",      # 13221112  z=1 raw
+    "wordrev",          # open is: 1 Key Red   word order, full line
+    "wordrev_nocolon",  # open is 1 Key Red    word order, no colon
+    "letters_space",    # n e p o              spaced letters
+    "letters_dash",     # n-e-p-o              dashed letters
+    "labelrev",         # 1 Key Red            just the label, word-reversed
+    "wordpos_rev",      # 4321                 position within the word, reversed
 ]
 
 
@@ -1548,6 +1562,18 @@ _RED_MODES = {
     "thanksrev": lambda v: "sknahT",
     "tilecode": lambda v: "30",
     "tilecodec": lambda v: "c30",
+    # WORD-ORDER REVERSE. "the code you receive" is the whole line the key tile hands
+    # you, and "reading it backwards" in plain English means reversing the WORDS, not
+    # the characters. Never tested - we only ever reversed characters.
+    "wordrev": lambda v: " ".join(f"Red Key 1 is: {v}".split()[::-1]),
+    "wordrev_nocolon": lambda v: " ".join(f"Red Key 1 is {v}".split()[::-1]),
+    "labelrev": lambda v: "1 Key Red",
+    # Separators on the LETTERS. We tested every punctuation on the DIGIT forms and
+    # none on the reversed word itself.
+    "letters_space": lambda v: " ".join(v[::-1]),
+    "letters_dash": lambda v: "-".join(v[::-1]),
+    # Position within the word rather than within the alphabet, reversed.
+    "wordpos_rev": lambda v: "".join(str(i) for i in range(len(v), 0, -1)),
     # COMPRESSION BRANCH. Green's rule, then squash each position to ONE digit so the
     # answer is 4 characters like green's was. Verified compatible with green: 6,7,8,9
     # are already single digits, so compressing fghi still yields exactly 6789.
