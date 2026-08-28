@@ -139,13 +139,17 @@ def main():
           "SPELLED BACKWARDS" not in flat,
           "model echoed 'open' when asked to reverse - never ask it to transform")
     if getattr(ce, "MEMORY_AUTO", False):
-        # The memento now returns sentences. The prompt must NOT forbid them, or the
-        # model trims the reply down to a bare number - which is how this tile was
-        # lost once already.
-        check("prompt does NOT forbid sentences in the memento reply",
-              "no sentence" not in flat.lower())
-        check("prompt says the memento reply may be a sentence",
-              "IT WILL USUALLY BE A SENTENCE" in flat)
+        # The memento now returns sentences. The MEMENTO CASE must not forbid them, or
+        # the model trims the reply to a bare number - how this tile was lost once.
+        # Scope the check to case 3: "never a sentence" is correct in the web-search
+        # and trivia cases and must not trip this.
+        block = ""
+        if "MEMORY TRIAL" in p:
+            block = p.split("MEMORY TRIAL", 1)[1].split("\n4.", 1)[0].lower()
+        check("memento case does NOT forbid sentences",
+              "no sentence" not in block and "never a sentence" not in block)
+        check("memento case says the reply may be a sentence",
+              "it will usually be a sentence" in block)
     else:
         check("prompt tells the model to output the memento reply verbatim",
               "bare number" in flat or "VERBATIM" in flat)
