@@ -909,7 +909,7 @@ R4_PATH_DIAGNOSTIC = [
     "right",
 ]
 
-DIAGNOSTIC_NO_REDKEY = True
+DIAGNOSTIC_NO_REDKEY = False
 
 if DIAGNOSTIC_NO_REDKEY:
     R4_PATH = R4_PATH_DIAGNOSTIC
@@ -1349,14 +1349,58 @@ _SEARCH_MODES = {
     "sortthen_dr": lambda v: _cat(_dr_list(sorted(_positions(v)))),
     "sortdescthen_ld": lambda v: _cat([n % 10 for n in sorted(_positions(v), reverse=True)]),
 }
+# ===========================================================================
+# THE QUESTION BANK. Found in the official community-edition repo at
+# frontend/src/data/questionBank.ts, and it changes the whole problem.
+#
+#   c40 Red Key    : "Red Key 1 is: open" | "...sesame" | "...alpha"   THREE options
+#   c30 Red Door   : expectedAnswer "nepo"                            ONE answer
+#
+#   c41 Green Key  : unlock | emerald | bravo        c31 Green Door : "kcolnu"
+#   c42 Grey Key   : silver | steel   | charlie      c32 Grey Door  : "revlis"
+#   c43 Yellow Key : gold   | sunshine| delta        c33 Yellow Door: "dlog"
+#
+# Two facts fall straight out of that.
+#
+# 1. THE RULE IS REVERSE, CONFIRMED. Every stock door answer is the reverse of its
+#    key list's FIRST entry: nepo/open, kcolnu/unlock, revlis/silver, dlog/gold. So
+#    "reading it backwards" means exactly what it says, and 65 candidates were spent
+#    replacing a rule that was correct from the start.
+#
+# 2. THE PAIRING IS STRUCTURALLY BROKEN. The key tile chooses from THREE options; the
+#    door holds ONE fixed answer. If the key tile lands on option 2 or 3, the door
+#    expects the reverse of a word you were never shown. That is not a puzzle - it is
+#    a bug in the bank, and it explains a door that rejects every correct-looking
+#    answer.
+#
+# Our key tile shows "open", which is option 1, so nepo *should* work. It does not.
+# So the door is holding the reverse of a DIFFERENT entry - and the bank tells us
+# exactly which ones are possible. The search space collapses from infinite to five.
+#
+# In-list first, then cross-colour in case answers were mixed between doors. Green is
+# excluded from suspicion: our green key is "fghi", which is in NO bank list, so the
+# green pair was custom-authored and its stock answer "kcolnu" went unused - which is
+# precisely the kind of orphan value that ends up on the wrong tile.
+_BANK_CANDIDATES = {
+    "bank_sesame": "emases",    # reverse of sesame, red key option 2
+    "bank_alpha": "ahpla",      # reverse of alpha,  red key option 3
+    "bank_unlock": "kcolnu",    # the stock GREEN door answer, orphaned on our map
+    "bank_emerald": "dlareme",
+    "bank_bravo": "ovarb",
+    "bank_silver": "revlis",    # stock GREY door answer
+    "bank_gold": "dlog",        # stock YELLOW door answer
+}
+_SEARCH_MODES.update({k: (lambda val: (lambda v: val))(val)
+                      for k, val in _BANK_CANDIDATES.items()})
+
 RED_LADDER = [
-    "sortdesc_dr",       # 7655     descending + digital root   <- all four constraints
-    "sortdesc_ld",       # 6545     descending + last digit     <- all four constraints
-    "sortasc_dr",        # 5567
-    "sortasc_ld",        # 4556     compress, then sort
-    "sortthen_ld",       # 5456     sort, then compress
-    "sortasc_bare",      # 5141516
-    "sortasc_bare_rev",  # 6151415
+    "bank_sesame",   # emases   same list as our key, option 2
+    "bank_alpha",    # ahpla    same list as our key, option 3
+    "bank_unlock",   # kcolnu   orphaned green-door answer
+    "bank_silver",   # revlis   orphaned grey-door answer
+    "bank_gold",     # dlog     orphaned yellow-door answer
+    "bank_emerald",  # dlareme
+    "bank_bravo",    # ovarb
 ]
 
 
