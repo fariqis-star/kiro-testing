@@ -859,8 +859,9 @@ def _try_memory_r4(text):
 #   skip the door : ~12,040   (9,350 tiles + 750 life + 1,000 treasure + ~940 token)
 #   die on it     :   8,593
 #
-# Set back to False to resume testing red door candidates on the test map.
-SKIP_RED_DOOR = True
+# Currently FALSE: back on the 105-move route to take another shot at the door.
+# Flip to True to ship the safe 83-move route again (verified ~12,040).
+SKIP_RED_DOOR = False
 
 R4_PATH_FULL = [
     "down", "down", "right", "right", "right", "right", "right", "right",
@@ -1052,7 +1053,22 @@ def _try_path_request(text):
 # message, which is also "Nope". Outputting it at the red door would be
 # indistinguishable from a guardrail block, so the result could not be interpreted
 # even if it scored. Never test this one.
-RED_MODE = "semantic"
+# PINNED: 'greenans' -> 6789, the GREEN door's answer used at the RED door.
+#
+# The case for it is an authoring error rather than a cipher. c30 and c31 are
+# adjacent tile codes for the same mechanic, almost certainly created one after the
+# other, and the red tile reads like a copy of the green one with only the flavour
+# text changed: same "To solve this challenge you must find the <colour> key", same
+# "Next, translate the code you receive by ...", same +1000, same -5. If the answer
+# field was left behind when the description was edited, c30 still holds 6789.
+#
+# It also survives the one measurement that killed everything else. 'nepo' is
+# provably what red's description asks for and it was rejected, so the stored value
+# cannot have been produced by applying red's own stated rule. A leftover from the
+# tile it was copied from explains that exactly.
+#
+# If this scores, the red door has nothing to do with 'open' at all.
+RED_MODE = "greenans"
 
 # ---------------------------------------------------------------------------
 # AUTO-LADDER. Deploy ONCE, then just re-run the test map repeatedly.
@@ -1070,7 +1086,9 @@ RED_MODE = "semantic"
 # You can see which candidate was used each run: the answer text is printed in the
 # trace right under the tool call. When one of them scores +1000, tell me the value
 # and I will pin it.
-RED_AUTO = True
+# FALSE while a specific candidate is pinned, so the ladder does not override it.
+# Set back to True to resume walking the ladder automatically.
+RED_AUTO = False
 _RED_STATE = "/tmp/r4_red_idx"
 
 # Ordered by my estimate of probability. Everything here is untested.

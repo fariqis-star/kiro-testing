@@ -44,10 +44,10 @@ INTERNAL_MAP = [
 START = [0, 0]        # A1
 TREASURE = [0, 9]     # J1
 
-# TRUE: turn back before the red door and head for the treasure instead. Must match
-# SKIP_RED_DOOR in the CodeExecution Lambda, because either tool can answer a
-# navigation request and the two must never hand back different routes.
-SKIP_RED_DOOR = True
+# Must match SKIP_RED_DOOR in the CodeExecution Lambda, because either tool can
+# answer a navigation request and the two must never hand back different routes.
+# Currently FALSE: back on the 105-move route to take another shot at the red door.
+SKIP_RED_DOOR = False
 
 # 105 moves, every scoring tile including the 13 behind the red door. Only usable if
 # the red door can actually be answered - and after twelve rejected candidates it
