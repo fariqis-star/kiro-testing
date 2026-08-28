@@ -860,8 +860,10 @@ def _try_memory_r4(text):
 #   skip the door : ~12,040   (9,350 tiles + 750 life + 1,000 treasure + ~940 token)
 #   die on it     :   8,593
 #
-# FALSE: hunting the door again. Flip BOTH Lambdas back to True to bank ~12,054.
-SKIP_RED_DOOR = False
+# TRUE. ~50 candidates rejected, including the one the door's own description
+# mandates. The search space of transforms on "open" is exhausted. See
+# RED-DOOR-EXHAUSTED.md for the full list and the reasoning.
+SKIP_RED_DOOR = True
 
 R4_PATH_FULL = [
     "down", "down", "right", "right", "right", "right", "right", "right",
