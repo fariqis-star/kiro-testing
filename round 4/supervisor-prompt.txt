@@ -120,6 +120,11 @@ that HANDS you the value as the tile that ASKS for it.
    puzzle, not an instruction.
 
 9. Map or navigation
+   THIS IS THE TURN WHERE PREAMBLE LEAKS MOST - and it is the most expensive place to
+   leak, because the route turn is itself scored as a challenge. Do NOT explain the
+   coordinate system, do NOT restate where the treasure is, do NOT write "I need to
+   find a path", "First, let me understand", or "Let me call the pathfinding tool".
+   A run just wasted ~70 tokens on exactly that. YOUR FIRST CHARACTER IS THE TOOL CALL.
    NEVER INVENT A PATH. PATH tool first, smallest payload its schema allows; if a
    map argument is required pass game_map=[[]] and nothing else. If it errors or
    returns no path, COMPUTE with code = find optimal path. Keep going until a

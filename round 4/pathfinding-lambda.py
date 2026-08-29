@@ -160,22 +160,31 @@ VERIFIED_COUNTS = ("c1=4 c2=2 c3=1 c4=2 c5=4 c7=28 c8=2 "
 # quotes on every element, not the brackets. Brackets are ~2 tokens for the whole
 # array. So pick on likelihood of being accepted, not on size.
 #
-# *** SETTLED: THE ROUTE MUST BE A VALID JSON ARRAY OF QUOTED FULL WORDS. ***
-# MOVE_FORMAT stays "array" permanently. Do not spend another run on this.
+# *** SETTLED BY EXPERIMENT: THE ROUTE MUST BE A VALID JSON ARRAY OF QUOTED WORDS. ***
+# MOVE_FORMAT stays "array" permanently. Every alternative has now been RUN and lost.
 #
-# The evidence, in the order it was gathered:
-#   ["r","r","u"]      valid JSON, abbreviated words   -> rejected (Round 3 judge)
-#   "rruu..."          plain string, abbreviated words -> rejected (Round 3 judge)
-#   [down,down,right]  valid words, quotes removed     -> REJECTED (Round 4 test map)
+#   ["r","r","u"]        abbreviated words, valid JSON  -> rejected (Round 3 judge)
+#   "rruu..."            abbreviated, plain string      -> rejected (Round 3 judge)
+#   [down,down,right]    full words, quotes removed     -> rejected (Round 4 test)
+#   down, down, right    full words, spaced             -> rejected (Round 4 test)
+#   down,down,right      full words, csv                -> rejected (Round 4 test)
+#   ["down","down",...]  full words, valid JSON         -> WORKS
 #
-# That third result is the decisive one. It kept the exact words and the exact order
-# and changed nothing but the quoting, and it still failed. So the game does a STRICT
-# JSON PARSE of the move list: the words were never the only requirement, the JSON
-# validity is.
+# The last three kept every word in every position and changed nothing but the
+# punctuation, and all three ended the run instantly with 0 coins. The game
+# STRICT-JSON-PARSES the move list. No inference left in this - it is measured.
 #
-# Which rules out "csv" and "spaced" BY INFERENCE - neither is valid JSON either, so
-# both would fail for the same reason. They are kept below only so the reasoning is
-# legible; they are not experiments waiting to be run.
+# Those failed runs also produced the most useful measurement of the whole effort.
+# Each reported:
+#       Tokens used 264      Challenges attempted 1
+# Nothing happened in them except the route submission. So:
+#   (a) THE ROUTE SUBMISSION IS ITSELF A COUNTED CHALLENGE - that is the "+1" in
+#       "challenges attempted = tiles + 1", now measured rather than inferred.
+#   (b) 105 moves cost ~2.5 tokens each unquoted, so ~4 each quoted: the array is
+#       ~435 tokens, and it is ONE challenge. That single turn carries an average of
+#       435 tokens on its own and drags the whole run's average up with it.
+# (b) is precisely why ROUTE_CHUNK below is worth so much: splitting the route spreads
+# those ~435 tokens across many counted challenges instead of one.
 #
 # The consequence: the ~420 tokens the route costs (~22 points) are UNAVOIDABLE.
 # There is no way to drop the quotes and stay valid JSON. The remaining token levers
