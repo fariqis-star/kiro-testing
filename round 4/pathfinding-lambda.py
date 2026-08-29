@@ -175,7 +175,13 @@ VERIFIED_COUNTS = ("c1=4 c2=2 c3=1 c4=2 c5=4 c7=28 c8=2 "
 #   3. "spaced"  drops the commas as well
 # A rejected format forfeits at move one. Set this back to "array" before any judge
 # run. It must match the CodeExecution Lambda's copy - audit.py enforces that.
-MOVE_FORMAT = "array"
+#
+# *** CURRENTLY SET TO "bare" FOR A TEST-MAP EXPERIMENT. ***
+# Expected emission: [down,down,right,...]  ~212 tok instead of ~422, worth ~11 points.
+# If the run forfeits at move one, the game uses a strict JSON parser - go back to
+# "array" and the ~11 points are simply not available.
+# REVERT TO "array" BEFORE THE JUDGE RUN.
+MOVE_FORMAT = "bare"
 
 
 def _format_path(moves):

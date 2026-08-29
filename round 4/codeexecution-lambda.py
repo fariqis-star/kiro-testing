@@ -570,7 +570,10 @@ def _try_patient_json(text):
 # All three save the same amount - the cost is the quotes, not the brackets. None is
 # valid JSON, so a strict parser on the game side rejects all of them.
 # TEST MAP ONLY for anything but "array": a rejected format forfeits at move one.
-MOVE_FORMAT = "array"
+#
+# *** SET TO "bare" FOR A TEST-MAP EXPERIMENT. Must match the pathfinding Lambda.
+# REVERT TO "array" BEFORE THE JUDGE RUN. ***
+MOVE_FORMAT = "bare"
 
 
 def _format_path(moves):
