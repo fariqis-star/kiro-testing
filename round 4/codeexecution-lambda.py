@@ -360,6 +360,15 @@ def lambda_handler(event, context):
     if red_out is not None:
         return _resp(event, json.dumps({"output": red_out + "\n", "error": None}))
 
+    # DISTRACTION challenges. The whole point of these is to make the agent produce a
+    # long verbose answer, and they are graded on the FULL output. Our prompt tells the
+    # model to answer briefly, so left to itself it truncates and takes the damage -
+    # which is almost certainly the 2 lives lost "randomly" on the Round 3 judge map.
+    # Generate the list here so length is never the model's decision.
+    distract = _try_distraction(code)
+    if distract is not None:
+        return _resp(event, json.dumps({"output": distract, "error": None}))
+
     door = _try_door_r4(code)
     if door is not None and door != "":
         return _resp(event, json.dumps({"output": door + "\n", "error": None}))
@@ -2362,6 +2371,56 @@ MEMORY_COUNTS_WHOLE_MAP = {
 _NUM_WORDS = {0: "zero", 1: "one", 2: "two", 3: "three", 4: "four", 5: "five",
               6: "six", 7: "seven", 8: "eight", 9: "nine", 10: "ten",
               11: "eleven", 28: "twenty-eight"}
+
+
+_ELEMENTS = [
+    "Hydrogen", "Helium", "Lithium", "Beryllium", "Boron", "Carbon",
+    "Nitrogen", "Oxygen", "Fluorine", "Neon", "Sodium", "Magnesium",
+    "Aluminum", "Silicon", "Phosphorus", "Sulfur", "Chlorine", "Argon",
+    "Potassium", "Calcium", "Scandium", "Titanium", "Vanadium", "Chromium",
+    "Manganese", "Iron", "Cobalt", "Nickel", "Copper", "Zinc",
+]
+
+
+def _try_distraction(text):
+    """Produce the FULL verbose answer a Distraction challenge demands.
+
+    These tiles exist to bait a long response and are graded on completeness. The
+    supervisor prompt tells the model to be terse everywhere else, so if the model
+    handles one of these itself it truncates and eats the damage. Building the list
+    in the Lambda takes the decision away from it.
+
+    Shapes seen in the game's own generator:
+        Count to N by 1s putting a line break after each number
+        Write the numbers 1 through N, each on its own line
+        Count backwards from N to 1, each number on a new line
+        List the first N elements of the periodic table, one per line
+    """
+    if not text:
+        return None
+    t = text.lower()
+
+    m = re.search(r'first\s+(\d+)\s+elements?\s+of\s+the\s+periodic\s+table', t)
+    if m:
+        n = min(int(m.group(1)), len(_ELEMENTS))
+        return "\n".join(_ELEMENTS[:n]) + "\n"
+
+    m = re.search(r'count\s+backwards?\s+from\s+(\d+)\s*(?:to\s*(\d+))?', t)
+    if m:
+        hi = int(m.group(1))
+        lo = int(m.group(2)) if m.group(2) else 1
+        if 1 <= hi <= 500:
+            return "\n".join(str(i) for i in range(hi, lo - 1, -1)) + "\n"
+
+    m = (re.search(r'count\s+(?:up\s+)?to\s+(\d+)', t)
+         or re.search(r'numbers?\s+1\s*(?:through|to|-)\s*(\d+)', t)
+         or re.search(r'list\s+the\s+numbers?\s+(?:from\s+)?1\s*(?:through|to|-)\s*(\d+)', t))
+    if m and re.search(r'line break|own line|new line|one per line|each number', t):
+        n = int(m.group(1))
+        if 1 <= n <= 500:
+            return "\n".join(str(i) for i in range(1, n + 1)) + "\n"
+
+    return None
 
 
 def _try_memory_other_shapes(text):
