@@ -438,7 +438,35 @@ def lambda_handler(event, context):
     return _resp(event, json.dumps({"output": output, "error": error_msg}))
 
 
+def _compact(result_body):
+    """Strip everything from the reply that costs tokens and carries no meaning.
+
+    Token bonus = 1000 - round(total_tokens / challenges_attempted), and the tool
+    RESULT is part of what gets counted, not just our own answer. Every call was
+    shipping '"error": null' plus json.dumps' default spacing, which is ~15 wasted
+    characters per call across 8 calls for no benefit. The trailing newline on some
+    outputs goes too.
+
+    Wrapped in a bare except on purpose: a malformed body must pass through
+    untouched rather than take the Lambda down mid-run. Saving a token is never
+    worth risking the whole run.
+    """
+    try:
+        obj = json.loads(result_body)
+        if isinstance(obj, dict):
+            if obj.get("error") is None:
+                obj.pop("error", None)
+            out = obj.get("output")
+            if isinstance(out, str):
+                obj["output"] = out.rstrip("\n")
+            return json.dumps(obj, separators=(",", ":"))
+    except Exception:
+        pass
+    return result_body
+
+
 def _resp(event, result_body):
+    result_body = _compact(result_body)
     response = {"statusCode": 200, "body": result_body}
     if "actionGroup" in event:
         response["messageVersion"] = event.get("messageVersion", "1.0")
@@ -960,18 +988,16 @@ def _try_path_request(text):
     # positive merely returns a path the caller ignores.
     if re.search(r'game_?map|navigat|\bpath\b|\broute\b|\bmaze\b|find.*treasure|'
                  r'optimal.*(path|route|move)|\bmoves\b|solve.*maze|pathfind', t):
-        # Whole-map counts, matching the pathfinding Lambda's VERIFIED_COUNTS and
-        # MEMORY_COUNTS_WHOLE_MAP. The model sometimes quotes this string straight
-        # from the path response instead of calling the memory handler, so all
-        # three must agree or the Memory Trial gets a different number depending
-        # on which route it took.
-        return json.dumps({
-            "path": R4_PATH,
-            "steps": len(R4_PATH),
-            "start_position": [0, 0],
-            "counts": ("c1=4 c2=2 c3=1 c4=2 c5=4 c7=28 c8=2 "
-                       "c18=1 c30=1 c31=1 c40=1 c41=1"),
-        }, separators=(",", ":"))
+        # PATH ONLY. The reply used to carry a "counts" summary, plus "steps" and
+        # "start_position" that nothing ever read.
+        #
+        # "counts" is gone for two reasons, and the second one matters more than the
+        # tokens: the model was sometimes quoting that string straight out of the path
+        # response - answering the Memory Trial with "c4=2" - instead of calling the
+        # memory handler and getting the phrasing the grader actually accepts. A field
+        # that can only ever produce a wrong answer does not belong in the reply.
+        # The count still comes from _try_memory_v3, derived from the grid.
+        return json.dumps({"path": R4_PATH}, separators=(",", ":"))
     return None
 
 

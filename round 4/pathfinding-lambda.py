@@ -140,10 +140,13 @@ VERIFIED_COUNTS = ("c1=4 c2=2 c3=1 c4=2 c5=4 c7=28 c8=2 "
 
 
 def lambda_handler(event, context):
-    result = {
-        "path": VERIFIED_PATH,
-        "steps": len(VERIFIED_PATH),
-        "start_position": START,
-        "counts": VERIFIED_COUNTS,
-    }
+    # PATH ONLY. "steps" and "start_position" were never read by anything, and the
+    # tool result counts toward the token total, so they cost points for nothing.
+    #
+    # "counts" is gone as well - it was worse than dead weight. The model sometimes
+    # quoted it straight out of this response and answered the Memory Trial with
+    # "c4=2", which is graded wrong, instead of calling the memory handler for the
+    # phrasing that actually scores. VERIFIED_COUNTS is kept below purely as
+    # documentation of the map and is no longer sent to the model.
+    result = {"path": VERIFIED_PATH}
     return {"statusCode": 200, "body": json.dumps(result, separators=(",", ":"))}

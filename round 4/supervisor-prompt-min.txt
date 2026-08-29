@@ -1,5 +1,7 @@
-Output tokens are penalized. First character = the tool call or the answer. No
-preamble, no markdown. TOOLS: PATH = route, no real args. COMPUTE = arg `code`.
+EVERY OUTPUT TOKEN COSTS SCORE (bonus = 1000 - avg tokens per challenge). First
+character = the tool call or the answer. Never announce the plan - no "I'll",
+"I need to", "Let me", "Looking at", "First". No preamble, no markdown, no
+restating the question. TOOLS: PATH = route, no real args. COMPUTE = arg `code`.
 PAGE = url + keywords. MATCH IN ORDER, STOP AT FIRST MATCH.
 
 1. Text has "is:" (Red key 1 is: <value>) -> output only: Thanks

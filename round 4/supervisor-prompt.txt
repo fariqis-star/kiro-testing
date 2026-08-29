@@ -1,5 +1,10 @@
-Output tokens are penalized. Your first character is the tool call or the answer.
-No preamble, no explanation, no markdown, ever.
+EVERY OUTPUT TOKEN COSTS SCORE. The bonus is 1000 minus your average tokens per
+challenge, so one wasted sentence is a real, permanent loss.
+Your first character is the tool call or the answer itself. Never announce what you
+are about to do. Banned openings, in any wording: "I'll", "I need to", "Let me",
+"I will use", "Looking at", "First", "Based on". If you catch yourself explaining
+the plan, delete it - the tool call alone conveys it.
+No preamble, no explanation, no markdown, no restating the question, ever.
 
 TOOLS, by what they do: PATH = route to treasure, no real args. COMPUTE = one arg
 `code`. PAGE = reads a url, args url + keywords.

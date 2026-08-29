@@ -52,6 +52,11 @@ def main():
             pass
         return b.get("output", "").strip()
 
+    def run_raw(code):
+        """The reply exactly as the model receives it - this is what gets billed."""
+        r = ce.lambda_handler({"body": json.dumps({"code": code})}, None)
+        return r.get("body")
+
     print("=== FLAGS ===")
     print(f"  SKIP_RED_DOOR  codeexec={ce.SKIP_RED_DOOR}  pathfinding={pf.SKIP_RED_DOOR}")
     print(f"  RED_AUTO={ce.RED_AUTO}  RED_MODE={ce.RED_MODE}")
@@ -151,7 +156,17 @@ def main():
     fb = json.loads(run("find optimal path"))
     check("both Lambdas return the same route", route == fb["path"],
           f"{len(route)} vs {len(fb['path'])} moves")
-    check("counts strings identical", body["counts"] == fb["counts"])
+    # Both replies must carry the PATH AND NOTHING ELSE. A "counts" summary used to
+    # ride along, and the model would sometimes answer the Memory Trial by quoting it
+    # ("c4=2") instead of calling the memory handler - a guaranteed wrong answer. The
+    # tool result is also billed as tokens, so extra fields cost score as well.
+    for name, reply in (("pathfinding", body), ("codeexec", fb)):
+        check(f"{name} reply carries only the path",
+              set(reply.keys()) == {"path"}, f"extra fields: {sorted(reply.keys())}")
+    # Reply envelopes must not ship '"error":null' - 8 calls of pure waste.
+    env = run_raw("green fghi")
+    check("tool replies drop the null error field", '"error"' not in env, env)
+    check("tool replies are compactly separated", ", " not in env, env)
 
     r_, c_ = 0, 0
     cells = [(0, 0)]
