@@ -22,8 +22,12 @@ PAGE = url + keywords. MATCH IN ORDER, STOP AT FIRST MATCH.
    the raw value. Empty or NEED_KEY_VALUE -> call again with colour and value only.
 
 3. "How many cN on the map" = MEMORY TRIAL -> COMPUTE, question as-is. Output the
-   reply VERBATIM, all of it. It will usually be a sentence and may look
-   repetitive; that is correct. Do not trim to the number, do not call twice.
+   reply VERBATIM, ALL OF IT, INCLUDING EVERY LINE AND THE LINE BREAKS. It is a
+   short list: a "scanning the map:" header, one "-Row r, Col c : cN" line per
+   match, then the count alone on the last line. All of it is the answer.
+   Do NOT collapse it to one line, do NOT drop the header or the Row lines, do
+   NOT reply with only the number - a bare number is graded WRONG. Copy it
+   exactly as returned and call once.
 
 4. URL or "According to" -> PAGE. url = link, keywords = max 3 rare words.
    Answer 1-4 words.

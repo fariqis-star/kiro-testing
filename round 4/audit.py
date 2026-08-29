@@ -123,7 +123,41 @@ def main():
           not wrong, "\n      " + "\n      ".join(
               f"{q[:56]!r} got {g!r} want {w!r}" for q, g, w in wrong[:8]))
     m = run("How many c4 challenges are on the map?")
-    if getattr(ce, "MEMORY_FORMAT", "") == "shotgun":
+    if getattr(ce, "MEMORY_FORMAT", "") == "positions":
+        # A COMPETITOR'S WORKING REPLY. Locked to her wording character for character:
+        #     scanning the map:
+        #     -Row 2, Col 7 : c4
+        #     -Row 7, Col 5 : c4
+        #     2
+        # Her coordinates match our grid, so the format is validated against the board
+        # rather than against a hardcoded string: every enumerated cell must really
+        # hold that code, none may be missed, and the last line must be the count.
+        check("memento uses her exact reply for c4",
+              m == "scanning the map:\n-Row 2, Col 7 : c4\n-Row 7, Col 5 : c4\n2",
+              repr(m))
+        check("memento answer is STATELESS - identical on repeated calls",
+              all(run("How many c4 challenges are on the map?") == m
+                  for _ in range(3)))
+        check("memento ladder is OFF", not getattr(ce, "MEMORY_AUTO", False))
+        for code in ("c1", "c2", "c3", "c5", "c7", "c8", "c18", "c40"):
+            out = run(f"How many {code} challenges are on the map?")
+            lines = out.split("\n")
+            truth = [(r, c) for r, row in enumerate(ce.R4_GRID)
+                     for c, cell in enumerate(row) if cell == code]
+            want = ["scanning the map:"]
+            want += [f"-Row {r}, Col {c} : {code}" for r, c in truth]
+            want.append(str(len(truth)))
+            check(f"memento enumerates {code} exactly ({len(truth)} on the board)",
+                  lines == want, f"got {out!r}")
+        check("memento answers 0 for a code that is not on the board",
+              run("How many c99 challenges are on the map?").split("\n")[-1] == "0")
+        check("memento sums when several codes are named",
+              run("How many c1 and c8 challenges are on the map?").split("\n")[-1]
+              == str(sum(1 for row in ce.R4_GRID for cell in row
+                         if cell in ("c1", "c8"))))
+        check("memento reply is CHEAPER than the shotgun it replaces",
+              len(m) < 130, f"{len(m)} chars vs 130")
+    elif getattr(ce, "MEMORY_FORMAT", "") == "shotgun":
         # SOLVED at +550: contains_match against a phrase, so the reply is several
         # phrasings in one string. It must be identical on every call - a stateful
         # ladder already broke this tile once by advancing to a single phrasing.
@@ -337,8 +371,13 @@ def main():
               on_red == (not ce.SKIP_RED_DOOR), f"visited={on_red}")
 
     spikes = {p for p in visited if GRID[p[0]][p[1]] == "c8"}
+    # The memento only costs a life if we get it WRONG, and it is answered correctly
+    # now, so it stops being charged here. This line read "2 lives left" while the
+    # game was reporting 3, which made every score estimate below the truth.
     memento = sum(1 for p in visited if GRID[p[0]][p[1]] == "c3")
-    lives = 5 - len(spikes) - memento
+    memento_cost = 0 if getattr(ce, "MEMORY_FORMAT", "") in ("positions", "shotgun") \
+        and not getattr(ce, "MEMORY_PROBE", None) else memento
+    lives = 5 - len(spikes) - memento_cost
     print(f"  --    {len(route)} moves, {len(spikes)} spike(s), {memento} memento, "
           f"{lives} lives left")
     if on_red:
