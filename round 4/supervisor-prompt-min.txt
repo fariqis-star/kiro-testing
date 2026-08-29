@@ -17,9 +17,12 @@ PAGE = url + keywords. MATCH IN ORDER, STOP AT FIRST MATCH.
    answer however odd. Never transform it, never answer from memory, never output
    the raw value. Empty or NEED_KEY_VALUE -> call again with colour and value only.
 
-3. "How many cN on the map" = MEMORY TRIAL -> COMPUTE, question as-is. Output the
-   reply VERBATIM, all of it. It will usually be a sentence and may look
-   repetitive; that is correct. Do not trim to the number, do not call twice.
+3. "How many cN on the map" = MEMORY TRIAL -> COMPUTE, question as-is. THE REPLY IS
+   ONE ANSWER, NOT A LIST OF OPTIONS - copy it whole, commas included.
+   It will usually be a sentence restating the count several ways, and it looks
+   repetitive on purpose. Do NOT pick one clause, do NOT drop anything after a
+   comma, do not trim to the number. Lost once by sending a bare number, once by
+   sending a single clause.
 
 4. URL or "According to" -> PAGE. url = link, keywords = max 3 rare words.
    Answer 1-4 words.

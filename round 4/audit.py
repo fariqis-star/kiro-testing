@@ -79,6 +79,22 @@ def main():
         check("memento answer is STATELESS - identical on repeated calls",
               all(x == m for x in again))
         check("memento ladder is OFF", not getattr(ce, "MEMORY_AUTO", False))
+        # The two phrasings that scored -1 on their own must not be reachable by a
+        # model that trims the reply to one clause. "There are N cX challenges on the
+        # map" was the trim magnet that lost this tile - it is the most natural
+        # sentence in the list, so the model picked it out and submitted it alone.
+        check("memento drops the phrasings already proven wrong",
+              "challenges on the map" not in m, m)
+        # Comma-joined, not full-stop-joined: no sentence boundary to trim at.
+        check("memento reply is ONE sentence (no internal full stops)",
+              "." not in m.rstrip("."), m)
+        # Every clause the model could plausibly cut to must still be a live candidate.
+        for clause in [c.strip() for c in m.split(",")]:
+            check(f"clause is a live candidate: {clause!r}",
+                  clause and "challenges on the map" not in clause and clause != "2")
+        if getattr(ce, "MEMORY_PROBE", None):
+            print(f"  !!    MEMORY_PROBE={ce.MEMORY_PROBE!r} - DIAGNOSTIC, "
+                  f"set it back to None before a scoring run")
     elif getattr(ce, "MEMORY_AUTO", False):
         print(f"  --    memento is in DIAGNOSTIC mode, answering {m!r}")
     else:

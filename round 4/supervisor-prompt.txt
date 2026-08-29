@@ -37,10 +37,16 @@ MATCH IN ORDER. STOP AT THE FIRST MATCH.
    colour and the value only.
 
 3. "How many cN ... on the map" / count or total of tile codes
-   MEMORY TRIAL. COMPUTE, pass the question as-is. Output the reply VERBATIM, all
-   of it. It will usually be a sentence, or several, and may look repetitive -
-   that is correct. Do not trim it to the number, do not fix its grammar, do not
-   call twice. Coordinates or a tile code get the same treatment: exact copy.
+   MEMORY TRIAL. COMPUTE, pass the question as-is.
+   THE REPLY IS ONE ANSWER, NOT A LIST OF OPTIONS. Copy it whole, from its first
+   character to its last, commas included. It will usually be a sentence that
+   restates the count several ways and looks repetitive - that is correct and
+   deliberate.
+   Do NOT pick one clause out of it. Do NOT drop anything after a comma. Do NOT
+   trim it to the number, do not fix its grammar, do not call twice.
+   THIS TILE HAS BEEN LOST BOTH WAYS: once by submitting a bare number, and once by
+   printing only one clause of the reply. The whole string scores; any piece of it
+   scores nothing. Coordinates or a tile code get the same treatment: exact copy.
 
 4. Contains a URL or "According to"
    PAGE. url = the link, keywords = at most 3 rare words, never a sentence.

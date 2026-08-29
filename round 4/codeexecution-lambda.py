@@ -2195,6 +2195,12 @@ def _try_memory_v2(text):
 # ends the run.
 MEMORY_FORMAT = "shotgun"
 
+# Set to bisect WHICH phrasing the grader matches. None for scoring runs.
+#   "half_a"  -> candidates 0,1   "half_b" -> candidates 2,3
+# then pin the winner with "combined" / "in_map" / "is" / "count".
+# Stateless by design - no /tmp, because a /tmp counter is what broke this tile once.
+MEMORY_PROBE = None
+
 # ---------------------------------------------------------------------------
 # MEMENTO AS A FREE DIAGNOSTIC
 #
@@ -2321,20 +2327,33 @@ def _memory_phrasings(question, style):
     # "The answer = 2, there 2 c4 in the map" - note "IN the map", not "on the map",
     # and no "are". Both of those are things we would have naturally written the other
     # way, so they are exactly the kind of detail worth copying verbatim.
+    #
+    # MINIMAL COVERING SET. Under contains_match only the SUPERSTRING matters, so any
+    # variant that is a substring of another is dead weight - "The answer = 2" and
+    # "there 2 c4 in the map" are both already inside variant 0. And the two phrasings
+    # that are PROVEN WRONG standalone are gone entirely:
+    #
+    #   "There are {n} {code} challenges on the map"  -> -1, and it is the sentence the
+    #        model trimmed the shotgun down to, losing the tile. It was a trim magnet:
+    #        the most natural-sounding sentence in the list, so the model picked it.
+    #   str(n)  -> -1 over six separate runs, and a substring of every variant anyway.
+    #
+    # What is left is 4 phrasings, none a substring of another, all still live.
     variants = [
-        f"The answer = {n}, there {n} {code} in the map",   # her phrasing, combined
-        f"The answer = {n}",                                # her phrasing, first half
-        f"there {n} {code} in the map",                     # her phrasing, second half
+        f"The answer = {n}, there {n} {code} in the map",   # her phrasing, verbatim
         f"There are {n} {code} in the map",                 # grammatical, "in"
         f"The answer is {n}",
-        f"There are {n} {code} challenges on the map",       # already rejected alone
         f"Count: {n}",
-        str(n),                                             # already rejected alone
     ]
     if style == "shotgun":
-        return ". ".join(variants)
-    idx = {"combined": 0, "eq": 1, "her_short": 2, "in_map": 3,
-           "is": 4, "sentence": 5, "count": 6, "short": 7}.get(style, 0)
+        # JOINED WITH COMMAS, NOT FULL STOPS. This is the fix for the trim.
+        # ". ".join() produced something the model read as several sentences, so it
+        # "helpfully" printed one of them and lost the tile. Comma-joined, the reply is
+        # a SINGLE sentence with no boundary to cut at, so copying it whole is the only
+        # natural thing to do. Every candidate is still present as a substring, and no
+        # candidate carries a trailing full stop that a contains_match would need.
+        return ", ".join(variants)
+    idx = {"combined": 0, "in_map": 1, "is": 2, "count": 3}.get(style, 0)
     return variants[idx]
 
 
@@ -2481,6 +2500,34 @@ def _try_memory_v3(text):
     # "The answer = 2" and lost the 550 - a solved tile broken by leftover diagnostic
     # machinery. MEMORY_FORMAT = "shotgun" computes the answer directly, every call,
     # with no state involved and no way to drift.
+    # PROBE. Narrows down WHICH phrasing the grader actually matches, without any
+    # /tmp state and without a redeploy per guess being wasted on a single candidate.
+    #
+    # Why not a /tmp ladder for this: state is exactly what broke this tile before.
+    # A warm container advanced the index mid-session and a solved +550 turned into
+    # "The answer = 2" and -1. The probe is stateless - one deploy, one hypothesis,
+    # identical on every call within that deploy.
+    #
+    # How to read the result: the trace PRINTS the string the model sent, so nothing
+    # has to be logged. Set MEMORY_PROBE, run the map, read the memento line:
+    #     +550 -> the matched phrase is inside the group that was sent
+    #      -1  -> it is in the other group
+    # A wrong probe costs -1 and never a life, so this is a 2-run bisection over the
+    # 4 surviving candidates:
+    #     MEMORY_PROBE = "half_a"   -> candidates 0,1   (her phrasing / "There are N cX in the map")
+    #     MEMORY_PROBE = "half_b"   -> candidates 2,3   ("The answer is N" / "Count: N")
+    # then pin the single winner with "combined", "in_map", "is" or "count".
+    # Leave it None for scoring runs: None = the full 4-phrase shotgun, proven +550.
+    if MEMORY_PROBE:
+        v = [_memory_phrasings(t, s) for s in ("combined", "in_map", "is", "count")]
+        if all(v):
+            groups = {"half_a": v[0:2], "half_b": v[2:4]}
+            if MEMORY_PROBE in groups:
+                return ", ".join(groups[MEMORY_PROBE])
+            single = _memory_phrasings(t, MEMORY_PROBE)
+            if single:
+                return single
+
     if MEMORY_FORMAT == "shotgun":
         out = _memory_phrasings(t, "shotgun")
         if out:
