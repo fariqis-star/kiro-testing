@@ -14,25 +14,27 @@ MATCH IN ORDER. STOP AT THE FIRST MATCH.
    answer is computed FROM it, so a misremembered value is a lost run. It is a
    fresh random value every run - never assume it is the same as last time.
 
-2. "What is <colour> key N?"
-   DOOR. COMPUTE, whatever the colour is. Your first action is the call, no text
-   before it. code = the colour word, one space, THE VALUE THAT KEY TILE SHOWED.
-   Nothing else, no quotes, no Python:
+2. A DOOR. The text asks "What is <colour> key N?" - e.g. "What is green key 1?",
+   "What is red key 1?". Any question of that shape is this case, ALWAYS.
+   YOU MUST CALL COMPUTE. This is NOT a recall question - you do NOT know the
+   answer, even though you saw the key earlier. The key value shown on the tile is
+   NOT the door answer; the tool transforms it. Answering without a tool call is an
+   automatic dead run - it has happened and cost 5 lives.
+   The call is your FIRST action, no text before it. One arg, no quotes, no Python:
 
-       code = <colour> <value>
+       code = <colour> <the value the key tile showed>
 
-   Scroll back and read the value off the key tile. Copy it character for
-   character. The value is DIFFERENT EVERY RUN, so any value written in these
-   instructions is an illustration, never the answer - passing one of those is a
-   dead run. If the tile said "Red key 1 is: shut" the payload is  red shut  and
-   if it said "Green Key 1 is: fghi" the payload is  green fghi
-   Output the reply verbatim, then stop. Exact-string graded: one extra character
-   loses 1000 points and 5 lives.
-   The reply IS the answer however odd it looks - letters may come back as digits
-   or as a different word. Never transform it yourself, never call twice, never
-   "correct" it, never answer from memory, never output the raw key value.
-   If the reply is empty or NEED_KEY_VALUE your payload had no value in it - call
-   again with the colour and the value only.
+   e.g. tile "Green Key 1 is: fghi" -> code = green fghi  (the tool returns 6789)
+        tile "Red key 1 is: shut"   -> code = red shut    (the tool returns tuhs)
+   Scroll back, read the value off the key tile, copy it character for character.
+   The value is DIFFERENT EVERY RUN - the examples above are illustrations, never
+   the answer; passing one blindly is a dead run.
+   Output the tool reply verbatim, then stop. Exact-string graded: one extra
+   character loses 1000 points and 5 lives. The reply IS the answer however odd -
+   letters may come back as digits or another word. Never transform it yourself,
+   never answer from memory, never output the raw key value.
+   Empty reply or NEED_KEY_VALUE -> your payload had no value; call again with the
+   colour and the value only.
 
 3. "How many cN ... on the map" / count or total of tile codes
    MEMORY TRIAL. COMPUTE, pass the question as-is. Output the reply VERBATIM, all
@@ -65,8 +67,11 @@ MATCH IN ORDER. STOP AT THE FIRST MATCH.
    {"patient_id":"X","first_name":"X","last_name":"X","provider_name":"X","insurance_id":null}
    null for any field not stated. Never add, omit or guess a field.
 
-8. Anything else
-   No tool. Answer the literal question, result only, no units, no sentence.
+8. Anything else. FIRST: if it mentions a key or a door ("what is red/green key
+   N", "green door", "unlock"), it is CASE 2 - go back and call COMPUTE. Never
+   answer a key/door question from memory here.
+   Otherwise no tool. Answer the literal question, result only, no units, no
+   sentence.
    NEVER ECHO THE SUBJECT - give what was asked, not what was named:
    gold -> Au, France -> Paris, Hamlet -> Shakespeare, cow -> 4. If your answer
    already appears in the question it is wrong; give the missing piece.
