@@ -514,6 +514,36 @@ def main():
           solved != V and pf.verify(alt, solved)[0],
           "before the synonym fix this silently returned the hardcoded array")
 
+    # 'auto' MEASURES INSTEAD OF GUESSING.
+    # Hand-picking no_spikes is a bet: it prefers a spike-free route even when the
+    # detour costs more coins than the 250 a life is worth. On this board that bet
+    # loses (17,041 vs 17,045). auto scores every candidate, including the verified
+    # array, and returns the winner.
+    check("score_route reproduces the observed total",
+          pf.score_route(G, V) == 17045,
+          f"got {pf.score_route(G, V)}, the game reported 17,044-17,045")
+    a = pf.solve_auto(G, budget=6.0)
+    check("auto on the real board picks the verified array",
+          a and a["route"] == V and a["strategy"] == "verified",
+          "the 105-move route beats every solved alternative here")
+    check("auto beats hand-picked no_spikes on this board",
+          pf.score_route(G, pf.solve(G, budget=4.0, strategy="no_spikes")["route"])
+          < pf.score_route(G, a["route"]))
+    bypass = [r[:] for r in G]
+    bypass[5][1] = "path"
+    bypass[5][6] = "path"
+    b = pf.solve_auto(bypass, budget=6.0)
+    col, _ = pf._replay(bypass, pf.find(bypass, "player")[0], b["route"])
+    lives = 5 - sum(1 for p in col if bypass[p[0]][p[1]] == pf.SPIKE)
+    check("auto takes a spike-free route when the board offers one",
+          lives == 5 and pf.verify(bypass, b["route"])[0],
+          f"kept {lives} lives; a bypassable board should cost none")
+    gb = [[("normal" if bypass[r][c] in ("path", "player") else bypass[r][c])
+           for c in range(len(G[0]))] for r in range(len(G))]
+    check("unknown board with NO strategy typed still adapts",
+          route_for({"game_map": gb}) != V,
+          "an unnamed strategy on an unknown board must fall through to auto")
+
     check("aliases resolve",
           pf.normalise_strategy("use strategy Avoid Spikes") == "no_spikes"
           and pf.normalise_strategy("strategy: fast") == "swift"

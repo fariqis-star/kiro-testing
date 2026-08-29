@@ -481,6 +481,8 @@ _ALIAS = {
     "coins": "get_coins", "coin": "get_coins",
     "fast": "swift", "quick": "swift", "shortest": "swift", "time": "swift",
     "verified": "verified", "default": "verified", "proven": "verified",
+    "auto": "auto", "best": "auto", "adaptive": "auto", "any_map": "auto",
+    "anymap": "auto", "optimal": "auto", "smart": "auto",
 }
 
 
@@ -493,7 +495,7 @@ def normalise_strategy(text):
         return None
     s = re.sub(r"^(please_)?(use_)?(the_)?(strategy|strat|nav|navigation)_?", "", s)
     s = re.sub(r"_?(strategy|strat)$", "", s).strip("_")
-    if s in _STRATEGIES or s == "verified":
+    if s in _STRATEGIES or s in ("verified", "auto"):
         return s
     if s in _ALIAS:
         return _ALIAS[s]
@@ -517,10 +519,59 @@ def _replay(grid, start, route):
     return collected, triggered
 
 
+def score_route(grid, route):
+    """The game's own arithmetic, so strategies can be compared instead of guessed."""
+    start = find(grid, "player")[0]
+    collected, _ = _replay(grid, start, route)
+    coins = sum(VALUE[grid[r][c]] for r, c in collected if grid[r][c] in VALUE)
+    spikes = sum(1 for p in collected if grid[p[0]][p[1]] == SPIKE)
+    lives = 5 - spikes
+    tokens = len(route) * 4 + 625          # route array plus the rest of a run
+    return coins + LIFE * lives + (1000 - round(tokens / 19)) + 1000
+
+
+_AUTO_CANDIDATES = ("smart_loot", "no_spikes", "mastered", "reckless", "high_value")
+
+
+def solve_auto(grid, budget=6.0):
+    """Run every candidate strategy, score each, return the winner.
+
+    This is the honest answer to "avoid spikes, but take them if there is no way
+    around". Picking no_spikes by hand is a BET: it prefers a spike-free route even
+    when the detour costs more coins than the 250 the life is worth. Scoring every
+    candidate on the board in front of us turns that bet into a measurement.
+
+    VERIFIED_PATH competes as a candidate whenever it is legal on this board, which
+    needs no special-casing: on the known board it is legal and wins outright, and on
+    any other board verify() rejects it and it drops out on its own.
+    """
+    best = None
+    ok, _why = verify(grid, VERIFIED_PATH)
+    if ok:
+        best = {"route": VERIFIED_PATH, "total": score_route(grid, VERIFIED_PATH),
+                "strategy": "verified"}
+    share = max(1.0, budget / len(_AUTO_CANDIDATES))
+    for name in _AUTO_CANDIDATES:
+        try:
+            r = solve(grid, budget=share, strategy=name)
+        except Exception:
+            continue
+        if not r or not r.get("route"):
+            continue
+        if not verify(grid, r["route"])[0]:
+            continue
+        r = dict(r, total=score_route(grid, r["route"]), strategy=name)
+        if best is None or r["total"] > best["total"]:
+            best = r
+    return best
+
+
 def solve(grid, budget=8.0, verbose=False, strategy="smart_loot"):
     """Return {'route', 'coins', 'lives', 'spikes', 'total'} or None."""
     if not valid_map(grid):
         return None
+    if strategy == "auto":
+        return solve_auto(grid, budget=budget)
     codes, spike_cost, treasure_only = _STRATEGIES.get(
         strategy, _STRATEGIES["smart_loot"])
     deadline = time.monotonic() + budget
@@ -889,7 +940,11 @@ def _dynamic_or_verified(event):
     if strat is None:
         if usable is None or usable == INTERNAL_MAP:
             return VERIFIED_PATH
-        board, want = usable, "smart_loot"
+        # An UNKNOWN board with no strategy named: measure, do not guess. 'auto'
+        # scores every candidate and returns the winner, so a board with a spike
+        # bypass yields the spike-free route and a board without one does not pay
+        # for a pointless detour.
+        board, want = usable, "auto"
     elif strat == "verified":
         return VERIFIED_PATH
     else:
