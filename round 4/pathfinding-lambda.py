@@ -559,12 +559,56 @@ def _map_from_event(event):
                     try:
                         v = json.loads(v)
                     except Exception:
-                        continue
+                        # NOT JSON - keep the raw string so the compact one-char-per-cell
+                        # decoder gets a look at it. Discarding it here silently ignored
+                        # every compact map arriving via the parameters shape.
+                        pass
                 cands.append(v)
+    # A compact one-char-per-cell string is the cheap form the prompt asks for.
+    decoded = []
     for g in cands:
+        if isinstance(g, str):
+            d = decode_compact(g)
+            if d:
+                decoded.append(d)
+    for g in list(cands) + decoded:
         if valid_map(g):
             return g
     return None
+
+
+# COMPACT MAP ENCODING - one character per cell.
+#
+# Asking the model for the board as raw JSON costs ~400 output tokens, which is ~21
+# points of token bonus - more than the 250 a spike-free route is worth on a map that
+# probably does not have one. One character per cell is ~110 chars, ~30 tokens, ~1.5
+# points. That makes carrying the map cheap enough to be worth doing on every run.
+_LEGEND = {
+    "#": "wall", "P": "player", "T": "treasure", ".": "path",
+    "a": "c1", "b": "c2", "c": "c3", "d": "c4", "e": "c5", "f": "c7",
+    "g": "c8", "h": "c18", "i": "c30", "j": "c31", "k": "c40", "l": "c41",
+    "m": "c17", "n": "c42", "o": "c43",
+}
+_ENCODE = {v: k for k, v in _LEGEND.items()}
+
+
+def encode_compact(grid):
+    return "/".join("".join(_ENCODE.get(c, ".") for c in row) for row in grid)
+
+
+def decode_compact(text):
+    """Decode 'P.ffe.../#####...' into a grid, or None if it is not one."""
+    if not isinstance(text, str) or "/" not in text:
+        return None
+    rows = [r.strip() for r in text.strip().split("/") if r.strip()]
+    if len(rows) < 7 or any(len(r) != len(rows[0]) for r in rows):
+        return None
+    grid = []
+    for r in rows:
+        if any(ch not in _LEGEND for ch in r):
+            return None
+        grid.append([_LEGEND[ch] for ch in r])
+    return grid
 
 
 def plausible_board(grid):
@@ -580,15 +624,18 @@ def plausible_board(grid):
     """
     R = len(grid)
     C = len(grid[0]) if R else 0
-    if R < 8 or C < 8:
+    if R < 7 or C < 7:
         return False
     if len(find(grid, "wall")) < 15:
         return False
     codes = [grid[r][c] for r in range(R) for c in range(C) if grid[r][c] in VALUE]
     if len(codes) < 20 or len(set(codes)) < 3:
         return False
+    # 0.8, calibrated against the REAL board: its 28 coin tiles are 61% of its 46
+    # reward tiles, so a 60% cap rejected the genuine map. The fabricated board I
+    # built was 95% one code, so 80% separates them cleanly.
     top = max(codes.count(k) for k in set(codes))
-    return top <= 0.6 * len(codes)
+    return top <= 0.8 * len(codes)
 
 
 def _dynamic_or_verified(event):
