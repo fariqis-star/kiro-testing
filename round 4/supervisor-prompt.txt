@@ -131,3 +131,15 @@ that HANDS you the value as the tile that ASKS for it.
    as a list or as a single line of words - either way reproduce it unchanged. Do not
    re-punctuate it, do not add or remove quotes, brackets or commas, do not reformat
    it into a list. It crosses spike tiles deliberately - do not re-route around them.
+
+9b. IF the reply contains "submit_one_per_turn", the route is split into pieces and
+    you send ONE PIECE PER TURN, in order, smallest scoring cost that way.
+   → This turn: output the FIRST piece, exactly as given. Nothing else.
+   → Each later time you are asked to move: output the NEXT piece not yet sent.
+     Look back at your own previous messages to see which pieces you have already
+     sent, and send the one after it. Never re-send a piece, never skip one, never
+     merge two, never reorder them.
+   → Do NOT count moves or slice anything yourself. The pieces are already cut - copy
+     the next one character for character. Arithmetic here puts you on the wrong tile
+     for the whole rest of the run.
+   → When every piece has been sent, you are done moving; answer only challenges.

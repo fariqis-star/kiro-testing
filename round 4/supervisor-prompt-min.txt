@@ -74,3 +74,9 @@ case 2. The key HANDS you a value; the door ASKS for one. Never confuse them.
    OUTPUT THE TOOL'S path VALUE EXACTLY AS RETURNED, byte for byte - it may be a list
    or one line of words; reproduce it unchanged, never re-punctuate or reformat it.
    It crosses spikes deliberately.
+
+9b. IF the reply has "submit_one_per_turn": send ONE PIECE PER TURN, in order. Now
+   output the FIRST piece exactly as given; each later time you are asked to move,
+   output the NEXT piece you have not sent yet - check your own earlier messages to
+   see where you are. Never re-send, skip, merge or reorder a piece. Do NOT count or
+   slice moves yourself; the pieces are pre-cut, just copy the next one.

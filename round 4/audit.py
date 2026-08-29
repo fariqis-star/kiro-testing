@@ -175,9 +175,31 @@ def main():
             return v
         return [m for m in re.split(r'[,\s]+', v.strip().strip("[]")) if m]
 
-    route = as_moves(body["path"])
-    check("both Lambdas return the same route", route == as_moves(fb["path"]),
-          f"{len(route)} vs {len(as_moves(fb['path']))} moves")
+    # ROUTE_CHUNK: the pieces MUST reassemble into the exact proven route. A dropped or
+    # duplicated move puts the agent on the wrong tile for every step after it, which
+    # means walls, missed coins and a dead run - so this is verified move by move
+    # rather than just by length.
+    if body.get("submit_one_per_turn"):
+        pieces = body["submit_one_per_turn"]
+        rebuilt = [m for p in pieces for m in as_moves(p)]
+        check("route pieces reassemble to the exact full route",
+              rebuilt == pf.VERIFIED_PATH,
+              f"{len(rebuilt)} moves rebuilt vs {len(pf.VERIFIED_PATH)} expected")
+        check("piece count matches the reported count",
+              len(pieces) == body.get("pieces"), f"{len(pieces)} vs {body.get('pieces')}")
+        check("every piece is a non-empty valid array of full words",
+              all(as_moves(p) and all(m in ("up", "down", "left", "right")
+                                      for m in as_moves(p)) for p in pieces))
+        check("first piece is also served as 'path' so a partial read still moves",
+              as_moves(body["path"]) == as_moves(pieces[0]))
+        n_ch = 18 + len(pieces)
+        print(f"  --    ROUTE_CHUNK={pf.ROUTE_CHUNK}: {len(pieces)} pieces -> ~{n_ch} "
+              f"challenges attempted (was 19). UNVERIFIED - test map only.")
+        route = rebuilt
+    else:
+        route = as_moves(body["path"])
+        check("both Lambdas return the same route", route == as_moves(fb["path"]),
+              f"{len(route)} vs {len(as_moves(fb['path']))} moves")
     check("every move is a full word",
           all(m in ("up", "down", "left", "right") for m in route),
           "abbreviated moves were rejected by the Round 3 judge")
@@ -185,9 +207,10 @@ def main():
     # ride along, and the model would sometimes answer the Memory Trial by quoting it
     # ("c4=2") instead of calling the memory handler - a guaranteed wrong answer. The
     # tool result is also billed as tokens, so extra fields cost score as well.
+    allowed = {"path"} | ({"submit_one_per_turn", "pieces"} if pf.ROUTE_CHUNK else set())
     for name, reply in (("pathfinding", body), ("codeexec", fb)):
-        check(f"{name} reply carries only the path",
-              set(reply.keys()) == {"path"}, f"extra fields: {sorted(reply.keys())}")
+        check(f"{name} reply carries only the path (plus chunk fields when chunking)",
+              set(reply.keys()) <= allowed, f"extra fields: {sorted(reply.keys())}")
     # Reply envelopes must not ship '"error":null' - 8 calls of pure waste.
     env = run_raw("green fghi")
     check("tool replies drop the null error field", '"error"' not in env, env)
