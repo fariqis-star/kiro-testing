@@ -1111,23 +1111,28 @@ def _try_path_request(text):
 # message, which is also "Nope". Outputting it at the red door would be
 # indistinguishable from a guardrail block, so the result could not be interpreted
 # even if it scored. Never test this one.
-# PINNED: 'reverse' -> nepo, which the #1 setup proved correct for key "open".
-# Was: 'greenans' -> 6789, the GREEN door's answer used at the RED door.
+# SOLVED. The rule is exactly what the tile description says it is:
+#   "Next, translate the code you receive by reading it backwards."
+# reverse(key value). Nothing more.
 #
-# The case for it is an authoring error rather than a cipher. c30 and c31 are
-# adjacent tile codes for the same mechanic, almost certainly created one after the
-# other, and the red tile reads like a copy of the green one with only the flavour
-# text changed: same "To solve this challenge you must find the <colour> key", same
-# "Next, translate the code you receive by ...", same +1000, same -5. If the answer
-# field was left behind when the description was edited, c30 still holds 6789.
+# Every dead candidate above was chasing a GAME BUG, not a cipher. The key tile
+# was DISPLAYING "open" while the value the door graded against was "shut":
+#   'nepo' = reverse("open")   rejected - the real key was never "open"
+#   'tuhs' = reverse("shut")   accepted - and it LOOKED like a fixed answer
+# That single coincidence is what sent this file down 70 dead candidates. The
+# organisers have since fixed the display: the key tile now shows "shut", and
+# reverse() lands on 'tuhs' for the honest reason.
 #
-# It also survives the one measurement that killed everything else. 'nepo' is
-# provably what red's description asks for and it was rejected, so the stored value
-# cannot have been produced by applying red's own stated rule. A leftover from the
-# tile it was copied from explains that exactly.
+# So RED_MODE must NOT be "fixed". Hardcoding 'tuhs' only agreed with the door
+# while the key happened to be "shut". The judge map re-rolls the key value, and
+# the door grades reverse(whatever it actually shows) - so a pinned answer is a
+# guaranteed -5 and a dead run the moment the value changes. This is also why
+# "opposite_reversed" passed once: opposite("open")="shut", reversed "tuhs". It
+# was right by accident, for a key that was already "shut" underneath.
 #
-# If this scores, the red door has nothing to do with 'open' at all.
-RED_MODE = "fixed"
+# reverse() is value-agnostic: it is correct for open, shut, sesame, locked or
+# any word the judge map rolls. That is the whole point.
+RED_MODE = "reverse"
 
 # ---------------------------------------------------------------------------
 # AUTO-LADDER. Deploy ONCE, then just re-run the test map repeatedly.

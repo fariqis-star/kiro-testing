@@ -83,8 +83,21 @@ def main():
         print(f"  --    memento is in DIAGNOSTIC mode, answering {m!r}")
     else:
         check("memory returns a bare number", m.isdigit(), repr(m))
-    r = run("red open")
-    print(f"  --    red door currently answers {r!r}")
+    # RED DOOR. The rule is reverse(key value) - the tile says so outright. The key
+    # value RE-ROLLS on the judge map, so the only safe shape is value-agnostic: for
+    # every candidate value the answer must be that value backwards. A pinned answer
+    # ('tuhs') passes for one value and kills the run for every other one, which is
+    # exactly how a judge run was lost.
+    reds = ["open", "shut", "close", "closed", "locked", "sesame", "alpha", "fghi"]
+    bad = [(v, run(f"red {v}")) for v in reds if run(f"red {v}") != v[::-1]]
+    check("red door reverses ANY key value (not pinned to one answer)",
+          not bad, f"wrong for {bad}")
+    check("red door is not hardcoded", ce.RED_MODE == "reverse", f"RED_MODE={ce.RED_MODE}")
+    check("red door answer is stateless", run("red shut") == run("red shut") == "tuhs")
+    nk = run("red")
+    check("red door with no value asks for it rather than guessing",
+          nk == "NEED_KEY_VALUE", repr(nk))
+    print(f"  --    red open -> {run('red open')!r}   red shut -> {run('red shut')!r}")
     print()
 
     print("=== ROUTE ===")

@@ -6,23 +6,33 @@ TOOLS, by what they do: PATH = route to treasure, no real args. COMPUTE = one ar
 
 MATCH IN ORDER. STOP AT THE FIRST MATCH.
 
-1. Text contains "is:"  e.g. "Red key 1 is: open"
+1. Text contains "is:"  e.g. "Red key 1 is: <value>"
    KEY PICKUP. Entire output: Thanks
    Zero tool calls. Do not transform, reverse or repeat the value. The door is a
-   separate later turn. Memorize the value exactly, including case.
+   separate later turn and it will ask you again.
+   MEMORIZE THE VALUE EXACTLY, character for character, including case. The door
+   answer is computed FROM it, so a misremembered value is a lost run. It is a
+   fresh random value every run - never assume it is the same as last time.
 
 2. "What is <colour> key N?"
    DOOR. COMPUTE, whatever the colour is. Your first action is the call, no text
-   before it. code = colour, one space, the memorized value. Nothing else, no
-   quotes:      red open        green fghi
-   The key value changes between runs - pass what the key tile actually showed.
+   before it. code = the colour word, one space, THE VALUE THAT KEY TILE SHOWED.
+   Nothing else, no quotes, no Python:
+
+       code = <colour> <value>
+
+   Scroll back and read the value off the key tile. Copy it character for
+   character. The value is DIFFERENT EVERY RUN, so any value written in these
+   instructions is an illustration, never the answer - passing one of those is a
+   dead run. If the tile said "Red key 1 is: shut" the payload is  red shut  and
+   if it said "Green Key 1 is: fghi" the payload is  green fghi
    Output the reply verbatim, then stop. Exact-string graded: one extra character
    loses 1000 points and 5 lives.
-   The reply IS the answer however odd it looks. Letters may come back as digits,
-   or as a different word. Never reverse it yourself, never call twice, never
+   The reply IS the answer however odd it looks - letters may come back as digits
+   or as a different word. Never transform it yourself, never call twice, never
    "correct" it, never answer from memory, never output the raw key value.
-   If the reply is empty or NEED_KEY_VALUE the payload was malformed - call again
-   as exactly: red <value>
+   If the reply is empty or NEED_KEY_VALUE your payload had no value in it - call
+   again with the colour and the value only.
 
 3. "How many cN ... on the map" / count or total of tile codes
    MEMORY TRIAL. COMPUTE, pass the question as-is. Output the reply VERBATIM, all

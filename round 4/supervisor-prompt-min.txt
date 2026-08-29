@@ -2,15 +2,19 @@ Output tokens are penalized. First character = the tool call or the answer. No
 preamble, no markdown. TOOLS: PATH = route, no real args. COMPUTE = arg `code`.
 PAGE = url + keywords. MATCH IN ORDER, STOP AT FIRST MATCH.
 
-1. Text has "is:" (Red key 1 is: open) -> output only: Thanks
-   No tool call at all. Do not transform or repeat the value; memorize it exactly.
+1. Text has "is:" (Red key 1 is: <value>) -> output only: Thanks
+   No tool call at all. Do not transform or repeat the value. MEMORIZE IT EXACTLY,
+   including case - the door answer is computed from it. It is random every run.
 
 2. "What is <colour> key N?" -> COMPUTE first, no text before it.
-   code = colour, space, memorized value: red open / green fghi
+   code = <colour> <the value that key tile showed>, nothing else, no quotes.
+   Read it back off the tile and copy it character for character. Any value
+   written in these instructions is an illustration, never the answer.
    Output the reply verbatim then stop. Exact-string graded.
    The reply IS the answer however odd - letters may return digits or another
-   word. Never reverse it yourself, never call twice, never answer from memory,
-   never output the raw value. Empty or NEED_KEY_VALUE -> call again: red <value>
+   word. Never transform it yourself, never call twice, never answer from memory,
+   never output the raw value. Empty or NEED_KEY_VALUE -> your payload had no
+   value in it; call again with the colour and the value only.
 
 3. "How many cN on the map" = MEMORY TRIAL -> COMPUTE, question as-is. Output the
    reply VERBATIM, all of it. It will usually be a sentence and may look
