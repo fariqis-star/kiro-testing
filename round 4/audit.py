@@ -40,6 +40,17 @@ def check(label, good, detail=""):
         FAILS.append(label)
 
 
+def note(label, ok, detail=""):
+    """A suggestion, not a requirement.
+
+    Reserved for checks that encode an unproven theory of mine. The prompt that scored
+    17,045 on the judge satisfies none of them, so failing the build over them would
+    block the best configuration we have ever measured. Print and move on.
+    """
+    print(f"  {'OK  ' if ok else 'note'}  {label}"
+          + ("" if ok else f"  -> not present{': ' + detail if detail else ''}"))
+
+
 def main():
     ce = load("codeexecution-lambda.py", "ce")
     pf = load("pathfinding-lambda.py", "pf")
@@ -339,8 +350,11 @@ def main():
           "showing 'Key 1 is: <value>' inside the door rule made the model "
           "call the tool at the key tile")
     # Keys and doors must be separated by an explicit, mechanical test.
-    check("prompt separates key from door by punctuation",
-          "question mark" in low and "statement" in low)
+    # ADVISORY, not a gate. The punctuation rule is my own idea for telling the key
+    # tile from the door tile. It may well help, but the prompt that actually scored
+    # 17,045 on the judge does not contain it, so it must never block that prompt.
+    note("prompt separates key from door by punctuation",
+         "question mark" in low and "statement" in low)
     check("key pickup forbids any tool call",
           "call no tool" in low or "no tool call at all" in low)
     # The intake tile is written by the model, NOT routed through the tool.
@@ -351,9 +365,15 @@ def main():
     # route cannot help with that - a refusal never reaches the tool. The case 6/7
     # discriminator above is the actual fix. The Lambda builder stays available as a
     # fallback if the model ever does call it.
-    check("patient intake is written by the model, not tool-routed",
-          "no tool - write" in low or "no tool. write" in low,
-          "tool-routing this tile costs ~5 points and protects nothing")
+    # This one IS a real gate - tool-routing the intake costs ~5 points and protects
+    # nothing - but it was matching an over-literal phrase. The proven prompt says
+    # "No tool, raw JSON", which is the same instruction in different words.
+    intake_block = ""
+    for marker in ("\n7. PATIENT INTAKE", "\n7. Bare statement"):
+        if marker in p:
+            intake_block = p.split(marker, 1)[1].split("\n8.", 1)[0].lower()
+            break
+    check("patient intake says NO TOOL", "no tool" in intake_block, intake_block[:80])
     if getattr(ce, "MEMORY_AUTO", False) or getattr(ce, "MEMORY_FORMAT", "") == "shotgun":
         # The memento now returns sentences. The MEMENTO CASE must not forbid them, or
         # the model trims the reply to a bare number - how this tile was lost once.
@@ -373,10 +393,13 @@ def main():
     # the Healthcare API) + life 500 + token 942 + treasure 1000. The likeliest cause is
     # the model treating an intake phrased as a request as a guardrail and refusing it,
     # so the prompt must carry the discriminator and the request-verb whitelist.
-    check("prompt separates intake from refusal by who supplies the details",
-          "asks for details it does not give" in low)
-    check("prompt says a request-phrased intake is still JSON",
-          "register" in low and "still case 7" in low)
+    # ADVISORY. Both of these encode my theory that the judge lost the healthcare tile
+    # because the model read a request-phrased intake as a guardrail. That theory is
+    # unconfirmed - the 17,045 judge run scored this tile with neither rule present.
+    note("prompt separates intake from refusal by who supplies the details",
+         "asks for details it does not give" in low)
+    note("prompt says a request-phrased intake is still JSON",
+         "register" in low and "still case 7" in low)
     check("prompt keeps the 5-key JSON schema",
           '"patient_id"' in flat and '"insurance_id":null' in flat)
     # Deterministic builder: intake in, exact JSON out; retrieval requests stay refusals.
