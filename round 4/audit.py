@@ -602,6 +602,33 @@ def main():
     # board, so the memorised array buys nothing; and hardcoding answers is a
     # disqualifiable offence, which makes a 27-token honest route strictly better than a
     # free memorised one.
+    # THE HANDLER DOCSTRING IS THE AUTO-GENERATED TOOL SCHEMA.
+    # With no docstring the schema carried no description, the tool name drifted between
+    # deployments, and the model answered with the coordinate convention the navigation
+    # prompt explains - [[0,0],[0,1],...] - which the game cannot execute. 0 coins,
+    # score 1,849, run over on turn one.
+    doc = (pf.lambda_handler.__doc__ or "")
+    check("pathfinding handler HAS a docstring", bool(doc.strip()),
+          "it becomes the tool schema; without it the model invents an output format")
+    # The schema's OUTPUT example must match what the handler really returns, byte for
+    # byte in shape. It first claimed a string containing an array; the handler returns
+    # a real array. A schema that lies is worse than no schema.
+    real = json.loads(pf.lambda_handler({}, None)["body"])["path"]
+    check("tool schema's output example matches the real return type",
+          isinstance(real, list) and '{"path": ["down", "down"' in doc,
+          f"handler returns {type(real).__name__}")
+    for need, why in (('"path"', "names the output field"),
+                      ("MOVEMENT WORDS", "says what the elements are"),
+                      ("NOT A LIST OF COORDINATES", "rules out the failure we saw"),
+                      ("map_grid", "documents the board input"),
+                      ("verbatim", "tells the model not to reshape it")):
+        check(f"tool schema {why}", need in doc, f"missing {need!r}")
+    for w in ("up", "down", "left", "right"):
+        check(f"tool schema names the move {w!r}", f'"{w}"' in doc)
+    check("prompt forbids answering with coordinates",
+          "never coordinates" in low and "[[0,0]" in flat,
+          "the model produced [[0,0],[0,1],...] and lost the run on turn one")
+
     check("prompt sends the board so the tool can compute",
           "map_grid" in flat and "PASS THE BOARD" in flat,
           "without a board the tool falls back to the memorised array")

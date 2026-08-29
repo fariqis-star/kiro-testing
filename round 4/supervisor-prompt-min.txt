@@ -90,6 +90,13 @@ PAGE = url + keywords. MATCH IN ORDER, STOP AT FIRST MATCH.
    send only map_grid. Never invent a strategy name.
    NEVER INVENT A PATH. NEVER INVENT A BOARD - copy the one printed above. If you
    genuinely cannot read it, call with NO arguments rather than guess.
+   THE ANSWER IS ALWAYS MOVEMENT WORDS, NEVER COORDINATES.
+   Correct:   ["down","down","right","right", ...]
+   WRONG:     [[0,0],[0,1],[0,2]]   [0,0]   "A1","B1"   {"row":0,"col":1}
+   Every element is exactly one of down, up, left, right - lowercase, in double
+   quotes. The prompt above explains [rowIndex,columnIndex] so it can describe the
+   board to you; it is NOT the answer format. A coordinate list is rejected and the
+   run ends on turn one with 0 coins.
    On failure, COMPUTE with code = find optimal path.
    Output ONLY the returned array, exactly as returned - never extend, trim,
    reorder or rewrite it, whatever its length or first move. It crosses spikes

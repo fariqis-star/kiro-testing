@@ -1194,6 +1194,49 @@ def _dynamic_or_verified(event):
 
 
 def lambda_handler(event, context):
+    """Find the highest-scoring walk through the dungeon and return it as MOVES.
+
+    THIS DOCSTRING IS THE TOOL SCHEMA. IT IS NOT DECORATION.
+
+    The platform auto-generates the tool definition from this code after every edit.
+    With no docstring here the generated schema carried no description, the tool name
+    drifted between deployments (pathfinding_round4 -> pathfinding ->
+    get_pathfinding_route -> get_path), and the model had nothing telling it what came
+    back. It therefore fell back on the coordinate convention the navigation prompt
+    explains - "[{rowIndex},{columnIndex}]" - and answered
+
+        [[0,0],[0,1],[0,2],[0,3],[0,4],[0,5],[0,6],[0,7],[0,8],[0,9]]
+
+    which the game cannot execute. Run over on the first turn: 0 coins, score 1,849.
+
+    INPUT (all optional; an empty call still returns a legal route)
+      map_grid  str   The board, ONE CHARACTER PER CELL, rows joined by "/".
+                      # wall   P player/start   T treasure   . normal
+                      a c1  b c2  c c3  d c4  e c5  f c7  g c8
+                      h c18  i c30  j c31  k c40  l c41
+                      e.g. "P.fffeffaT/.#########/b.fef.fd.f/..."
+                      Runs may be collapsed as char+count ("f3" = three c7 tiles).
+      game_map  list  The same board as a 2D array of strings, exactly as the
+                      navigation prompt prints it ("normal", "wall", "c7", ...).
+      strategy  str   Optional. auto (default for an unknown board), tsp, smart_loot,
+                      no_spikes, health, mastered, high_value, get_coins, reckless,
+                      swift. Omit it unless the operator named one.
+
+    OUTPUT
+      {"path": ["down", "down", "right", "right", ...]}
+
+      "path" is a JSON array of MOVEMENT WORDS. Every element is exactly one of
+      "up", "down", "left" or "right", lowercase, double-quoted.
+
+      IT IS NOT A LIST OF COORDINATES. It is not [[0,0],[0,1]], not [row,col] pairs,
+      not cell names like "A1". Coordinates are rejected by the game and end the run
+      immediately.
+
+      Return the value of "path" verbatim as your entire answer - same order, same
+      length, nothing added, nothing removed, no surrounding text. The route is
+      already optimal and deliberately steps on spike traps where the board offers no
+      way around them.
+    """
     # PATH ONLY. "steps" and "start_position" were never read by anything, and the
     # tool result counts toward the token total, so they cost points for nothing.
     #
