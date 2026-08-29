@@ -563,17 +563,16 @@ def _try_patient_json(text):
 # disagree, whichever tool the model happens to reach decides the format and the run
 # becomes unreproducible. audit.py fails when they differ.
 #
-#   "array"   ["down","down"]   ~422 tok   PROVEN
-#   "bare"    [down,down]       ~212 tok   UNTESTED, ~11 points, try this one first
-#   "csv"     down,down         ~210 tok   UNTESTED, ~11 points
-#   "spaced"  down down         ~210 tok   UNTESTED, ~11 points
-# All three save the same amount - the cost is the quotes, not the brackets. None is
-# valid JSON, so a strict parser on the game side rejects all of them.
-# TEST MAP ONLY for anything but "array": a rejected format forfeits at move one.
+#   "array"   ["down","down"]   ~422 tok   PROVEN - the only format that works
+#   "bare"    [down,down]       ~212 tok   TESTED AND REJECTED on the Round 4 test map
+#   "csv"     down,down         ~210 tok   ruled out by inference - not valid JSON
+#   "spaced"  down down         ~210 tok   ruled out by inference - not valid JSON
 #
-# *** SET TO "bare" FOR A TEST-MAP EXPERIMENT. Must match the pathfinding Lambda.
-# REVERT TO "array" BEFORE THE JUDGE RUN. ***
-MOVE_FORMAT = "bare"
+# "bare" kept every word and only removed the quotes, and it still failed. So the game
+# STRICT-JSON-PARSES the move list, which kills csv and spaced too. The route's ~420
+# tokens (~22 points) are unavoidable. Leave this on "array" - see the pathfinding
+# Lambda for the full evidence trail.
+MOVE_FORMAT = "array"
 
 
 def _format_path(moves):

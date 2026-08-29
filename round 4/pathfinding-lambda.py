@@ -160,28 +160,27 @@ VERIFIED_COUNTS = ("c1=4 c2=2 c3=1 c4=2 c5=4 c7=28 c8=2 "
 # quotes on every element, not the brackets. Brackets are ~2 tokens for the whole
 # array. So pick on likelihood of being accepted, not on size.
 #
-# WHAT THE ROUND 3 REJECTIONS ACTUALLY TELL US:
-#   ["r","r","u"]  was VALID JSON with abbreviated words -> rejected.
-#       The parser therefore read the array fine and rejected the WORDS.
-#   "rruu..."      was a plain string AND abbreviated -> rejected, but that result is
-#       confounded: we cannot tell whether the string form or the words killed it.
-# So the parser demonstrably handles a JSON array. If it uses a strict JSON parse,
-# every quote-dropping variant here fails, because none of them is valid JSON. That
-# is the risk, and it is why this is TEST MAP ONLY.
+# *** SETTLED: THE ROUTE MUST BE A VALID JSON ARRAY OF QUOTED FULL WORDS. ***
+# MOVE_FORMAT stays "array" permanently. Do not spend another run on this.
 #
-# TEST IN THIS ORDER - closest to the proven format first:
-#   1. "bare"    keeps the brackets and commas, removes only the quotes
-#   2. "csv"     drops the brackets too
-#   3. "spaced"  drops the commas as well
-# A rejected format forfeits at move one. Set this back to "array" before any judge
-# run. It must match the CodeExecution Lambda's copy - audit.py enforces that.
+# The evidence, in the order it was gathered:
+#   ["r","r","u"]      valid JSON, abbreviated words   -> rejected (Round 3 judge)
+#   "rruu..."          plain string, abbreviated words -> rejected (Round 3 judge)
+#   [down,down,right]  valid words, quotes removed     -> REJECTED (Round 4 test map)
 #
-# *** CURRENTLY SET TO "bare" FOR A TEST-MAP EXPERIMENT. ***
-# Expected emission: [down,down,right,...]  ~212 tok instead of ~422, worth ~11 points.
-# If the run forfeits at move one, the game uses a strict JSON parser - go back to
-# "array" and the ~11 points are simply not available.
-# REVERT TO "array" BEFORE THE JUDGE RUN.
-MOVE_FORMAT = "bare"
+# That third result is the decisive one. It kept the exact words and the exact order
+# and changed nothing but the quoting, and it still failed. So the game does a STRICT
+# JSON PARSE of the move list: the words were never the only requirement, the JSON
+# validity is.
+#
+# Which rules out "csv" and "spaced" BY INFERENCE - neither is valid JSON either, so
+# both would fail for the same reason. They are kept below only so the reasoning is
+# legible; they are not experiments waiting to be run.
+#
+# The consequence: the ~420 tokens the route costs (~22 points) are UNAVOIDABLE.
+# There is no way to drop the quotes and stay valid JSON. The remaining token levers
+# are the tool names, the supervisor's reasoning budget, and the memento phrasing.
+MOVE_FORMAT = "array"
 
 
 def _format_path(moves):

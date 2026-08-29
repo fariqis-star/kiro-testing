@@ -160,9 +160,14 @@ def main():
     # format would depend on which tool the model happened to reach.
     check("MOVE_FORMAT matches across both Lambdas",
           ce.MOVE_FORMAT == pf.MOVE_FORMAT, f"{ce.MOVE_FORMAT} vs {pf.MOVE_FORMAT}")
-    if ce.MOVE_FORMAT != "array":
-        print(f"  !!    MOVE_FORMAT={ce.MOVE_FORMAT!r} is UNTESTED - test map only. A "
-              f"rejected format forfeits at move one. Set it back to 'array' for judge.")
+    # "bare" was tested on the Round 4 test map and rejected even though it kept every
+    # move word intact, so the game strict-JSON-parses the route. csv and spaced are not
+    # valid JSON either and would fail identically. This is now a hard failure, not a
+    # warning - anything but "array" forfeits at move one.
+    check("MOVE_FORMAT is 'array' - every other form is proven to forfeit",
+          ce.MOVE_FORMAT == "array",
+          f"{ce.MOVE_FORMAT!r}: 'bare' was rejected on the test map; the route must be "
+          f"a valid JSON array of quoted full words")
 
     def as_moves(v):
         """Normalise any MOVE_FORMAT back to a list so the walk can be verified."""
