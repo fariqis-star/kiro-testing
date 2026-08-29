@@ -237,7 +237,17 @@ def _format_path(moves):
 # discovered without a run, and neither is dangerous on the test map.
 #
 # 0 disables it entirely and restores the proven single-submission behaviour.
-ROUTE_CHUNK = 0
+#
+# *** CURRENTLY SET TO 4 FOR THE TEST-MAP EXPERIMENT. ***
+# 105 moves / 4 = 27 pieces -> 18 tiles + 27 = ~45 challenges attempted, up from 19.
+# Read ONE line of the summary afterwards:
+#     Challenges attempted 45  -> confirmed, ~17075. next try 2, then 1.
+#     Challenges attempted 19  -> pieces are not counted. set back to 0.
+#     run stalls after piece 1 -> the game will not re-prompt. set back to 0.
+# 4 rather than 1 on purpose: if the model mishandles piece ordering, 27 pieces is far
+# easier to read in the trace than 105.
+# SET BACK TO 0 BEFORE THE JUDGE RUN unless this is confirmed working.
+ROUTE_CHUNK = 4
 
 
 def _chunk_route(moves):
