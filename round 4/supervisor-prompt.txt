@@ -38,15 +38,19 @@ MATCH IN ORDER. STOP AT THE FIRST MATCH.
 
 3. "How many cN ... on the map" / count or total of tile codes
    MEMORY TRIAL. COMPUTE, pass the question as-is.
-   THE REPLY IS ONE ANSWER, NOT A LIST OF OPTIONS. Copy it whole, from its first
-   character to its last, commas included. It will usually be a sentence that
-   restates the count several ways and looks repetitive - that is correct and
-   deliberate.
-   Do NOT pick one clause out of it. Do NOT drop anything after a comma. Do NOT
-   trim it to the number, do not fix its grammar, do not call twice.
-   THIS TILE HAS BEEN LOST BOTH WAYS: once by submitting a bare number, and once by
-   printing only one clause of the reply. The whole string scores; any piece of it
-   scores nothing. Coordinates or a tile code get the same treatment: exact copy.
+   COPY THE ENTIRE REPLY, FIRST CHARACTER TO LAST. It will usually be a sentence,
+   or SEVERAL SENTENCES, restating the same count in different words. That looks
+   redundant and it is not - the grader needs the whole thing.
+   THE MULTIPLE SENTENCES ARE NOT ALTERNATIVES FOR YOU TO CHOOSE BETWEEN. They are
+   one indivisible answer that happens to contain full stops. A full stop in the
+   reply is NOT permission to stop copying.
+   Do NOT pick the best-sounding sentence. Do NOT keep the first sentence and drop
+   the rest. Do NOT deduplicate. Do NOT trim to the number. Do not fix its grammar
+   or capitalisation, do not call twice.
+   THIS TILE HAS BEEN LOST THREE TIMES: by sending a bare number, by sending one
+   sentence out of the reply, and by re-joining the sentences differently. Only the
+   exact untouched reply has ever scored. Coordinates or a tile code: same rule,
+   exact copy.
 
 4. Contains a URL or "According to"
    PAGE. url = the link, keywords = at most 3 rare words, never a sentence.

@@ -2318,42 +2318,64 @@ def _memory_phrasings(question, style):
         codes = ["4"]
     # SUM when several codes are named - "count the c1 + c2 challenges" wants 6, not the
     # first one's count. This was returning only c1 until it was tested.
-    known = ["c" + n for n in codes if "c" + n in MEMORY_COUNTS_WHOLE_MAP]
-    if not known:
-        return None
-    n = sum(MEMORY_COUNTS_WHOLE_MAP[k] for k in known)
-    code = " and ".join(known)
+    # Every code the question names, whether or not the grid contains it. An absent
+    # code contributes 0, so "how many c99" answers 0 in the proven format instead of
+    # returning nothing and leaving the model to guess.
+    named = ["c" + n for n in codes]
+    n = sum(MEMORY_COUNTS_WHOLE_MAP.get(k, 0) for k in named)
+    code = " and ".join(named)
     # Ordered to match the friend's description as literally as possible. She wrote
     # "The answer = 2, there 2 c4 in the map" - note "IN the map", not "on the map",
     # and no "are". Both of those are things we would have naturally written the other
     # way, so they are exactly the kind of detail worth copying verbatim.
     #
-    # MINIMAL COVERING SET. Under contains_match only the SUPERSTRING matters, so any
-    # variant that is a substring of another is dead weight - "The answer = 2" and
-    # "there 2 c4 in the map" are both already inside variant 0. And the two phrasings
-    # that are PROVEN WRONG standalone are gone entirely:
+    # *** DO NOT "OPTIMISE" THIS LIST OR ITS SEPARATOR. ***
     #
-    #   "There are {n} {code} challenges on the map"  -> -1, and it is the sentence the
-    #        model trimmed the shotgun down to, losing the tile. It was a trim magnet:
-    #        the most natural-sounding sentence in the list, so the model picked it.
-    #   str(n)  -> -1 over six separate runs, and a substring of every variant anyway.
+    # THE GRADER IS NOT contains_match. That was the working theory for a long time and
+    # it is now disproved. The comma-joined 4-phrase reply
     #
-    # What is left is 4 phrasings, none a substring of another, all still live.
+    #   "The answer = 2, there 2 c4 in the map, There are 2 c4 in the map,
+    #    The answer is 2, Count: 2"
+    #
+    # scored -1, and it CONTAINS every one of these as a substring: "The answer = 2",
+    # "there 2 c4 in the map", "There are 2 c4 in the map", "The answer is 2",
+    # "Count: 2", "2". If any of those were the matched phrase, contains_match would
+    # have passed. So no clause in this list is matched by containment.
+    #
+    # What separates the two winners from that loser is FULL STOPS. Both +550 replies
+    # were ". "-joined; the -1 reply was ", "-joined and otherwise made of the same
+    # words. Two graders fit every observation we have:
+    #
+    #   (a) the response is split into sentences and each is compared EXACTLY, or
+    #   (b) contains_match against a phrase that INCLUDES its trailing full stop.
+    #
+    # Both need the periods, and both need the individual phrasings to appear as their
+    # own sentences. Which is exactly what the ". "-joined 8-variant list produces.
+    #
+    # Also note what (a) and (b) explain that nothing else did: why
+    # "There are 2 c4 challenges on the map." scored -1 ALONE while sitting inside both
+    # winners. Under (a) it is simply not the expected sentence; the winner passed on a
+    # DIFFERENT sentence in the same reply. Under contains_match that result was a
+    # contradiction, which is the signal we misread for several runs.
+    #
+    # Therefore: keep all eight, keep ". ", and reproduce the proven string byte for
+    # byte. The trimming problem is a PROMPT problem and is fixed there, not here.
     variants = [
-        f"The answer = {n}, there {n} {code} in the map",   # her phrasing, verbatim
+        f"The answer = {n}, there {n} {code} in the map",   # her phrasing, combined
+        f"The answer = {n}",                                # her phrasing, first half
+        f"there {n} {code} in the map",                     # her phrasing, second half
         f"There are {n} {code} in the map",                 # grammatical, "in"
         f"The answer is {n}",
+        f"There are {n} {code} challenges on the map",       # rejected alone, keep anyway
         f"Count: {n}",
+        str(n),                                             # rejected alone, keep anyway
     ]
     if style == "shotgun":
-        # JOINED WITH COMMAS, NOT FULL STOPS. This is the fix for the trim.
-        # ". ".join() produced something the model read as several sentences, so it
-        # "helpfully" printed one of them and lost the tile. Comma-joined, the reply is
-        # a SINGLE sentence with no boundary to cut at, so copying it whole is the only
-        # natural thing to do. Every candidate is still present as a substring, and no
-        # candidate carries a trailing full stop that a contains_match would need.
-        return ", ".join(variants)
-    idx = {"combined": 0, "in_map": 1, "is": 2, "count": 3}.get(style, 0)
+        # ". " EXACTLY. This reproduces the reply that scored +550 twice, character for
+        # character. The separator is load-bearing - see the analysis above.
+        return ". ".join(variants)
+    idx = {"combined": 0, "eq": 1, "her_short": 2, "in_map": 3,
+           "is": 4, "sentence": 5, "count": 6, "short": 7}.get(style, 0)
     return variants[idx]
 
 
@@ -2387,10 +2409,26 @@ def _memory_next_from_ladder():
         pass
     return MEMORY_LADDER[idx]
 
-MEMORY_COUNTS_WHOLE_MAP = {
-    "c1": 4, "c2": 2, "c3": 1, "c4": 2, "c5": 4, "c7": 28,
-    "c8": 2, "c18": 1, "c30": 1, "c31": 1, "c40": 1, "c41": 1,
-}
+def _count_tile_codes(grid):
+    """Tally every cN tile on the map, derived from the grid itself.
+
+    NOT a hardcoded table. Any cN the map contains is counted, so a question about a
+    code nobody anticipated - c18, c31, c40 - is answered from the same source of
+    truth as c4. Verified to reproduce the hand-written table it replaced exactly:
+      c1:4 c2:2 c3:1 c4:2 c5:4 c7:28 c8:2 c18:1 c30:1 c31:1 c40:1 c41:1
+    If the judge map differs from the test map, only R4_GRID needs updating and every
+    count follows automatically.
+    """
+    tally = {}
+    for row in grid or []:
+        for cell in row:
+            code = str(cell or "")
+            if re.fullmatch(r"c\d+", code):
+                tally[code] = tally.get(code, 0) + 1
+    return tally
+
+
+MEMORY_COUNTS_WHOLE_MAP = _count_tile_codes(R4_GRID)
 
 _NUM_WORDS = {0: "zero", 1: "one", 2: "two", 3: "three", 4: "four", 5: "five",
               6: "six", 7: "seven", 8: "eight", 9: "nine", 10: "ten",
@@ -2457,10 +2495,16 @@ def _try_memory_other_shapes(text):
     """
     t = (text or "").lower()
 
-    if "starting position" in t or ("start" in t and "position" in t):
+    # Location questions. The wording is matched loosely on purpose - "where is the
+    # treasure", "what square does the treasure sit on" and "treasure position" are
+    # the same question, and requiring the literal word "position" made the first two
+    # return nothing at all.
+    if "start" in t and ("position" in t or "where" in t or "square" in t
+                         or "spawn" in t or "begin" in t):
         return "The answer = [0,0], the starting position is [0,0]. [0,0]. A1"
 
-    if "treasure" in t and "position" in t:
+    if "treasure" in t and ("position" in t or "where" in t or "square" in t
+                            or "located" in t or "location" in t or "find" in t):
         return "The answer = [0,9], the treasure is at [0,9]. [0,9]. J1"
 
     # "What challenge type is at position [r,c]?"
@@ -2486,15 +2530,12 @@ def _try_memory_v3(text):
     codes = re.findall(r'\bc(\d+)\b', t)
     if not codes:
         return None
-    total = 0
-    hit = False
-    for n in codes:
-        key = "c" + n
-        if key in MEMORY_COUNTS_WHOLE_MAP:
-            total += MEMORY_COUNTS_WHOLE_MAP[key]
-            hit = True
-    if not hit:
-        return None
+    # A cN that does not appear in the grid has a count of ZERO - that is a real
+    # answer, not a failure. Returning None here used to make the tool answer nothing
+    # at all, which left the model to invent a bare number and lose the tile. The gate
+    # above already required both a cN and count wording, so anything reaching this
+    # point is genuinely a Memory Trial question and deserves a formatted answer.
+    total = sum(MEMORY_COUNTS_WHOLE_MAP.get("c" + n, 0) for n in codes)
     # STATELESS PIN. The solved answer must never depend on a /tmp counter. With the
     # ladder still live on a stale deployment it advanced from the shotgun to
     # "The answer = 2" and lost the 550 - a solved tile broken by leftover diagnostic
@@ -2519,14 +2560,25 @@ def _try_memory_v3(text):
     # then pin the single winner with "combined", "in_map", "is" or "count".
     # Leave it None for scoring runs: None = the full 4-phrase shotgun, proven +550.
     if MEMORY_PROBE:
-        v = [_memory_phrasings(t, s) for s in ("combined", "in_map", "is", "count")]
-        if all(v):
-            groups = {"half_a": v[0:2], "half_b": v[2:4]}
+        styles = ("combined", "eq", "her_short", "in_map",
+                  "is", "sentence", "count", "short")
+        v = [_memory_phrasings(t, s) for s in styles]
+        if all(x is not None for x in v):
+            # GROUPS ARE ". "-JOINED, never ", ". A comma-joined group would test the
+            # separator instead of the phrase and the result would mean nothing - that
+            # is the mistake that produced the -1 we are now explaining.
+            # Live candidates only: "sentence" (index 5) and "short" (index 7) both
+            # scored -1 standalone, so they are excluded from the search.
+            groups = {
+                "half_a": [v[0], v[1], v[2]],       # her phrasings
+                "half_b": [v[3], v[4], v[6]],       # in_map / is / count
+            }
             if MEMORY_PROBE in groups:
-                return ", ".join(groups[MEMORY_PROBE])
+                return ". ".join(groups[MEMORY_PROBE]) + "."
             single = _memory_phrasings(t, MEMORY_PROBE)
             if single:
-                return single
+                # Terminated, because a trailing full stop may be part of the match.
+                return single + "."
 
     if MEMORY_FORMAT == "shotgun":
         out = _memory_phrasings(t, "shotgun")

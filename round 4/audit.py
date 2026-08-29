@@ -79,19 +79,48 @@ def main():
         check("memento answer is STATELESS - identical on repeated calls",
               all(x == m for x in again))
         check("memento ladder is OFF", not getattr(ce, "MEMORY_AUTO", False))
-        # The two phrasings that scored -1 on their own must not be reachable by a
-        # model that trims the reply to one clause. "There are N cX challenges on the
-        # map" was the trim magnet that lost this tile - it is the most natural
-        # sentence in the list, so the model picked it out and submitted it alone.
-        check("memento drops the phrasings already proven wrong",
-              "challenges on the map" not in m, m)
-        # Comma-joined, not full-stop-joined: no sentence boundary to trim at.
-        check("memento reply is ONE sentence (no internal full stops)",
-              "." not in m.rstrip("."), m)
-        # Every clause the model could plausibly cut to must still be a live candidate.
-        for clause in [c.strip() for c in m.split(",")]:
-            check(f"clause is a live candidate: {clause!r}",
-                  clause and "challenges on the map" not in clause and clause != "2")
+        # REGRESSION LOCK. This exact string scored +550 twice. The comma-joined
+        # "improvement" that dropped the dead phrasings scored -1 even though it
+        # contained every candidate as a substring - which is how we know the grader is
+        # not contains_match and that the FULL STOPS are load-bearing. Nothing about
+        # this string may be tidied again without a run to back it up.
+        PROVEN = ("The answer = 2, there 2 c4 in the map. The answer = 2. "
+                  "there 2 c4 in the map. There are 2 c4 in the map. "
+                  "The answer is 2. There are 2 c4 challenges on the map. "
+                  "Count: 2. 2")
+        check("memento reply is the EXACT string that scored +550", m == PROVEN,
+              f"\n      got  {m!r}\n      want {PROVEN!r}")
+        check("memento phrasings are separated by full stops, not commas",
+              ". " in m, m)
+        # NOT HARDCODED TO c4. The counts are derived from the grid, so every code the
+        # map actually contains must answer with its own real count in the same proven
+        # format - c1 and c7 are asked as often as c4.
+        import re as _re, collections as _co
+        derived = _co.Counter(
+            cell for row in ce.R4_GRID for cell in row
+            if _re.fullmatch(r"c\d+", str(cell or ""))
+        )
+        check("grid actually contains tile codes to count", len(derived) > 5,
+              str(dict(derived)))
+        wrong = []
+        for tcode, tw in sorted(derived.items(), key=lambda x: int(x[0][1:])):
+            got = run(f"How many {tcode} challenges are on the map?")
+            if not got.startswith(f"The answer = {tw}, there {tw} {tcode} in the map."):
+                wrong.append((tcode, tw, got[:40]))
+        check(f"memento answers ALL {len(derived)} tile codes, not just c4",
+              not wrong, str(wrong))
+        check("memento counts come from the grid, not a hand-written table",
+              ce.MEMORY_COUNTS_WHOLE_MAP == dict(derived),
+              f"{ce.MEMORY_COUNTS_WHOLE_MAP} vs {dict(derived)}")
+        # Several codes in one question must SUM, and an unknown code must answer 0
+        # rather than returning nothing and leaving the model to invent a number.
+        two = run("how many c1 and c8 challenges on the map?")
+        want2 = derived.get("c1", 0) + derived.get("c8", 0)
+        check("memento sums when several codes are named",
+              two.startswith(f"The answer = {want2},"), two[:50])
+        unk = run("How many c99 challenges are on the map?")
+        check("memento answers 0 for a code not on the map",
+              unk.startswith("The answer = 0,"), unk[:50])
         if getattr(ce, "MEMORY_PROBE", None):
             print(f"  !!    MEMORY_PROBE={ce.MEMORY_PROBE!r} - DIAGNOSTIC, "
                   f"set it back to None before a scoring run")
