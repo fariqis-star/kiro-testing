@@ -74,6 +74,43 @@ def main():
     check("green door returns 6789 (proven +1000)", g == "6789", repr(g))
     check("maths 100! mod 1e9+7", run("100! mod 1e9+7") == "437918130")
     check("maths fib 3000 last 10", run("fib 3000 last 10") == "6709796000")
+
+    # MATHS FUZZ. The judge map's wording differs from the test map's, and two parser
+    # bugs were found exactly there, both returning a plausible WRONG number rather
+    # than an error:
+    #   "mod 1e10"  -> modulus read as 1, fib % 1 = 0        (-600 and a life)
+    #   "mod 1e9+7" -> the "+7" dropped, so mod 1e9 instead   (silently wrong)
+    # Every answer below is computed independently here, so this catches the class
+    # rather than the two instances.
+    import math as _math
+
+    def _fib(n, m):
+        a, b = 0, 1
+        for _ in range(n):
+            a, b = b, a + b
+        return a % m
+    M97 = 10 ** 9 + 7
+    fuzz = []
+    for n in (50, 67, 100, 200, 500):
+        w = str(_math.factorial(n) % M97)
+        fuzz += [(f"What is {n}! modulo 1,000,000,007?", w), (f"{n}! mod 1e9+7", w),
+                 (f"What is {n} factorial modulo 1000000007?", w),
+                 (f"{n}! mod 10^9+7", w), (f"{n} factorial modulo 1e9 + 7", w)]
+    for n in (100, 300, 500, 1000, 3000):
+        for mod, tag in ((10 ** 10, "1e10"), (M97, "1e9+7"), (10 ** 9, "1e9")):
+            w = str(_fib(n, mod))
+            fuzz += [(f"What is the {n}th Fibonacci number modulo {mod:,}?", w),
+                     (f"fib {n} mod {tag}", w), (f"{n}th fibonacci mod {tag}", w),
+                     (f"the {n}th Fibonacci number modulo {tag}", w),
+                     (f"{n}th fib modulo {tag}", w)]
+    for n, d in ((500, 10), (1000, 8), (3000, 10)):
+        w = str(_fib(n, 10 ** d)).zfill(d)
+        fuzz += [(f"What is the {n}th Fibonacci number? Return only the last {d} digits", w),
+                 (f"fib {n} last {d}", w)]
+    wrong = [(q, run(q), w) for q, w in fuzz if run(q) != w]
+    check(f"maths fuzz: {len(fuzz)} phrasings vs independently computed answers",
+          not wrong, "\n      " + "\n      ".join(
+              f"{q[:56]!r} got {g!r} want {w!r}" for q, g, w in wrong[:8]))
     m = run("How many c4 challenges are on the map?")
     if getattr(ce, "MEMORY_FORMAT", "") == "shotgun":
         # SOLVED at +550: contains_match against a phrase, so the reply is several

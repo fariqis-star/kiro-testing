@@ -881,6 +881,14 @@ def _pad_pow10(s, mod, explicit_pad=0):
 def _normalize_math(text):
     """Expand 1e10 and 10^9+7 style shorthand into plain integers."""
     t = text.lower().strip()
+    # "1e9+7" MUST be folded before the bare "1e9" rule below, or that rule rewrites it
+    # to "1000000000+7" and every downstream modulus regex - which reads digits with
+    # ([\d,]+) and stops at the "+" - silently drops the 7. That returned
+    # fib(500) mod 1e9 instead of mod 1e9+7: a plausible-looking wrong number, which is
+    # the worst kind. Caught by testing 52 phrasings against independently computed
+    # answers, 8 of which were wrong this way.
+    t = re.sub(r'\b(\d+)\s*e\s*(\d+)\s*\+\s*(\d+)\b',
+               lambda m: str(int(m.group(1)) * 10 ** int(m.group(2)) + int(m.group(3))), t)
     t = re.sub(r'\b(\d+)\s*e\s*(\d+)\b',
                lambda m: str(int(m.group(1)) * 10 ** int(m.group(2))), t)
     t = re.sub(r'\b10\s*(?:\^|\*\*)\s*(\d+)\s*\+\s*(\d+)',
