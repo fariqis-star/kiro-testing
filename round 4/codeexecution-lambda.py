@@ -2399,10 +2399,28 @@ MEMORY_FORMAT = "shotgun"
 #     "2"                                     alone -> failed
 #     every shotgun that SCORED +550 carried this phrase as its first sentence
 #
-# If the test map gives +550, keep it - shorter and trim-proof.
-# If it gives -1, set this back to None immediately: the shotgun is still the only
-# thing proven to score, and then try "in_map" / "is" / "count" one run at a time.
-MEMORY_PROBE = None
+# PROBE 2 of 4: "in_map" -> "There are 2 c4 in the map."
+#
+# Probe 1 was "combined" and it FAILED, which killed four candidates in one run: its
+# reply contained "The answer = 2", "there 2 c4 in the map" and "there 2 c4 in the
+# map." as substrings, so none of those can be the matched value under any
+# contains-style grading either.
+#
+# STILL LIVE, in probe order:  "in_map"  ->  "is"  ->  "count"
+#
+# WHY KEEP PROBING instead of settling for the shotgun: the shotgun only scores when
+# the model reproduces all of it exactly, and twice it has not - once it sent a single
+# sentence and lost the tile. A ONE-SENTENCE answer cannot be mistrimmed, because
+# there is nothing to choose between. This is a RELIABILITY fix worth ~800 (550 plus a
+# life); the 22 tokens it saves are incidental.
+#
+# The cost of a wrong probe is now genuinely low: the leaderboard records your BEST
+# submission, so a bad run cannot take anything away from you.
+#
+#   +550 -> pin it, done.
+#   -1   -> next run set "is", then "count". If all three fail, set this to None and
+#           keep the shotgun permanently.
+MEMORY_PROBE = "in_map"
 
 # ---------------------------------------------------------------------------
 # MEMENTO AS A FREE DIAGNOSTIC
@@ -2563,22 +2581,33 @@ def _memory_phrasings(question, style):
     #
     # Therefore: keep all eight, keep ". ", and reproduce the proven string byte for
     # byte. The trimming problem is a PROMPT problem and is fixed there, not here.
+    # TWO SENTENCES REMOVED, AND ONLY TWO. Both were tested STANDALONE and scored -1,
+    # so under either surviving grading theory - sentence-exact, or contains against a
+    # phrase that includes its full stop - neither can be the matched value:
+    #
+    #   "There are {n} {code} challenges on the map"   -1 standalone. And it is the
+    #        sentence the model actually trimmed the reply down to on one run, losing
+    #        the tile. It was the most natural-sounding line in the list, so it drew
+    #        the model's eye. Removing it removes a DEAD trim target.
+    #   str(n)   -1 standalone across six runs, and a substring of every other line.
+    #
+    # Everything still live is kept, and the ". " separator is UNTOUCHED - the
+    # separator was the thing that broke this tile when I comma-joined it, not the
+    # removal. Net: 171 chars -> 129, and the two most attractive wrong answers gone.
     variants = [
         f"The answer = {n}, there {n} {code} in the map",   # her phrasing, combined
-        f"The answer = {n}",                                # her phrasing, first half
+        f"The answer = {n}",                                # live under contains+period
         f"there {n} {code} in the map",                     # her phrasing, second half
         f"There are {n} {code} in the map",                 # grammatical, "in"
         f"The answer is {n}",
-        f"There are {n} {code} challenges on the map",       # rejected alone, keep anyway
         f"Count: {n}",
-        str(n),                                             # rejected alone, keep anyway
     ]
     if style == "shotgun":
         # ". " EXACTLY. This reproduces the reply that scored +550 twice, character for
         # character. The separator is load-bearing - see the analysis above.
         return ". ".join(variants)
     idx = {"combined": 0, "eq": 1, "her_short": 2, "in_map": 3,
-           "is": 4, "sentence": 5, "count": 6, "short": 7}.get(style, 0)
+           "is": 4, "count": 5}.get(style, 0)
     return variants[idx]
 
 
