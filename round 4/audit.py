@@ -621,8 +621,17 @@ def main():
             missing.append(f"{ch} {code}")
     check("every legend character the tool decodes is documented in the prompt",
           not missing, f"missing {missing}")
+    # The prompt shows the PLAIN one-char-per-cell form on purpose. The decoder also
+    # accepts run-length ("f3"), which is ~4 tokens cheaper, but asking the model to
+    # count runs risks a miscount that sends a wrong board and routes into a wall. Four
+    # tokens is 0.2 points; a wrong board is the run.
     check("the prompt's own example row decodes",
-          pf.encode_compact(pf.INTERNAL_MAP).split("/")[0] in flat)
+          pf.encode_compact(pf.INTERNAL_MAP, rle=False).split("/")[0] in flat)
+    check("decoder accepts both plain and run-length boards",
+          pf.decode_compact(pf.encode_compact(pf.INTERNAL_MAP, rle=False))
+          == pf.INTERNAL_MAP
+          and pf.decode_compact(pf.encode_compact(pf.INTERNAL_MAP))
+          == pf.INTERNAL_MAP)
     check("memory trial is told to send the board too",
           "map_grid string as in" in low,
           "otherwise the memento counts from the compiled-in grid, which is a "

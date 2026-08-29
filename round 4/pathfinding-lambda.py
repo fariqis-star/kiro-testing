@@ -1019,8 +1019,33 @@ _LEGEND = {
 _ENCODE = {v: k for k, v in _LEGEND.items()}
 
 
-def encode_compact(grid):
-    return "/".join("".join(_ENCODE.get(c, ".") for c in row) for row in grid)
+def encode_compact(grid, rle=True):
+    """One char per cell, rows joined by '/'. With rle=True, runs collapse to char+count.
+
+    RUN-LENGTH MATTERS BECAUSE THE MODEL PAYS FOR EVERY CHARACTER IT WRITES.
+    This board has rows like '#########' and 'ffff', and the map is now sent on two
+    calls (route and memory trial), so the string is written twice per run. Collapsing
+    runs takes the test map from 109 characters to well under that for free - digits are
+    not in the legend, so 'f4' can only mean four coin tiles.
+    """
+    rows = ["".join(_ENCODE.get(c, ".") for c in row) for row in grid]
+    if not rle:
+        return "/".join(rows)
+    out = []
+    for r in rows:
+        s, i = [], 0
+        while i < len(r):
+            j = i
+            while j < len(r) and r[j] == r[i]:
+                j += 1
+            n = j - i
+            # "ff" is the same length as "f2", so only collapse runs of 3 or more.
+            s.append(r[i] if n < 3 else f"{r[i]}{n}")
+            if n == 2:
+                s.append(r[i])
+            i = j
+        out.append("".join(s))
+    return "/".join(out)
 
 
 def decode_compact(text):
@@ -1028,13 +1053,24 @@ def decode_compact(text):
     if not isinstance(text, str) or "/" not in text:
         return None
     rows = [r.strip() for r in text.strip().split("/") if r.strip()]
-    if len(rows) < 7 or any(len(r) != len(rows[0]) for r in rows):
+    if len(rows) < 7:
         return None
     grid = []
     for r in rows:
-        if any(ch not in _LEGEND for ch in r):
-            return None
-        grid.append([_LEGEND[ch] for ch in r])
+        cells, i = [], 0
+        while i < len(r):
+            ch = r[i]
+            if ch not in _LEGEND:
+                return None
+            i += 1
+            n = ""
+            while i < len(r) and r[i].isdigit():
+                n += r[i]
+                i += 1
+            cells.extend([_LEGEND[ch]] * (int(n) if n else 1))
+        grid.append(cells)
+    if any(len(g) != len(grid[0]) for g in grid):
+        return None
     return grid
 
 
