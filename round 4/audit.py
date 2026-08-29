@@ -418,6 +418,21 @@ def main():
     if "\n2. DOOR" in p:
         door_block = p.split("\n2. DOOR", 1)[1].split("\n3.", 1)[0]
     check("case 2 exists and is the DOOR rule", bool(door_block))
+    # THE KEY TILE / DOOR COLLISION, OBSERVED LIVE.
+    # At F5 the tile said "Green Key 1 is: fghi" and the model called COMPUTE anyway,
+    # answered 6789 and forfeited the +50. It then hit the real door, got 6789 back,
+    # and emitted "Wait, the tool returned the same value. Let me reconsider..." -
+    # ~60 wasted tokens. Case 2's "green fghi" example is what draws the model in, so
+    # case 1 must state out loud that it wins.
+    check("case 1 explicitly outranks case 2",
+          "outranks rule 2" in low,
+          "without this the model calls COMPUTE on the key tile and loses the +50")
+    check("case 2 sends a value-bearing text back to case 1",
+          "that is case 1" in low,
+          "case 2 needs its own pointer back, not just case 1 claiming priority")
+    check("prompt forbids second-guessing a tool result",
+          "do not second-guess a tool" in low and '"wait"' in low,
+          "the model narrated its confusion at the green door")
     check("case 2 does NOT quote a key-tile sentence",
           "is:" not in door_block,
           "showing 'Key 1 is: <value>' inside the door rule made the model "
@@ -428,8 +443,17 @@ def main():
     # 17,045 on the judge does not contain it, so it must never block that prompt.
     note("prompt separates key from door by punctuation",
          "question mark" in low and "statement" in low)
+    # Scoped to the case-1 BLOCK, not the whole prompt. The old test matched the exact
+    # string "no tool call at all" anywhere, so rewording case 1 broke it while the
+    # rule itself was intact and stronger. Test the rule, not the phrasing.
+    key_block = p.split("\n1. ", 1)[1].split("\n2. ", 1)[0].lower() \
+        if "\n1. " in p else ""
+    check("case 1 exists and is the KEY TILE rule",
+          bool(key_block) and "thanks" in key_block)
     check("key pickup forbids any tool call",
-          "call no tool" in low or "no tool call at all" in low)
+          "no tool call" in key_block or "call no tool" in key_block,
+          "the key tile must never trigger COMPUTE - that is the +50 and it also "
+          "confuses the model at the door afterwards")
     # The intake tile is written by the model, NOT routed through the tool.
     #
     # Routing it cost ~91 tokens (~5 points) and defended a failure mode we have no

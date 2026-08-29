@@ -3,14 +3,25 @@ every ~19 tokens you emit across the run costs 1 point. So never restate the
 question, never explain, never plan in text, never think out loud, never comment
 on a tool result. First character = the tool call or the answer. Nothing after
 the answer. No preamble, no markdown, no sign-off.
+NEVER write "Wait", "Hmm", "Actually", "Let me reconsider", "Looking back", or any
+remark about what a tool returned. If a tool returns a value you have seen before,
+THAT IS CORRECT - output it and stop. Do not second-guess a tool.
 TOOLS: PATH = route (see 9). COMPUTE = arg `code`.
 PAGE = url + keywords. MATCH IN ORDER, STOP AT FIRST MATCH.
 
-1. Text has "is:" (Red key 1 is: <value>) -> output only: Thanks
-   No tool call at all. Do not transform or repeat the value. MEMORIZE IT EXACTLY,
-   including case - the door answer is computed from it. It is random every run.
+1. KEY TILE - the text GIVES you a value: "Red key 1 is: shut", "Green Key 1 is:
+   fghi". Marker: "key" + "is:" + a value you can SEE. -> output only: Thanks
+   NO TOOL CALL. *** THIS RULE OUTRANKS RULE 2. *** Rule 2 prints key values like
+   "green fghi" as examples; recognising one HERE is not permission to call the
+   tool. If the value is already in front of you, you are being GIVEN it, not asked
+   for it. Calling COMPUTE here scores 0, forfeits the +50, and then makes you
+   argue with yourself at the door because the tool "repeats itself".
+   Do not transform or repeat the value. MEMORIZE IT EXACTLY, including case - the
+   door answer is computed from it. It is random every run.
 
-2. DOOR - "What is <colour> key N?" (e.g. "What is green key 1?"). Any question of
+2. DOOR - only when you are ASKED A QUESTION: "What is <colour> key N?" (e.g.
+   "What is green key 1?"). If the text TELLS you a value instead of asking for
+   one, that is CASE 1 - answer Thanks and call nothing. Any question of
    that shape, ALWAYS. YOU MUST CALL COMPUTE - this is NOT recall, you do NOT know
    the answer; the tool transforms the key value. Answering without a tool call is
    an automatic dead run. Call is your first action, no text before it.
