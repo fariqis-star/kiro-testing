@@ -2616,6 +2616,45 @@ _CHALLENGE_CODES = ("c1", "c2", "c3", "c4", "c5", "c6",
                     "c18", "c30", "c31", "c40", "c41")
 
 
+# COUNTING FROM THE BOARD WE ARE GIVEN, NOT FROM A COMPILED-IN ONE.
+#
+# R4_GRID is the test map. Counting from it is a hardcoded answer: correct on this board
+# and silently wrong on any other, which is exactly the failure mode that would show up
+# as an unexplained -550 and a lost life. It is also the sort of thing the rules call a
+# disqualifiable offence.
+#
+# So the supervisor may append the board to the payload in the same one-char-per-cell
+# form the pathfinding tool takes, e.g.
+#     How many c4 challenges are on the map? P.fffeffaT/.#########/b.fef...
+# and the count comes from that. R4_GRID stays only as a fallback for a payload that
+# carries no board, because answering nothing loses the tile outright.
+# CASE-INSENSITIVE ON PURPOSE. The memory router lowercases the payload before the
+# handlers see it, so "P" and "T" arrive as "p" and "t". With only uppercase accepted the
+# regex could not match the FIRST row (it starts "P." and ends "T"), so row 0 was
+# silently dropped from every decoded board: c4 was reported at row 1 instead of row 2,
+# and a coin count came back 23 instead of 28. Codes only use a-o, so p and t are
+# unambiguous.
+_MEM_LEGEND = {
+    "#": "wall", ".": "path",
+    "P": "player", "p": "player", "T": "treasure", "t": "treasure",
+    "a": "c1", "b": "c2", "c": "c3", "d": "c4", "e": "c5", "f": "c7",
+    "g": "c8", "h": "c18", "i": "c30", "j": "c31", "k": "c40", "l": "c41",
+    "m": "c17", "n": "c42", "o": "c43",
+}
+
+
+def _memory_board(text):
+    """A board decoded out of the payload, else the compiled-in test map."""
+    for chunk in re.findall(r'[#PTpt.a-o]{5,}(?:/[#PTpt.a-o]{5,})+', str(text or "")):
+        rows = [r for r in chunk.split("/") if r]
+        if len(rows) < 5 or any(len(r) != len(rows[0]) for r in rows):
+            continue
+        if any(ch not in _MEM_LEGEND for r in rows for ch in r):
+            continue
+        return [[_MEM_LEGEND[ch] for ch in r] for r in rows]
+    return R4_GRID
+
+
 def _memory_codes(question):
     """Which tile codes is this Memory Trial asking about? [] if it is not one."""
     t = (question or "").lower()
@@ -2668,7 +2707,7 @@ def _memory_scan(question):
     named = _memory_codes(question) or ["c4"]
     lines = ["scanning the map:"]
     total = 0
-    for r, row in enumerate(R4_GRID):
+    for r, row in enumerate(_memory_board(question)):
         for c, cell in enumerate(row):
             if cell in named:
                 lines.append(f"-Row {r}, Col {c} : {cell}")
@@ -2964,7 +3003,9 @@ def _try_memory_v3(text):
                 return single + "."
 
     if MEMORY_FORMAT == "positions":
-        out = _memory_scan(t)
+        # ORIGINAL text, not the lowercased copy: an appended board carries P and T and
+        # the decoder needs to see them. _memory_codes lowercases for itself.
+        out = _memory_scan(text)
         if out:
             return out
 

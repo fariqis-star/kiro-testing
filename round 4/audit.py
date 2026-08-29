@@ -595,10 +595,38 @@ def main():
         "verify her coverage details and see her prior claims history. Pull that up?")
     check("lambda refuses to build JSON for a records lookup", phi is None, phi)
     check("never invent a path", "NEVER INVENT A PATH" in flat)
-    check("prompt forbids echoing the board back",
-          "NO MAP, EVER" in flat,
-          "the board is free to read in the prompt but ~200 output tokens to "
-          "write back, and output tokens are the only ones scored")
+    # POLICY REVERSED, DELIBERATELY.
+    # This used to assert "NO MAP, EVER", because on a board proven identical between
+    # test and judge the hardcoded array was free and echoing the board cost ~27 output
+    # tokens. Two things changed: solve_tsp now COMPUTES the same 105 moves from the
+    # board, so the memorised array buys nothing; and hardcoding answers is a
+    # disqualifiable offence, which makes a 27-token honest route strictly better than a
+    # free memorised one.
+    check("prompt sends the board so the tool can compute",
+          "map_grid" in flat and "PASS THE BOARD" in flat,
+          "without a board the tool falls back to the memorised array")
+    check("prompt still forbids INVENTING a board",
+          "never invent a board" in low,
+          "a fabricated board routes into a wall on move 1")
+    # The prompt documents "." as "normal", which is the GAME's own word for a plain
+    # cell and therefore the one the model recognises from the board it is reading.
+    # Internally we call it "path". Both spellings are correct here.
+    synonyms = {"path": ("path", "normal"), "player": ("player", "player/start"),
+                "treasure": ("treasure",), "wall": ("wall",)}
+    missing = []
+    for ch, code in pf._LEGEND.items():
+        if code in ("c17", "c42", "c43"):
+            continue
+        if not any(f"{ch} {w}" in flat for w in synonyms.get(code, (code,))):
+            missing.append(f"{ch} {code}")
+    check("every legend character the tool decodes is documented in the prompt",
+          not missing, f"missing {missing}")
+    check("the prompt's own example row decodes",
+          pf.encode_compact(pf.INTERNAL_MAP).split("/")[0] in flat)
+    check("memory trial is told to send the board too",
+          "map_grid string as in" in low,
+          "otherwise the memento counts from the compiled-in grid, which is a "
+          "hardcoded answer and wrong on any other board")
     check("prompt relays a strategy only when one was asked for",
           "use strategy" in low and "never invent a strategy name" in low)
     print()
@@ -665,9 +693,21 @@ def main():
           pf.score_route(G, V) == 17045,
           f"got {pf.score_route(G, V)}, the game reported 17,044-17,045")
     a = pf.solve_auto(G, budget=6.0)
-    check("auto on the real board picks the verified array",
-          a and a["route"] == V and a["strategy"] == "verified",
-          "the 105-move route beats every solved alternative here")
+    # The memorised array is no longer a candidate - it is a last resort reached only if
+    # every solver fails. auto must therefore win with a COMPUTED route, and that route
+    # has to be as good as the one we used to hardcode.
+    check("auto wins with a COMPUTED strategy, not the memorised array",
+          a and a["strategy"] != "verified-fallback",
+          f"strategy={a and a.get('strategy')}")
+    check("the computed route is no worse than the array it replaces",
+          a and len(a["route"]) <= len(V) and pf.verify(G, a["route"])[0],
+          f"{a and len(a['route'])} moves vs {len(V)} hardcoded")
+    check("the computed route still collects every coin",
+          a and pf.score_route(G, a["route"]) >= 17045,
+          f"total {a and pf.score_route(G, a['route'])}")
+    check("solve_tsp alone reaches the hardcoded route's length",
+          len(pf.solve_tsp(G, budget=8.0)) <= len(V),
+          "this is what makes the hardcode unnecessary")
     check("auto beats hand-picked no_spikes on this board",
           pf.score_route(G, pf.solve(G, budget=4.0, strategy="no_spikes")["route"])
           < pf.score_route(G, a["route"]))
