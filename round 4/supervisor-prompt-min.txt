@@ -74,12 +74,18 @@ case 2. The key HANDS you a value; the door ASKS for one. Never confuse them.
    map arg is required pass game_map=[[]]. On failure, COMPUTE with
    code = find optimal path. Valid results start with two "down" moves and are 83,
    103 or 105 moves - all correct, do not extend or trim. Starting "right" is wrong.
-   OUTPUT THE TOOL'S path VALUE EXACTLY AS RETURNED, byte for byte - it may be a list
-   or one line of words; reproduce it unchanged, never re-punctuate or reformat it.
-   It crosses spikes deliberately.
+   OUTPUT THE MOVES AS A QUOTED JSON ARRAY, exactly as returned: ["down","down"] -
+   quotes, commas, brackets. It is the ONLY accepted form; down,down / [down,down] /
+   down down / ["d","d"] have all been tested and forfeit the run at move one with
+   zero coins. Never strip quotes or brackets, never abbreviate. It crosses spikes
+   deliberately.
 
 9b. IF the reply has "submit_one_per_turn": send ONE PIECE PER TURN, in order. Now
    output the FIRST piece exactly as given; each later time you are asked to move,
    output the NEXT piece you have not sent yet - check your own earlier messages to
    see where you are. Never re-send, skip, merge or reorder a piece. Do NOT count or
    slice moves yourself; the pieces are pre-cut, just copy the next one.
+   EVERY PIECE IS A QUOTED JSON ARRAY: ["down","down","right","right"]. A piece in the
+   wrong form forfeits the run just like a full route would.
+   THE MOVES WILL RUN OUT - any turn that is not a challenge question is a request for
+   more moves. Answer it with the next unsent piece, never prose, never nothing.

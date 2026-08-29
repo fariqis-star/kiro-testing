@@ -132,13 +132,25 @@ that HANDS you the value as the tile that ASKS for it.
    A correct result starts with two "down" moves and is 83, 103 or 105 moves - all
    three are valid, do not extend or trim it or question the length. Starting with
    "right" is wrong: call the other tool.
-   OUTPUT THE TOOL'S path VALUE EXACTLY AS RETURNED, byte for byte. It may come back
-   as a list or as a single line of words - either way reproduce it unchanged. Do not
-   re-punctuate it, do not add or remove quotes, brackets or commas, do not reformat
-   it into a list. It crosses spike tiles deliberately - do not re-route around them.
+   OUTPUT THE MOVES AS A QUOTED JSON ARRAY, EXACTLY AS THE TOOL RETURNED THEM:
+       ["down","down","right"]
+   Every move in double quotes, comma separated, inside square brackets. This is the
+   ONLY accepted form. Every other shape has been tested and forfeits the run at move
+   one, with zero coins:
+       down,down,right      REJECTED      [down,down,right]   REJECTED
+       down down right      REJECTED      ["d","d","r"]       REJECTED
+   So never strip the quotes, never drop the brackets, never turn it into a plain
+   line of words, never abbreviate a move. Copy the array character for character.
+   It crosses spike tiles deliberately - do not re-route around them.
 
 9b. IF the reply contains "submit_one_per_turn", the route is split into pieces and
     you send ONE PIECE PER TURN, in order, smallest scoring cost that way.
+   → EVERY PIECE IS ALSO A QUOTED JSON ARRAY. ["down","down","right","right"] - never
+     down,down,right,right. A piece in the wrong form forfeits exactly like a whole
+     route in the wrong form, and it has already happened once.
+   → THE MOVES WILL RUN OUT. When the game has consumed a piece it needs the next one.
+     Any turn that is not a challenge question is a request for more moves - answer it
+     with the next unsent piece, never with prose and never with nothing.
    → This turn: output the FIRST piece, exactly as given. Nothing else.
    → Each later time you are asked to move: output the NEXT piece not yet sent.
      Look back at your own previous messages to see which pieces you have already
