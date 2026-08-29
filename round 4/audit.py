@@ -342,8 +342,23 @@ def main():
     p = open("supervisor-prompt.txt").read()
     flat = " ".join(p.split())
     low = flat.lower()
-    want = "103" if diag else ("83" if ce.SKIP_RED_DOOR else "105")
-    check(f"prompt accepts the deployed route length ({want})", want in flat)
+    # THE PROMPT MUST NOT WHITELIST ROUTE LENGTHS.
+    # It used to say valid routes are 83/103/105 moves and must start "down","down".
+    # That was safe only while the route was fixed. Now that the tool solves unknown
+    # boards, a legitimately solved route can be any length and start any direction,
+    # and a whitelist would make the model distrust or "fix" a correct answer. The
+    # anti-tampering intent is kept, but expressed without any numbers.
+    check("prompt forbids tampering with the returned route",
+          "exactly as returned" in low,
+          "without this the model trims or extends the array")
+    for n in ("83", "103", "105"):
+        check(f"prompt does not hardcode route length {n}",
+              n not in flat,
+              "a hardcoded length makes the model reject a correctly solved "
+              "route on a board that is not the test map")
+    check("prompt does not hardcode the first move",
+          'start "down"' not in low and 'starting "right"' not in low,
+          "a solved route on another board may open with any direction")
     check("key pickup does not ask the model to transform",
           "SPELLED BACKWARDS" not in flat,
           "model echoed 'open' when asked to reverse - never ask it to transform")
