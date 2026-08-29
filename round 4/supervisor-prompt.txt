@@ -143,20 +143,8 @@ that HANDS you the value as the tile that ASKS for it.
    line of words, never abbreviate a move. Copy the array character for character.
    It crosses spike tiles deliberately - do not re-route around them.
 
-9b. IF the reply contains "submit_one_per_turn", the route is split into pieces and
-    you send ONE PIECE PER TURN, in order, smallest scoring cost that way.
-   → EVERY PIECE IS ALSO A QUOTED JSON ARRAY. ["down","down","right","right"] - never
-     down,down,right,right. A piece in the wrong form forfeits exactly like a whole
-     route in the wrong form, and it has already happened once.
-   → THE MOVES WILL RUN OUT. When the game has consumed a piece it needs the next one.
-     Any turn that is not a challenge question is a request for more moves - answer it
-     with the next unsent piece, never with prose and never with nothing.
-   → This turn: output the FIRST piece, exactly as given. Nothing else.
-   → Each later time you are asked to move: output the NEXT piece not yet sent.
-     Look back at your own previous messages to see which pieces you have already
-     sent, and send the one after it. Never re-send a piece, never skip one, never
-     merge two, never reorder them.
-   → Do NOT count moves or slice anything yourself. The pieces are already cut - copy
-     the next one character for character. Arithmetic here puts you on the wrong tile
-     for the whole rest of the run.
-   → When every piece has been sent, you are done moving; answer only challenges.
+   NEVER SEND A PARTIAL ROUTE. Send every move you were given, in one array, in one
+   turn. The game does not ask for more moves later: if you submit only part of the
+   route, the moves run out, no further prompt arrives, and the player stands still
+   until the clock kills the run. This was tested - a 4-move submission executed those
+   4 moves and then froze forever.

@@ -231,23 +231,30 @@ def _format_path(moves):
 #     ROUTE_CHUNK = 4   27 submissions           45 ch  ~1103 tok  avg 25 -> 17075
 #     ROUTE_CHUNK = 2   53 submissions           71 ch  ~1157 tok  avg 16 -> 17084
 #
-# UNVERIFIED, TEST MAP ONLY. Two things could be wrong: the game might not re-prompt
-# after a partial route (the run would stall), or partial submissions might not be
-# counted (we would just have spent a few tokens for nothing). Neither can be
-# discovered without a run, and neither is dangerous on the test map.
+# *** TESTED AND DISPROVEN. ROUTE_CHUNK MUST STAY 0. ***
 #
-# 0 disables it entirely and restores the proven single-submission behaviour.
+# ROUTE_CHUNK = 4 was run on the test map. What happened:
+#   - the game ACCEPTED the 4-move piece ["down","down","right","right"] and executed
+#     all four moves, straight through the A3 code challenge (+600) to C3 (+250).
+#     So a partial route is mechanically legal - that part of the idea was right.
+#   - then the player STOPPED. The timer kept running, the game kept going, and no
+#     further prompt ever arrived.
 #
-# *** CURRENTLY SET TO 4 FOR THE TEST-MAP EXPERIMENT. ***
-# 105 moves / 4 = 27 pieces -> 18 tiles + 27 = ~45 challenges attempted, up from 19.
-# Read ONE line of the summary afterwards:
-#     Challenges attempted 45  -> confirmed, ~17075. next try 2, then 1.
-#     Challenges attempted 19  -> pieces are not counted. set back to 0.
-#     run stalls after piece 1 -> the game will not re-prompt. set back to 0.
-# 4 rather than 1 on purpose: if the model mishandles piece ordering, 27 pieces is far
-# easier to read in the trace than 105.
-# SET BACK TO 0 BEFORE THE JUDGE RUN unless this is confirmed working.
-ROUTE_CHUNK = 4
+# THE GAME NEVER RE-PROMPTS FOR MORE MOVES. The agent only ever speaks when the game
+# sends it something, so once the submitted route is exhausted there is no turn in
+# which piece 2 could be sent. The run just idles until it times out.
+#
+# The whole route must therefore be submitted in ONE array, which pins that ~435-token
+# turn to exactly one counted challenge and caps challenges attempted at tiles + 1.
+#
+# Which leaves the leaderboard unexplained, and worth being honest about: 17073 with
+# 1011 tokens is arithmetically IMPOSSIBLE at 19 challenges - every candidate coin
+# total it implies (14376, 14126, 14626 ...) fails to be a multiple of 50, and every
+# award in this game is. So those teams really did attempt more challenges than we
+# can. The likeliest remaining explanation is a different map: "Best Score" is a
+# personal best over the whole competition, and an earlier round with more challenge
+# tiles would raise the denominator honestly. Nothing on THIS map reproduces it.
+ROUTE_CHUNK = 0
 
 
 def _chunk_route(moves):

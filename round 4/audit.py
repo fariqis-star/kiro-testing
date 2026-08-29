@@ -179,6 +179,12 @@ def main():
     # duplicated move puts the agent on the wrong tile for every step after it, which
     # means walls, missed coins and a dead run - so this is verified move by move
     # rather than just by length.
+    # Chunking was tested and disproven: the game executes a partial route and then
+    # never prompts again, so the run freezes. Hard failure, not a warning.
+    check("ROUTE_CHUNK is 0 - chunking freezes the run",
+          pf.ROUTE_CHUNK == 0,
+          f"{pf.ROUTE_CHUNK}: a partial route executes, then the game never asks for "
+          f"more moves and the player stands still until timeout")
     if body.get("submit_one_per_turn"):
         pieces = body["submit_one_per_turn"]
         rebuilt = [m for p in pieces for m in as_moves(p)]
