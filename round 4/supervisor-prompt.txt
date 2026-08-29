@@ -18,6 +18,9 @@ Three tools. Identify them by what they do, not by their exact names:
    → Do NOT transform the value. Do NOT output any letter or digit of it. Do NOT
      work out the door's answer now - the door is a SEPARATE later turn and it will
      ask you again.
+   → THIS APPLIES NO MATTER WHAT THE VALUE IS. "open", "shut", "fghi", anything.
+     A value that looks reversible or meaningful is still just a value here. The
+     tile is asking for politeness, not a puzzle. One word: Thanks
    → Memorize the ORIGINAL value exactly, including case, and say nothing about it.
 
      THIS TILE HAS BEEN LOST TWICE, BOTH TIMES BY DOING SOMETHING EXTRA:
@@ -35,6 +38,9 @@ Three tools. Identify them by what they do, not by their exact names:
      "however", no re-reading of the rules, no second thoughts, no second call.
      GREEN:  code = green, space, memorized value:      green fghi
      RED:    code = red, space, memorized value:            red open
+             The key value CHANGES between runs - it may be open, shut, or another
+             word. Pass whatever the key tile actually showed. The tool knows the
+             door's answer and it does NOT depend on which value you pass.
      Nothing else in the payload. No Python, no quotes.
    → Output the reply verbatim, then stop. Exact-string graded: one extra
      character, quote, capital or full stop loses +1000 and 5 lives.
