@@ -631,6 +631,91 @@ def verify(grid, route):
     return True, f"ok, {len(route)} moves, missed {missed or 'nothing'}"
 
 
+# THE GAME DOES NOT USE OUR VOCABULARY.
+#
+# The real navigation prompt hands the model rows like
+#   ["normal","normal","c7",...,"c1","treasure"]
+# and states the start SEPARATELY as "Find a path from position A1". So a board copied
+# straight out of the prompt has NO "player" cell and says "normal" where we say
+# "path". valid_map() demands exactly one "player", so it rejected the genuine article
+# and fell back to the hardcoded array. On this board that happens to be the right
+# answer, which is exactly why the bug was invisible - on a different board it would
+# have returned a route for the wrong map.
+_SYNONYM = {
+    "normal": "path", "empty": "path", "floor": "path", "open": "path",
+    "blank": "path", "none": "path", "": "path", "walkable": "path",
+    "start": "player", "player_start": "player", "playerstart": "player",
+    "begin": "player", "avatar": "player", "hero": "player",
+    "chest": "treasure", "goal": "treasure", "exit": "treasure",
+    "brick": "wall", "block": "wall", "blocked": "wall", "rock": "wall",
+}
+
+
+def _parse_start(pos):
+    """'A1' / 'B10' / [row, col] / {'row':r,'col':c} -> (row, col). (0, 0) if unclear."""
+    try:
+        if isinstance(pos, dict):
+            if "row" in pos or "col" in pos:
+                return (int(pos.get("row", 0)), int(pos.get("col", 0)))
+            pos = pos.get("position") or pos.get("start") or ""
+        if isinstance(pos, (list, tuple)) and len(pos) >= 2:
+            a, b = str(pos[0]).strip(), str(pos[1]).strip()
+            if a[:1].isalpha():
+                return (int(b) - 1, ord(a[0].upper()) - ord("A"))
+            return (int(a), int(b))
+        s = re.sub(r"[^A-Za-z0-9]", "", str(pos))
+        m = re.match(r"^([A-Za-z])(\d+)$", s)
+        if m:                                   # A1 == column A, row 1
+            return (int(m.group(2)) - 1, ord(m.group(1).upper()) - ord("A"))
+        nums = re.findall(r"\d+", s)
+        if len(nums) >= 2:
+            return (int(nums[0]), int(nums[1]))
+    except (ValueError, TypeError, IndexError):
+        pass
+    return (0, 0)
+
+
+def _start_from_event(event):
+    for src in (event, event.get("body") if isinstance(event, dict) else None):
+        if isinstance(src, str):
+            try:
+                src = json.loads(src)
+            except Exception:
+                continue
+        if not isinstance(src, dict):
+            continue
+        for key in ("start_pos", "start", "position", "playerStart",
+                    "player_start", "start_position"):
+            if src.get(key):
+                return _parse_start(src[key])
+    return (0, 0)
+
+
+def _canon_grid(grid, start):
+    """Translate a board out of the game's vocabulary into ours, or None."""
+    if not isinstance(grid, list) or not grid:
+        return None
+    rows = []
+    for row in grid:
+        if not isinstance(row, list):
+            return None
+        rows.append([_SYNONYM.get(str(c).strip().lower(), str(c).strip())
+                     for c in row])
+    # Pad jagged rows rather than reject: the model does occasionally drop a cell,
+    # and a padded walkable cell is a far smaller error than discarding the board.
+    w = max(len(r) for r in rows)
+    rows = [r + ["path"] * (w - len(r)) for r in rows]
+    flat = [c for r in rows for c in r]
+    if flat.count("player") > 1:
+        return None
+    if "player" not in flat:
+        r, c = start
+        if not (0 <= r < len(rows) and 0 <= c < w) or rows[r][c] == "wall":
+            return None
+        rows[r][c] = "player"
+    return rows
+
+
 def _map_from_event(event):
     """Pull a game map out of the event, wherever the gateway puts it."""
     cands = []
@@ -668,9 +753,13 @@ def _map_from_event(event):
             d = decode_compact(g)
             if d:
                 decoded.append(d)
+    start = _start_from_event(event)
     for g in list(cands) + decoded:
         if valid_map(g):
             return g
+        c = _canon_grid(g, start)          # game vocabulary -> ours
+        if c is not None and valid_map(c):
+            return c
     return None
 
 

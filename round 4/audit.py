@@ -481,6 +481,32 @@ def main():
         check(f"strategy {name!r} yields a legal route", ok,
               "keys before doors, treasure last, no walls")
 
+    # THE GAME'S OWN BOARD FORMAT.
+    # Taken from a real Navigation Prompt screenshot: cells are "normal", not "path",
+    # and there is NO player cell - the start is stated as "from position A1". This
+    # rejected the genuine board and fell back to the hardcoded array, which is the
+    # right answer on THIS board and the wrong answer on any other, so it was silent.
+    game = [[("normal" if G[r][c] in ("path", "player") else G[r][c])
+             for c in range(len(G[0]))] for r in range(len(G))]
+    check("board in the GAME's format is recognised",
+          pf._map_from_event({"game_map": game}) == G,
+          "'normal' must map to path and a missing player cell must come from "
+          "the stated start position")
+    check("'start' is accepted as the player cell",
+          pf._map_from_event({"game_map": [["start" if (r, c) == (0, 0) else game[r][c]
+                                            for c in range(len(G[0]))]
+                                           for r in range(len(G))]}) == G)
+    check("A1 parses as row 0 col 0 and B10 as row 9 col 1",
+          pf._parse_start("A1") == (0, 0) and pf._parse_start("B10") == (9, 1))
+    alt = [r[:] for r in G]
+    alt[5][1] = "path"
+    galt = [[("normal" if alt[r][c] in ("path", "player") else alt[r][c])
+             for c in range(len(G[0]))] for r in range(len(G))]
+    solved = route_for({"game_map": galt})
+    check("a DIFFERENT board in the game's format actually solves",
+          solved != V and pf.verify(alt, solved)[0],
+          "before the synonym fix this silently returned the hardcoded array")
+
     check("aliases resolve",
           pf.normalise_strategy("use strategy Avoid Spikes") == "no_spikes"
           and pf.normalise_strategy("strategy: fast") == "swift"
