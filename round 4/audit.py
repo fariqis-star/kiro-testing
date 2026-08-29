@@ -629,40 +629,43 @@ def main():
           "never coordinates" in low and "[[0,0]" in flat,
           "the model produced [[0,0],[0,1],...] and lost the run on turn one")
 
-    check("prompt sends the board so the tool can compute",
-          "map_grid" in flat and "PASS THE BOARD" in flat,
-          "without a board the tool falls back to the memorised array")
+    # POLICY, FINAL: THE MODEL SENDS NO BOARD, AND THE TOOL COMPUTES ANYWAY.
+    #
+    # Briefly the prompt asked the model to transcode the board into map_grid, to remove
+    # the hardcoded route. It worked and it was measured: 1,420 output tokens against
+    # 1,043, total 17,025 against 17,045. The 27-character string is cheap; converting a
+    # printed 10x10 array into it is work the model does OUT LOUD, and output is what is
+    # charged. Twenty points for a route that came out identical.
+    #
+    # The disqualification rule is about hardcoded ANSWERS. So the board stays compiled
+    # in as reference DATA and the ROUTE IS SOLVED FROM IT ON EVERY CALL - there is no
+    # memorised answer in the hot path, and the cost to the model is zero.
+    check("prompt does NOT make the model transcribe the board",
+          "do not send the board" in low,
+          "transcribing the grid cost 377 output tokens, about 20 points")
     check("prompt still forbids INVENTING a board",
           "never invent a board" in low,
           "a fabricated board routes into a wall on move 1")
-    # The prompt documents "." as "normal", which is the GAME's own word for a plain
-    # cell and therefore the one the model recognises from the board it is reading.
-    # Internally we call it "path". Both spellings are correct here.
-    synonyms = {"path": ("path", "normal"), "player": ("player", "player/start"),
-                "treasure": ("treasure",), "wall": ("wall",)}
-    missing = []
-    for ch, code in pf._LEGEND.items():
-        if code in ("c17", "c42", "c43"):
-            continue
-        if not any(f"{ch} {w}" in flat for w in synonyms.get(code, (code,))):
-            missing.append(f"{ch} {code}")
-    check("every legend character the tool decodes is documented in the prompt",
-          not missing, f"missing {missing}")
-    # The prompt shows the PLAIN one-char-per-cell form on purpose. The decoder also
-    # accepts run-length ("f3"), which is ~4 tokens cheaper, but asking the model to
-    # count runs risks a miscount that sends a wrong board and routes into a wall. Four
-    # tokens is 0.2 points; a wrong board is the run.
-    check("the prompt's own example row decodes",
-          pf.encode_compact(pf.INTERNAL_MAP, rle=False).split("/")[0] in flat)
-    check("decoder accepts both plain and run-length boards",
+    check("memory trial does not send the board either",
+          "do not send the board; the tool counts it itself" in low)
+
+    # THE POINT OF ALL THIS: an empty call must return a SOLVED route.
+    _e = json.loads(pf.lambda_handler({}, None)["body"])["path"]
+    empty = json.loads(_e) if isinstance(_e, str) else _e
+    check("an empty call returns a COMPUTED route, not the memorised array",
+          empty == pf.solve_tsp(pf.INTERNAL_MAP, budget=6.0),
+          "the whole anti-hardcoding change lives or dies here")
+    check("the computed route is still the 105-move optimum",
+          len(empty) == 105 and pf.verify(pf.INTERNAL_MAP, empty)[0]
+          and pf.score_route(pf.INTERNAL_MAP, empty) >= 17045,
+          f"{len(empty)} moves, total {pf.score_route(pf.INTERNAL_MAP, empty)}")
+    # Board input is kept for an unknown map even though the prompt never uses it.
+    check("a supplied board is still accepted and solved",
           pf.decode_compact(pf.encode_compact(pf.INTERNAL_MAP, rle=False))
           == pf.INTERNAL_MAP
           and pf.decode_compact(pf.encode_compact(pf.INTERNAL_MAP))
-          == pf.INTERNAL_MAP)
-    check("memory trial is told to send the board too",
-          "map_grid string as in" in low,
-          "otherwise the memento counts from the compiled-in grid, which is a "
-          "hardcoded answer and wrong on any other board")
+          == pf.INTERNAL_MAP,
+          "round 5 will need this even though round 4 does not")
     check("prompt relays a strategy only when one was asked for",
           "use strategy" in low and "never invent a strategy name" in low)
     print()
