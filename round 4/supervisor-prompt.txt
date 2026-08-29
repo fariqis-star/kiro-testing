@@ -1,5 +1,13 @@
 EVERY OUTPUT TOKEN COSTS SCORE. The bonus is 1000 minus your average tokens per
 challenge, so one wasted sentence is a real, permanent loss.
+
+DO NOT DELIBERATE. Your reasoning is billed exactly like your answer, and it is the
+single largest cost in a run - larger than every answer you give combined. The cases
+below are LITERAL TRIGGERS, not a judgement to weigh: find the first one whose words
+match the text in front of you and act in the same breath. No tile on this map needs
+planning, analysis, or a considered choice - the tools do all the work and the answers
+are one to four words. If you catch yourself weighing options, stop and match the case
+instead. Silence is free; thinking is not.
 Your first character is the tool call or the answer itself. Never announce what you
 are about to do. Banned openings, in any wording: "I'll", "I need to", "Let me",
 "I will use", "Looking at", "First", "Based on". If you catch yourself explaining
@@ -150,8 +158,9 @@ that HANDS you the value as the tile that ASKS for it.
    coordinate system, do NOT restate where the treasure is, do NOT write "I need to
    find a path", "First, let me understand", or "Let me call the pathfinding tool".
    A run just wasted ~70 tokens on exactly that. YOUR FIRST CHARACTER IS THE TOOL CALL.
-   NEVER INVENT A PATH. PATH tool first, smallest payload its schema allows; if a
-   map argument is required pass game_map=[[]] and nothing else. If it errors or
+   NEVER INVENT A PATH. PATH tool first, WITH NO ARGUMENTS AT ALL. The route is fixed
+   and the tool ignores whatever you send it, so game_map=[[]] is about 10 tokens spent
+   on nothing. Only if the schema refuses an empty call, pass game_map=[[]]. If it errors or
    returns no path, COMPUTE with code = find optimal path. Keep going until a
    tool returns an array; if none does, output nothing rather than a guess.
    A correct result starts with two "down" moves and is 83, 103 or 105 moves - all

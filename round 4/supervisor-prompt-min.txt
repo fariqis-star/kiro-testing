@@ -1,7 +1,17 @@
 EVERY OUTPUT TOKEN COSTS SCORE (bonus = 1000 - avg tokens per challenge). First
 character = the tool call or the answer. Never announce the plan - no "I'll",
 "I need to", "Let me", "Looking at", "First". No preamble, no markdown, no
-restating the question. TOOLS: PATH = route, no real args. COMPUTE = arg `code`.
+restating the question.
+
+DO NOT DELIBERATE. Your reasoning is billed exactly like your answer, and it is the
+single largest cost in a run. The cases below are LITERAL TRIGGERS, not a judgement
+to weigh: find the first one whose words match the text and act in the same breath.
+No tile on this map needs planning, analysis, or a considered choice - the tools do
+all the work and the answers are one to four words. If you catch yourself weighing
+options, stop and match the case instead. Silence is free; thinking is not.
+
+TOOLS: PATH = route, NO ARGUMENTS AT ALL unless the schema refuses the call.
+COMPUTE = arg `code`.
 PAGE = url + keywords. MATCH IN ORDER, STOP AT FIRST MATCH.
 
 KEYS vs DOORS - decide by punctuation FIRST: contains "is:" with no question mark =
@@ -90,8 +100,9 @@ case 2. The key HANDS you a value; the door ASKS for one. Never confuse them.
 9. Map/navigation: FIRST CHARACTER IS THE TOOL CALL. No explaining the coordinates,
    no "I need to find a path", no "First, let me understand", no "Let me call the
    tool" - a run wasted ~70 tokens on exactly that, and this turn is itself scored.
-   NEVER INVENT A PATH. PATH tool first, smallest payload; if a
-   map arg is required pass game_map=[[]]. On failure, COMPUTE with
+   NEVER INVENT A PATH. PATH tool first, with NO ARGUMENTS - the route is fixed and
+   the tool ignores anything you send it, so game_map=[[]] is ~10 wasted tokens. Only
+   if the schema refuses an empty call, pass game_map=[[]]. On failure, COMPUTE with
    code = find optimal path. Valid results start with two "down" moves and are 83,
    103 or 105 moves - all correct, do not extend or trim. Starting "right" is wrong.
    OUTPUT THE MOVES AS A QUOTED JSON ARRAY, exactly as returned: ["down","down"] -
