@@ -165,9 +165,10 @@ def main():
               f"rejected format forfeits at move one. Set it back to 'array' for judge.")
 
     def as_moves(v):
+        """Normalise any MOVE_FORMAT back to a list so the walk can be verified."""
         if isinstance(v, list):
             return v
-        return [m for m in re.split(r'[,\s]+', v.strip()) if m]
+        return [m for m in re.split(r'[,\s]+', v.strip().strip("[]")) if m]
 
     route = as_moves(body["path"])
     check("both Lambdas return the same route", route == as_moves(fb["path"]),

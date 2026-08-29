@@ -563,18 +563,23 @@ def _try_patient_json(text):
 # disagree, whichever tool the model happens to reach decides the format and the run
 # becomes unreproducible. audit.py fails when they differ.
 #
-#   "array"   ["down","down"]   ~420 tok   PROVEN
-#   "spaced"  down down         ~210 tok   UNTESTED, worth ~11 points
-#   "csv"     down,down         ~315 tok   UNTESTED
+#   "array"   ["down","down"]   ~422 tok   PROVEN
+#   "bare"    [down,down]       ~212 tok   UNTESTED, ~11 points, try this one first
+#   "csv"     down,down         ~210 tok   UNTESTED, ~11 points
+#   "spaced"  down down         ~210 tok   UNTESTED, ~11 points
+# All three save the same amount - the cost is the quotes, not the brackets. None is
+# valid JSON, so a strict parser on the game side rejects all of them.
 # TEST MAP ONLY for anything but "array": a rejected format forfeits at move one.
 MOVE_FORMAT = "array"
 
 
 def _format_path(moves):
-    if MOVE_FORMAT == "spaced":
-        return " ".join(moves)
+    if MOVE_FORMAT == "bare":
+        return "[" + ",".join(moves) + "]"
     if MOVE_FORMAT == "csv":
         return ",".join(moves)
+    if MOVE_FORMAT == "spaced":
+        return " ".join(moves)
     return moves
 
 

@@ -151,21 +151,40 @@ VERIFIED_COUNTS = ("c1=4 c2=2 c3=1 c4=2 c5=4 c7=28 c8=2 "
 # punctuation. "down down right" carries exactly the same words in the same order,
 # it just stops paying for a pair of quotes and a comma on every single move.
 #
-#   "array"   ["down","down","right"]   ~420 tok   PROVEN - scores 17,038
-#   "spaced"  down down right           ~210 tok   UNTESTED - would save ~11 points
-#   "csv"     down,down,right           ~315 tok   UNTESTED - fallback if spaced fails
+#   "array"   ["down","down","right"]   ~422 tok   PROVEN - scores 17,038
+#   "bare"    [down,down,right]         ~212 tok   UNTESTED - saves ~11 points
+#   "csv"     down,down,right           ~210 tok   UNTESTED - saves ~11 points
+#   "spaced"  down down right           ~210 tok   UNTESTED - saves ~11 points
 #
-# TEST MAP ONLY. If the parser rejects the format the run forfeits at move one, so
-# never take an untested value into a judge run. Set it back to "array" afterwards.
-# It must match the CodeExecution Lambda's copy - audit.py enforces that.
+# All three alternatives save the SAME ~11 points, because the cost is the pair of
+# quotes on every element, not the brackets. Brackets are ~2 tokens for the whole
+# array. So pick on likelihood of being accepted, not on size.
+#
+# WHAT THE ROUND 3 REJECTIONS ACTUALLY TELL US:
+#   ["r","r","u"]  was VALID JSON with abbreviated words -> rejected.
+#       The parser therefore read the array fine and rejected the WORDS.
+#   "rruu..."      was a plain string AND abbreviated -> rejected, but that result is
+#       confounded: we cannot tell whether the string form or the words killed it.
+# So the parser demonstrably handles a JSON array. If it uses a strict JSON parse,
+# every quote-dropping variant here fails, because none of them is valid JSON. That
+# is the risk, and it is why this is TEST MAP ONLY.
+#
+# TEST IN THIS ORDER - closest to the proven format first:
+#   1. "bare"    keeps the brackets and commas, removes only the quotes
+#   2. "csv"     drops the brackets too
+#   3. "spaced"  drops the commas as well
+# A rejected format forfeits at move one. Set this back to "array" before any judge
+# run. It must match the CodeExecution Lambda's copy - audit.py enforces that.
 MOVE_FORMAT = "array"
 
 
 def _format_path(moves):
-    if MOVE_FORMAT == "spaced":
-        return " ".join(moves)
+    if MOVE_FORMAT == "bare":
+        return "[" + ",".join(moves) + "]"
     if MOVE_FORMAT == "csv":
         return ",".join(moves)
+    if MOVE_FORMAT == "spaced":
+        return " ".join(moves)
     return moves
 
 
