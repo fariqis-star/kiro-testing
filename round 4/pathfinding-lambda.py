@@ -301,6 +301,7 @@ def _chunk_route(moves):
 DYNAMIC_ROUTE = True
 
 import heapq
+import re
 import time
 from collections import deque
 
@@ -334,9 +335,11 @@ def valid_map(grid):
             and len(find(grid, "wall")) > 0)
 
 
-def dijkstra(grid, src, blocked, triggered):
-    """Cheapest paths from src. A fresh spike costs PENALTY, so it is avoided if
+def dijkstra(grid, src, blocked, triggered, spike_cost=None):
+    """Cheapest paths from src. A fresh spike costs spike_cost, so it is avoided if
     anything else exists and used when nothing else does."""
+    if spike_cost is None:
+        spike_cost = PENALTY
     R, C = len(grid), len(grid[0])
     dist = {src: 0}
     prev = {}
@@ -353,7 +356,7 @@ def dijkstra(grid, src, blocked, triggered):
                 continue
             step = 1
             if grid[n[0]][n[1]] == SPIKE and n not in triggered:
-                step += PENALTY
+                step += spike_cost
             nd = d + step
             if nd < dist.get(n, 1 << 60):
                 dist[n] = nd
@@ -370,11 +373,12 @@ def walk(prev, src, dst):
     return out[::-1]
 
 
-def _sweep(grid, pos, targets, blocked, triggered, route, collected, deadline):
+def _sweep(grid, pos, targets, blocked, triggered, route, collected, deadline,
+           spike_cost=None):
     """Visit every reachable target, nearest-first, collecting anything passed over."""
     remaining = set(targets)
     while remaining and time.monotonic() < deadline:
-        dist, prev = dijkstra(grid, pos, blocked, triggered)
+        dist, prev = dijkstra(grid, pos, blocked, triggered, spike_cost)
         avail = [t for t in remaining if t in dist]
         if not avail:
             break
@@ -393,12 +397,12 @@ def _sweep(grid, pos, targets, blocked, triggered, route, collected, deadline):
     return pos, remaining
 
 
-def _improve(grid, order, start, end, blocked, triggered, deadline):
+def _improve(grid, order, start, end, blocked, triggered, deadline, spike_cost=None):
     """2-opt the visit ORDER on a precomputed cost matrix - no search in the loop."""
     if len(order) < 4:
         return order
     nodes = [start] + list(order) + [end]
-    tables = {n: dijkstra(grid, n, blocked, triggered)[0] for n in nodes}
+    tables = {n: dijkstra(grid, n, blocked, triggered, spike_cost)[0] for n in nodes}
     INF = 1 << 40
 
     def cost(seq):
@@ -420,11 +424,11 @@ def _improve(grid, order, start, end, blocked, triggered, deadline):
     return best
 
 
-def _rebuild(grid, seq, start, end, blocked, triggered):
+def _rebuild(grid, seq, start, end, blocked, triggered, spike_cost=None):
     """Walk a fixed order, returning moves and everything stepped on."""
     pos, route, collected, trig = start, [], {start}, set(triggered)
     for tgt in list(seq) + [end]:
-        dist, prev = dijkstra(grid, pos, blocked, trig)
+        dist, prev = dijkstra(grid, pos, blocked, trig, spike_cost)
         if tgt not in dist:
             return None, None, None
         leg = walk(prev, pos, tgt)
@@ -440,52 +444,145 @@ def _rebuild(grid, seq, start, end, blocked, triggered):
     return route, collected, trig
 
 
-def solve(grid, budget=8.0, verbose=False):
+# NAMED STRATEGIES, selectable from the navigation prompt ("use strategy no_spikes").
+#
+# The workshop's finale hint says you need to pick a route shape per level, so the
+# knobs are deliberately only two: which tile codes are worth a detour, and what a
+# fresh spike costs. Everything else (keys before doors, treasure last, 2-opt on the
+# visit order) is invariant - a route that opens a door early or ends early is a dead
+# run under every strategy.
+#
+# spike_cost semantics:  1 = indifferent, PENALTY = detour if one exists,
+#                        BLOCK = never, unless that strands the treasure.
+BLOCK = 10 ** 9
+_ALL = set(VALUE)
+# What we have actually PROVEN we can answer. c6 (Boss) is deliberately absent: it is
+# in the game's vocabulary, is not on this board, and we have no handler for it.
+_MASTERED = {"c1", "c2", "c3", "c4", "c5", "c7", "c18", "c30", "c31", "c40", "c41"}
+_HIGH = {c for c, v in VALUE.items() if v >= 500} | set(DOOR_KEY.values())
+
+_STRATEGIES = {
+    # name          codes worth visiting   spike cost  straight to treasure
+    "smart_loot":  (_ALL,                  PENALTY,    False),
+    "no_spikes":   (_ALL,                  BLOCK,      False),
+    "health":      (_ALL,                  BLOCK,      False),
+    "mastered":    (_MASTERED,             PENALTY,    False),
+    "high_value":  (_HIGH,                 PENALTY,    False),
+    "get_coins":   ({"c7"},                PENALTY,    False),
+    "reckless":    (_ALL,                  1,          False),
+    "swift":       (set(),                 PENALTY,    True),
+}
+_ALIAS = {
+    "loot": "smart_loot", "all": "smart_loot", "max": "smart_loot",
+    "avoid_spike": "no_spikes", "no_spike": "no_spikes", "nospikes": "no_spikes",
+    "safe": "health", "lives": "health", "life": "health",
+    "known": "mastered", "completed": "mastered",
+    "value": "high_value", "rich": "high_value",
+    "coins": "get_coins", "coin": "get_coins",
+    "fast": "swift", "quick": "swift", "shortest": "swift", "time": "swift",
+    "verified": "verified", "default": "verified", "proven": "verified",
+}
+
+
+def normalise_strategy(text):
+    """'use strategy Avoid Spikes' -> 'no_spikes'. None if nothing recognisable."""
+    if not isinstance(text, str):
+        return None
+    s = re.sub(r"[^a-z0-9]+", "_", text.strip().lower()).strip("_")
+    if not s:
+        return None
+    s = re.sub(r"^(please_)?(use_)?(the_)?(strategy|strat|nav|navigation)_?", "", s)
+    s = re.sub(r"_?(strategy|strat)$", "", s).strip("_")
+    if s in _STRATEGIES or s == "verified":
+        return s
+    if s in _ALIAS:
+        return _ALIAS[s]
+    # Longest alias appearing anywhere, so a whole sentence still resolves.
+    hits = [k for k in list(_STRATEGIES) + list(_ALIAS) if k in s]
+    if hits:
+        k = max(hits, key=len)
+        return _ALIAS.get(k, k)
+    return None
+
+
+def _replay(grid, start, route):
+    """Cells stepped on and spikes triggered, for scoring and for phase bookkeeping."""
+    pos, collected, triggered = start, {start}, set()
+    for m in route:
+        dr, dc = MOVES[m]
+        pos = (pos[0] + dr, pos[1] + dc)
+        collected.add(pos)
+        if grid[pos[0]][pos[1]] == SPIKE:
+            triggered.add(pos)
+    return collected, triggered
+
+
+def solve(grid, budget=8.0, verbose=False, strategy="smart_loot"):
     """Return {'route', 'coins', 'lives', 'spikes', 'total'} or None."""
     if not valid_map(grid):
         return None
+    codes, spike_cost, treasure_only = _STRATEGIES.get(
+        strategy, _STRATEGIES["smart_loot"])
     deadline = time.monotonic() + budget
     start = find(grid, "player")[0]
     treasure = find(grid, "treasure")[0]
     doors = {p for d in DOOR_KEY for p in find(grid, d)}
-    keys = [p for k in DOOR_KEY.values() for p in find(grid, k)]
-    rewards = {p for code in VALUE for p in find(grid, code)}
+    keys = [p for k in DOOR_KEY.values() for p in find(grid, k)
+            if k in codes or any(grid[q[0]][q[1]] in codes for q in doors)]
+    rewards = {p for code in codes for p in find(grid, code)}
 
     route, collected, triggered = [], {start}, set()
     pos = start
 
-    # --- PHASE 1: every KEY first. Doors and treasure are off limits. ---
-    pos, _ = _sweep(grid, pos, keys, doors | {treasure}, triggered,
-                    route, collected, deadline)
+    if treasure_only:
+        # Fewest steps to the chest. Doors stay shut - we have no key and a wrong
+        # door answer costs 5 lives, which is the whole run.
+        dist, prev = dijkstra(grid, start, doors, triggered, spike_cost)
+        if treasure not in dist:
+            dist, prev = dijkstra(grid, start, doors, triggered, PENALTY)
+        if treasure not in dist:
+            return None
+        route = walk(prev, start, treasure)
+    else:
+        # --- PHASE 1: every KEY first. Doors and treasure are off limits. ---
+        pos, _ = _sweep(grid, pos, keys, doors | {treasure}, triggered,
+                        route, collected, deadline, spike_cost)
 
-    # --- PHASE 2: everything else. Doors whose key we now hold are open. ---
-    held = {grid[p[0]][p[1]] for p in collected}
-    locked = {p for p in doors if DOOR_KEY[grid[p[0]][p[1]]] not in held}
-    todo = [p for p in rewards if p not in collected]
-    pos, left = _sweep(grid, pos, todo, locked | {treasure}, triggered,
-                       route, collected, deadline)
+        # --- PHASE 2: everything else. Doors whose key we now hold are open. ---
+        held = {grid[p[0]][p[1]] for p in collected}
+        locked = {p for p in doors if DOOR_KEY[grid[p[0]][p[1]]] not in held}
+        todo = [p for p in rewards if p not in collected]
+        pos, left = _sweep(grid, pos, todo, locked | {treasure}, triggered,
+                           route, collected, deadline, spike_cost)
 
-    # --- PHASE 3: treasure LAST. ---
-    dist, prev = dijkstra(grid, pos, set(), triggered)
-    if treasure not in dist:
-        return None
-    route += walk(prev, pos, treasure)
-    p = pos
-    for m in walk(prev, pos, treasure):
-        dr, dc = MOVES[m]
-        p = (p[0] + dr, p[1] + dc)
-        collected.add(p)
-        if grid[p[0]][p[1]] == SPIKE:
-            triggered.add(p)
+        # --- PHASE 3: treasure LAST. ---
+        # A spike ban must never strand the chest: retry priced, then unpriced.
+        for sc in (spike_cost, PENALTY, 1):
+            dist, prev = dijkstra(grid, pos, set(), triggered, sc)
+            if treasure in dist:
+                break
+        if treasure not in dist:
+            return None
+        leg = walk(prev, pos, treasure)
+        route += leg
+        p = pos
+        for m in leg:
+            dr, dc = MOVES[m]
+            p = (p[0] + dr, p[1] + dc)
+            collected.add(p)
+            if grid[p[0]][p[1]] == SPIKE:
+                triggered.add(p)
 
-    # --- IMPROVE the phase-2 order, then rebuild and keep it only if shorter. ---
-    order = [p for p in rewards if p in collected and p not in keys]
-    better = _improve(grid, order, start, treasure, set(), set(), deadline)
-    r2, c2, t2 = _rebuild(grid, list(keys) + list(better), start, treasure,
-                          set(), set())
-    if r2 is not None and len(r2) < len(route):
-        route, collected, triggered = r2, c2, t2
+        # --- IMPROVE the phase-2 order, then rebuild and keep it only if shorter. ---
+        order = [p for p in rewards if p in collected and p not in keys]
+        better = _improve(grid, order, start, treasure, set(), set(), deadline,
+                          spike_cost)
+        r2, c2, t2 = _rebuild(grid, list(keys) + list(better), start, treasure,
+                              set(), set(), spike_cost)
+        if r2 is not None and len(r2) < len(route):
+            route, collected, triggered = r2, c2, t2
 
+    collected, triggered = _replay(grid, start, route)
     coins = sum(VALUE[grid[r][c]] for r, c in collected if grid[r][c] in VALUE)
     spikes = {p for p in collected if grid[p[0]][p[1]] == SPIKE}
     lives = 5 - len(spikes)
@@ -638,28 +735,84 @@ def plausible_board(grid):
     return top <= 0.8 * len(codes)
 
 
-def _dynamic_or_verified(event):
-    """Verified array for the known map; solved route for a genuinely different one.
+def _strategy_from_event(event):
+    """Find a strategy name anywhere in the event. None if the caller asked for none.
 
-    Three outcomes, in order:
-      no map / unusable map      -> verified array  (the common case today)
-      map == the known board     -> verified array  (105 moves beats the solver's 123)
-      map is a DIFFERENT board   -> solve it, verify it, use it
+    None is NOT the same as 'smart_loot': no strategy means "give me the proven
+    array", which is the behaviour that scored 17,045 and must stay reachable by
+    doing nothing.
+    """
+    texts = []
+
+    def collect(d):
+        if not isinstance(d, dict):
+            return
+        for key in ("strategy", "strategy_name", "nav", "navigation",
+                    "navigation_prompt", "prompt", "text", "instruction"):
+            if isinstance(d.get(key), str):
+                texts.append(d[key])
+
+    collect(event)
+    body = event.get("body") if isinstance(event, dict) else None
+    if isinstance(body, str):
+        try:
+            body = json.loads(body)
+        except Exception:
+            texts.append(body)
+            body = None
+    collect(body)
+    params = event.get("parameters") if isinstance(event, dict) else None
+    if isinstance(params, list):
+        for p in params:
+            if isinstance(p, dict) and isinstance(p.get("value"), str):
+                if p.get("name") in ("strategy", "strategy_name", "nav",
+                                     "navigation", "prompt", "text"):
+                    texts.append(p["value"])
+    for t in texts:
+        s = normalise_strategy(t)
+        if s:
+            return s
+    return None
+
+
+def _dynamic_or_verified(event):
+    """Verified array by default; a named strategy or an unknown board overrides it.
+
+    Order matters, and the first rule is the important one - doing nothing must keep
+    giving the proven 105-move array, because that is what scored 17,045:
+      no strategy, no map            -> verified array
+      no strategy, known map         -> verified array (105 beats the solver's 123)
+      no strategy, DIFFERENT board   -> solve it with smart_loot, verify, use it
+      strategy 'verified'            -> verified array, explicitly
+      any other named strategy       -> solve THAT strategy, on the supplied board
+                                        if there is one, otherwise on the known board
     """
     if not DYNAMIC_ROUTE:
         return VERIFIED_PATH
-    grid = _map_from_event(event)
-    if grid is None:
-        return VERIFIED_PATH
-    if grid == INTERNAL_MAP:
-        return VERIFIED_PATH
-    if not plausible_board(grid):
-        return VERIFIED_PATH
     try:
-        best = solve(grid, budget=6.0)
+        strat = _strategy_from_event(event)
+    except Exception:
+        strat = None
+    grid = _map_from_event(event)
+    usable = grid if (grid is not None and
+                      (grid == INTERNAL_MAP or plausible_board(grid))) else None
+
+    if strat is None:
+        if usable is None or usable == INTERNAL_MAP:
+            return VERIFIED_PATH
+        board, want = usable, "smart_loot"
+    elif strat == "verified":
+        return VERIFIED_PATH
+    else:
+        # A strategy with no map still works: the known board is compiled in, so the
+        # caller pays ~4 output tokens for the name and nothing for the board.
+        board, want = (usable if usable is not None else INTERNAL_MAP), strat
+
+    try:
+        best = solve(board, budget=6.0, strategy=want)
         if not best or not best.get("route"):
             return VERIFIED_PATH
-        ok, _why = verify(grid, best["route"])
+        ok, _why = verify(board, best["route"])
         if not ok:
             return VERIFIED_PATH
         return best["route"]

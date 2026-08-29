@@ -446,6 +446,45 @@ def main():
         "verify her coverage details and see her prior claims history. Pull that up?")
     check("lambda refuses to build JSON for a records lookup", phi is None, phi)
     check("never invent a path", "NEVER INVENT A PATH" in flat)
+    check("prompt forbids echoing the board back",
+          "NO MAP, EVER" in flat,
+          "the board is free to read in the prompt but ~200 output tokens to "
+          "write back, and output tokens are the only ones scored")
+    check("prompt relays a strategy only when one was asked for",
+          "use strategy" in low and "never invent a strategy name" in low)
+    print()
+
+    # NAMED STRATEGIES.
+    # The rule that matters is the FIRST one: an empty call must keep returning the
+    # proven array. Every strategy is opt-in; nothing may become the new default by
+    # accident, because most strategies score WORSE than the tuned route on this
+    # board (no_spikes gives 17,041 - spikes here are forced, so it just walks
+    # further for the same coins).
+    print("=== NAVIGATION STRATEGIES ===")
+    V = pf.VERIFIED_PATH
+    G = pf.INTERNAL_MAP
+
+    def route_for(ev):
+        r = json.loads(pf.lambda_handler(ev, None)["body"])["path"]
+        return json.loads(r) if isinstance(r, str) else r
+
+    for ev, why in (({}, "no arguments"),
+                    ({"strategy": ""}, "empty strategy"),
+                    ({"strategy": "banana"}, "unrecognised strategy"),
+                    ({"strategy": "verified"}, "strategy=verified")):
+        check(f"{why} -> the proven array", route_for(ev) == V,
+              "this is the 17,045 path; it must never need an argument")
+
+    for name in sorted(pf._STRATEGIES):
+        best = pf.solve(G, budget=6.0, strategy=name)
+        ok = bool(best) and pf.verify(G, best["route"])[0]
+        check(f"strategy {name!r} yields a legal route", ok,
+              "keys before doors, treasure last, no walls")
+
+    check("aliases resolve",
+          pf.normalise_strategy("use strategy Avoid Spikes") == "no_spikes"
+          and pf.normalise_strategy("strategy: fast") == "swift"
+          and pf.normalise_strategy("banana") is None)
     print()
 
     print("=" * 60)
