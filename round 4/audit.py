@@ -447,6 +447,28 @@ def main():
     # boards, a legitimately solved route can be any length and start any direction,
     # and a whitelist would make the model distrust or "fix" a correct answer. The
     # anti-tampering intent is kept, but expressed without any numbers.
+    # ROUTE_SPLIT MUST SHIP AS 0.
+    # Splitting the route is an unproven attack on the denominator and lives in
+    # experiment-chunking/. If it ever reaches the main build switched on, a run that
+    # the game refuses to re-prompt loses the treasure bonus.
+    check("ROUTE_SPLIT ships disabled",
+          getattr(pf, "ROUTE_SPLIT", 0) == 0,
+          f"ROUTE_SPLIT={getattr(pf, 'ROUTE_SPLIT', 0)} - test-map only, see "
+          f"experiment-chunking/README.md")
+    check("splitting rejoins to the proven route exactly",
+          all([m for p in pf._route_split(pf.VERIFIED_PATH, n) for m in p]
+              == pf.VERIFIED_PATH for n in (2, 5, 20, 53)),
+          "a split that loses or duplicates a move ends the run")
+    def _ends_at(ms):
+        p = (0, 0)
+        for mv in ms:
+            d = pf.MOVES[mv]
+            p = (p[0] + d[0], p[1] + d[1])
+        return pf.label(p)
+
+    check("split part 1 ends on a challenge tile",
+          _ends_at(pf._route_split(pf.VERIFIED_PATH, 2)[0]) == "I1",
+          "part 1 must end somewhere the game has a reason to re-prompt")
     check("prompt forbids tampering with the returned route",
           "exactly as returned" in low,
           "without this the model trims or extends the array")

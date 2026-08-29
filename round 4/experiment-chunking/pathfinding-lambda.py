@@ -296,7 +296,7 @@ def _chunk_route(moves):
 # only thing still outstanding is the single step onto the treasure. If the game never
 # re-prompts we lose the 1,000 treasure bonus and keep all 14,350 coins; if it does, the
 # denominator moves and we can raise the part count.
-ROUTE_SPLIT = 0            # 0 = one array, the proven behaviour. N>1 = N parts.
+ROUTE_SPLIT = 2            # 0 = one array, the proven behaviour. N>1 = N parts.
 
 
 def _route_split(moves, n):
