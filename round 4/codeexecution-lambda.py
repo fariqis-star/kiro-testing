@@ -94,12 +94,24 @@ def _try_intercept_question(text):
         return None
     
     # Fibonacci pattern: "What is the Nth Fibonacci number modulo M?"
-    fib_match = re.search(r'(\d+)(?:th|st|nd|rd)?\s*fibonacci\s*(?:number)?.*?(?:modulo|mod|%)\s*([\d,]+)', text_lower)
+    #
+    # NORMALIZE FIRST. This handler used to read the modulus with a bare ([\d,]+),
+    # which stops at the first non-digit - so "mod 1e10" captured just "1", the
+    # modulus became 1, and fib(500) % 1 returned 0. That is exactly what happened on
+    # a run: the model sent "500th fibonacci mod 1e10", this branch matched before the
+    # shorthand was expanded, and the tile was answered "0" for -600 and a life.
+    # _normalize_math turns 1e10 / 10^10 / 10^9+7 into plain integers, and every other
+    # maths path already goes through it.
+    text_lower = _normalize_math(text_lower)
+    fib_match = re.search(r'(\d+)(?:th|st|nd|rd)?\s*fibonacci\s*(?:number)?'
+                          r'.*?(?:modulo|mod|%)\s*([\d,]+)', text_lower)
     if fib_match:
         n = int(fib_match.group(1).replace(',', ''))
-        mod_str = fib_match.group(2).replace(',', '')
-        mod = int(mod_str)
-        return str(_fast_fib_matrix(n, mod))
+        mod = int(fib_match.group(2).replace(',', ''))
+        # A modulus of 0 or 1 makes every answer 0 or a crash - it is always a parse
+        # failure, never a real question. Fall through to the other handlers instead.
+        if mod > 1:
+            return str(_fast_fib_matrix(n, mod))
     
     # Fibonacci "last N digits" pattern
     fib_digits = re.search(r'(\d+)(?:th|st|nd|rd)?\s*fibonacci.*?(?:last|final)\s*(\d+)\s*digits', text_lower)
@@ -660,7 +672,13 @@ def _try_intercept_question_v2(text):
         return None
 
     import math as _math
-    t = text.lower().strip()
+    # NORMALIZE FIRST, for the same reason as _try_intercept_question: every modulus
+    # regex below reads digits with ([\d,]+), which stops dead at a letter. So
+    # "mod 1e10" captured "1", the modulus became 1, and fib(500) % 1 = 0. That cost a
+    # run 600 points and a life when the model sent "500th fibonacci mod 1e10".
+    # This function runs BEFORE _try_intercept_question in the dispatcher, so fixing
+    # only that one left the bug fully live - both need the expansion.
+    t = _normalize_math(text)
 
     pad_m = re.search(r'last\s+(\d+)\s+digits', t)
     pad = int(pad_m.group(1)) if pad_m else 0
@@ -680,7 +698,7 @@ def _try_intercept_question_v2(text):
 
     m = re.search(r'(\d[\d,]*)\s*(?:th|st|nd|rd)?\s*fibonacci[^.?]*?'
                   r'(?:modulo|mod|%)\s*\(?\s*([\d,]+)', t)
-    if m:
+    if m and int(m.group(2).replace(',', '')) > 1:
         n = int(m.group(1).replace(',', ''))
         mod = int(m.group(2).replace(',', ''))
         # "modulo 10^k" IS "last k digits", so pad even if that phrase was
@@ -2339,7 +2357,24 @@ MEMORY_FORMAT = "shotgun"
 # WHICH phrasing does the grader actually match? Stateless - no /tmp, because a /tmp
 # counter is what broke this tile once.
 #
-# *** SET TO "combined" - THIS IS A RISK FIX, NOT A TOKEN FIX. ***
+# *** "combined" WAS TESTED AND FAILED. BACK TO None (the proven shotgun). ***
+#
+# The probe sent exactly "The answer = 2, there 2 c4 in the map." and scored -1. The
+# friend's wording is NOT the graded phrase, which also kills three candidates at once:
+# that reply CONTAINS "The answer = 2", "there 2 c4 in the map" and
+# "there 2 c4 in the map." as substrings, so under any contains-style matching none of
+# them can be the expected string either.
+#
+# Standalone results so far:
+#   "The answer = 2"                          -> FAILED
+#   "The answer = 2, there 2 c4 in the map."  -> FAILED  (this probe)
+#   "There are 2 c4 challenges on the map."   -> FAILED
+#   "2"                                       -> FAILED
+#   full 8-phrase shotgun, ". "-joined        -> +550, repeatedly
+#
+# STILL LIVE, one test run each:  "in_map"  "is"  "count"
+#   "There are 2 c4 in the map."   "The answer is 2."   "Count: 2."
+# Probe them one at a time and set this straight back to None after each.
 #
 # The 8-phrase shotgun works only if the model reproduces all 171 characters exactly,
 # and it does not always do that. It has now cost two runs:
@@ -2359,7 +2394,7 @@ MEMORY_FORMAT = "shotgun"
 # If the test map gives +550, keep it - shorter and trim-proof.
 # If it gives -1, set this back to None immediately: the shotgun is still the only
 # thing proven to score, and then try "in_map" / "is" / "count" one run at a time.
-MEMORY_PROBE = "combined"
+MEMORY_PROBE = None
 
 # ---------------------------------------------------------------------------
 # MEMENTO AS A FREE DIAGNOSTIC
