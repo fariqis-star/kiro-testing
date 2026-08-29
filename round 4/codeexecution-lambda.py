@@ -1009,25 +1009,9 @@ def _try_door_r4(text):
     return None
 
 
-def _try_memory_r4(text):
-    """Memory Trial: count tile types on the map, summing if several are named."""
-    if not text:
-        return None
-    t = text.lower()
-    if not re.search(r'how many|count|number of|total', t):
-        return None
-    # \b bounds so c30 is not read as c3
-    found = re.findall(r'\bc(\d+)\b', t)
-    if not found:
-        return None
-    total = 0
-    hit = False
-    for n in found:
-        key = "c" + n
-        if key in R4_COUNTS:
-            total += R4_COUNTS[key]
-            hit = True
-    return str(total) if hit else None
+# _try_memory_r4 removed - superseded by _try_memory_v3, which derives its counts from
+# the grid and returns the phrasing the grader actually accepts. This one returned a
+# bare number, which was rejected on six separate runs.
 
 
 
@@ -2313,25 +2297,9 @@ R4_COUNTS_SEEN = {
 }
 
 
-def _try_memory_v2(text):
-    """Memory Trial count. Returns str, or None if not a count question."""
-    if not text:
-        return None
-    t = text.lower()
-    if not re.search(r'how many|count|number of|total', t):
-        return None
-    found = re.findall(r'\bc(\d+)\b', t)
-    if not found:
-        return None
-    table = R4_COUNTS_SEEN if MEMORY_MODE == "seen" else R4_COUNTS
-    total = 0
-    hit = False
-    for n in found:
-        key = "c" + n
-        if key in table:
-            total += table[key]
-            hit = True
-    return str(total) if hit else None
+# _try_memory_v2 removed - superseded by _try_memory_v3. It also carried the only
+# remaining reference to MEMORY_MODE/R4_COUNTS_SEEN, the "seen so far" theory that was
+# disproven when both 1 and 2 were rejected as bare numbers.
 
 
 
