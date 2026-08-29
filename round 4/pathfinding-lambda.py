@@ -47,7 +47,7 @@ TREASURE = [0, 9]     # J1
 # Must match SKIP_RED_DOOR in the CodeExecution Lambda, because either tool can
 # answer a navigation request and the two must never hand back different routes.
 # Currently FALSE: 105-move route, through the red door.
-SKIP_RED_DOOR = False
+SKIP_RED_DOOR = True
 
 # 105 moves, every scoring tile including the 13 behind the red door. Only usable if
 # the red door can actually be answered - and after twelve rejected candidates it

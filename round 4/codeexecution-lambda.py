@@ -885,7 +885,7 @@ def _try_memory_r4(text):
 #
 # FALSE: back through the door. The transforms on "open" are exhausted, but the
 # assumption that "the code" MEANS "open" never was - see RED_LADDER below.
-SKIP_RED_DOOR = False
+SKIP_RED_DOOR = True
 
 R4_PATH_FULL = [
     "down", "down", "right", "right", "right", "right", "right", "right",
