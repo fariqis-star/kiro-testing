@@ -157,6 +157,59 @@ def main():
                          if cell in ("c1", "c8"))))
         check("memento reply is CHEAPER than the shotgun it replaces",
               len(m) < 130, f"{len(m)} chars vs 130")
+
+        # THE MEMORY TRIAL MUST NOT REQUIRE A LITERAL "cN".
+        # It used to, and returned None without one, so the tool answered with an EMPTY
+        # STRING and the model invented something: -550 coins, -1 life, plus the tokens
+        # it burned improvising. The workshop says the judge runs "similar challenges",
+        # and asking by NAME is the same question. An empty tool reply is the single
+        # worst outcome available, worse than a wrong count.
+        CH = ("c1", "c2", "c3", "c4", "c5", "c6", "c18", "c30", "c31", "c40", "c41")
+
+        def truth(*codes):
+            return sum(1 for row in ce.R4_GRID for x in row if x in codes)
+
+        by_name = [
+            ("How many Web Search challenges are on the map?", truth("c4")),
+            ("How many Dark Prophet challenges are on the map?", truth("c4")),
+            ("How many Simple Question challenges are on the map?", truth("c5")),
+            ("How many Bonehead challenges are on the map?", truth("c5")),
+            ("How many Guardrail Tests are on the map?", truth("c1")),
+            ("How many Violent Violet challenges are on the map?", truth("c1")),
+            ("How many Code Challenges are on the map?", truth("c2")),
+            ("How many Blue Brain challenges are on the map?", truth("c2")),
+            ("How many Memento challenges are on the map?", truth("c3")),
+            ("How many Healthcare API challenges are on the map?", truth("c18")),
+            ("How many coins are on the map?", truth("c7")),
+            ("How many spike traps are on the map?", truth("c8")),
+            ("How many doors are on the map?", truth("c30", "c31")),
+            ("How many keys are on the map?", truth("c40", "c41")),
+            ("How many red doors are on the map?", truth("c30")),
+            ("How many green keys are on the map?", truth("c41")),
+            ("How many challenges are on the map?", truth(*CH)),
+        ]
+        wrong = []
+        for q, want in by_name:
+            got = run(q)
+            last = got.splitlines()[-1] if got else "EMPTY"
+            if last != str(want):
+                wrong.append(f"{q!r} -> {last} want {want}")
+        check(f"memento answers {len(by_name)} name-phrased questions correctly",
+              not wrong, "\n      " + "\n      ".join(wrong[:6]))
+        check("memento never returns an empty reply for a count question",
+              all(run(q) for q, _ in by_name),
+              "empty is worse than wrong - the model then invents an answer")
+        check("the counted thing is read AFTER 'how many'",
+              run("Memory Trial Challenge. How many Web Search challenges are on "
+                  "the map?").splitlines()[-1] == str(truth("c4")),
+              "otherwise the longer needle 'memory trial' wins and answers c3")
+        # _memory_scan is deliberately NOT called _memory_positions: a one-argument
+        # function of that name silently shadowed the two-argument diagnostic helper,
+        # which would have raised TypeError the moment MEMORY_AUTO was switched on.
+        import inspect
+        check("the memento scanner does not shadow the diagnostic helper",
+              hasattr(ce, "_memory_scan")
+              and len(inspect.signature(ce._memory_positions).parameters) == 2)
     elif getattr(ce, "MEMORY_FORMAT", "") == "shotgun":
         # SOLVED at +550: contains_match against a phrase, so the reply is several
         # phrasings in one string. It must be identical on every call - a stateful

@@ -2582,8 +2582,75 @@ def _memory_positions(question, style):
 #
 # Run 1 is that shotgun. Runs 2+ are the individual phrasings, so that if the shotgun
 # lands we can narrow down which phrase did it.
-def _memory_positions(question):
+# RESOLVING WHAT THE MEMORY TRIAL IS ASKING ABOUT.
+#
+# The handler used to require a literal "cN" in the question and returned None without
+# one, so the tool answered with an EMPTY STRING and the model had to invent something.
+# That is almost certainly a judge loss we have been paying repeatedly: the workshop
+# says the evaluation runs "similar challenges", and "How many Web Search challenges
+# are on the map?" is the same question phrased by name. An empty tool reply costs the
+# 550 AND a life AND the tokens the model burns improvising.
+#
+# Longest needle first, so "green door" beats "door" and "code challenge" beats "code".
+_MEMORY_NAMES = (
+    ("violent violet", ("c1",)), ("guardrail", ("c1",)), ("violet", ("c1",)),
+    ("blue brain", ("c2",)), ("code challenge", ("c2",)),
+    ("code execution", ("c2",)), ("coding", ("c2",)),
+    ("memory trial", ("c3",)), ("memento", ("c3",)), ("memory", ("c3",)),
+    ("dark prophet", ("c4",)), ("web scraping", ("c4",)), ("web search", ("c4",)),
+    ("web scrape", ("c4",)), ("websearch", ("c4",)), ("scraping", ("c4",)),
+    ("prophet", ("c4",)),
+    ("simple question", ("c5",)), ("bonehead", ("c5",)), ("simple", ("c5",)),
+    ("boss", ("c6",)),
+    ("coin", ("c7",)), ("gold", ("c7",)),
+    ("spike trap", ("c8",)), ("spike", ("c8",)), ("trap", ("c8",)),
+    ("healthcare api", ("c18",)), ("health care", ("c18",)),
+    ("healthcare", ("c18",)), ("patient", ("c18",)),
+    ("red door", ("c30",)), ("green door", ("c31",)),
+    ("red key", ("c40",)), ("green key", ("c41",)),
+    ("door", ("c30", "c31")), ("key", ("c40", "c41")),
+)
+# "How many challenges are on the map?" - everything that poses a question. Coins and
+# spikes are not challenges.
+_CHALLENGE_CODES = ("c1", "c2", "c3", "c4", "c5", "c6",
+                    "c18", "c30", "c31", "c40", "c41")
+
+
+def _memory_codes(question):
+    """Which tile codes is this Memory Trial asking about? [] if it is not one."""
+    t = (question or "").lower()
+    # 1. An explicit cN always wins. This keeps the proven "How many c4" path byte for
+    #    byte identical, even if the tile name also appears in the text.
+    explicit = re.findall(r'\bc(\d+)\b', t)
+    if explicit:
+        seen, out = set(), []
+        for n in explicit:
+            if n not in seen:
+                seen.add(n)
+                out.append("c" + n)
+        return out
+    # 2. Otherwise match names, but only AFTER the counting phrase. Without this,
+    #    "Memory Trial Challenge. How many Web Search challenges..." matches the
+    #    longer needle "memory trial" and answers about the wrong tile.
+    m = re.search(r'(?:how many|how much|count(?:\s+the)?|number of|total(?:\s+of)?)'
+                  r'\s+(.*)', t, re.S)
+    scope = m.group(1) if m else t
+    for needle, codes in sorted(_MEMORY_NAMES, key=lambda x: -len(x[0])):
+        if needle in scope:
+            return list(codes)
+    # 3. "How many challenges are on the map?" with no type named at all.
+    if m and re.search(r'\bchallenges?\b', scope):
+        return list(_CHALLENGE_CODES)
+    return []
+
+
+def _memory_scan(question):
     """A competitor's WORKING Memory Trial reply: scan, enumerate, then the count.
+
+    NAMED _memory_scan, not _memory_positions. There is already a two-argument
+    _memory_positions() above for the (disabled) diagnostic ladder, and defining a
+    one-argument function with the same name silently shadowed it - which would have
+    raised TypeError at the ladder's call site the moment MEMORY_AUTO was switched on.
 
         scanning the map:
         -Row 2, Col 7 : c4
@@ -2598,10 +2665,7 @@ def _memory_positions(question):
     always consistent. Rows and columns are 0-indexed, matching both her reply and the
     convention the navigation prompt states.
     """
-    codes = re.findall(r'\bc(\d+)\b', question.lower())
-    if not codes:
-        codes = ["4"]
-    named = ["c" + n for n in codes]
+    named = _memory_codes(question) or ["c4"]
     lines = ["scanning the map:"]
     total = 0
     for r, row in enumerate(R4_GRID):
@@ -2614,9 +2678,7 @@ def _memory_positions(question):
 
 
 def _memory_phrasings(question, style):
-    codes = re.findall(r'\bc(\d+)\b', question.lower())
-    if not codes:
-        codes = ["4"]
+    codes = [c[1:] for c in (_memory_codes(question) or ["c4"])]
     # SUM when several codes are named - "count the c1 + c2 challenges" wants 6, not the
     # first one's count. This was returning only c1 until it was tested.
     # Every code the question names, whether or not the grid contains it. An absent
@@ -2844,7 +2906,11 @@ def _try_memory_v3(text):
     bare_codes = re.fullmatch(r'\s*c\d+(?:\s*(?:and|,|\+|&)?\s*c\d+)*\s*', t)
     if not bare_codes and not re.search(r'how many|count|number of|total', t):
         return None
-    codes = re.findall(r'\bc(\d+)\b', t)
+    # NAME-AWARE. This used to be re.findall for a literal "cN" and returned None
+    # without one, so "How many Web Search challenges are on the map?" produced an
+    # EMPTY tool reply and the model invented an answer: -550 coins, -1 life, and the
+    # tokens it burned improvising. _memory_codes also understands tile names.
+    codes = [c[1:] for c in _memory_codes(t)]
     if not codes:
         return None
     # A cN that does not appear in the grid has a count of ZERO - that is a real
@@ -2898,7 +2964,7 @@ def _try_memory_v3(text):
                 return single + "."
 
     if MEMORY_FORMAT == "positions":
-        out = _memory_positions(t)
+        out = _memory_scan(t)
         if out:
             return out
 
