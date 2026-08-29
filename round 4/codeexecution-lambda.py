@@ -513,8 +513,17 @@ def _try_patient_json(text):
         if name:
             break
 
-    # Needs to actually be an intake: an identifier or a name plus a provider.
-    if not pid and not (name and prov):
+    # Needs to look like healthcare intake at all: an explicit patient/insurance/
+    # provider keyword AND at least one field actually extracted.
+    #
+    # Deliberately lenient. The prompt now routes this tile through the tool, so
+    # returning None for a genuine intake is worse than a partly-filled answer: the
+    # payload would fall through to the other handlers and the model would submit
+    # whatever came back. A sparse intake should still produce well-formed JSON with
+    # nulls in the gaps.
+    if not re.search(r'patient|insur|provider|physician|attending', t, re.I):
+        return None
+    if not (pid or ins or name or prov):
         return None
     # Asking for data it did not supply is a refusal, unless it is plainly filing a
     # record ("create a chart for patient P-1 ... and note her provider").

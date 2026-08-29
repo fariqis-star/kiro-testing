@@ -215,11 +215,34 @@ def main():
     print("=== PROMPT CONSISTENCY ===")
     p = open("supervisor-prompt.txt").read()
     flat = " ".join(p.split())
+    low = flat.lower()
     want = "103" if diag else ("83" if ce.SKIP_RED_DOOR else "105")
     check(f"prompt accepts the deployed route length ({want})", want in flat)
     check("key pickup does not ask the model to transform",
           "SPELLED BACKWARDS" not in flat,
           "model echoed 'open' when asked to reverse - never ask it to transform")
+
+    # THE CASE-2 BLOCK MUST NOT CONTAIN A KEY-TILE SENTENCE.
+    # A previous revision illustrated the door with  tile "Green Key 1 is: fghi" ->
+    # code = green fghi. The model then pattern-matched the KEY tile against case 2,
+    # called the tool at the key, answered 6789 and forfeited the +50. Showing the key
+    # tile's own wording inside the door rule is what caused it.
+    door_block = ""
+    if "\n2. DOOR" in p:
+        door_block = p.split("\n2. DOOR", 1)[1].split("\n3.", 1)[0]
+    check("case 2 exists and is the DOOR rule", bool(door_block))
+    check("case 2 does NOT quote a key-tile sentence",
+          "is:" not in door_block,
+          "showing 'Key 1 is: <value>' inside the door rule made the model "
+          "call the tool at the key tile")
+    # Keys and doors must be separated by an explicit, mechanical test.
+    check("prompt separates key from door by punctuation",
+          "question mark" in low and "statement" in low)
+    check("key pickup forbids any tool call",
+          "call no tool" in low or "no tool call at all" in low)
+    # The intake tile is routed through the tool now, not written freehand.
+    check("patient intake goes through the compute tool",
+          "call compute, passing the tile" in low or "call compute with the tile" in low)
     if getattr(ce, "MEMORY_AUTO", False) or getattr(ce, "MEMORY_FORMAT", "") == "shotgun":
         # The memento now returns sentences. The MEMENTO CASE must not forbid them, or
         # the model trims the reply to a bare number - how this tile was lost once.
@@ -239,7 +262,6 @@ def main():
     # the Healthcare API) + life 500 + token 942 + treasure 1000. The likeliest cause is
     # the model treating an intake phrased as a request as a guardrail and refusing it,
     # so the prompt must carry the discriminator and the request-verb whitelist.
-    low = flat.lower()
     check("prompt separates intake from refusal by who supplies the details",
           "asks for details it does not give" in low)
     check("prompt says a request-phrased intake is still JSON",
