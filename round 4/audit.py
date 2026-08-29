@@ -199,9 +199,16 @@ def main():
         unk = run("How many c99 challenges are on the map?")
         check("memento answers 0 for a code not on the map",
               "0" in unk and "c99" in unk, unk[:60])
-        if getattr(ce, "MEMORY_PROBE", None):
-            print(f"  !!    MEMORY_PROBE={ce.MEMORY_PROBE!r} - DIAGNOSTIC, "
-                  f"set it back to None before a scoring run")
+        # HARD FAILURE, not a warning. This was a soft "!!" note and that is exactly
+        # how MEMORY_PROBE="in_map" reached a scoring run: the audit said ALL CHECKS
+        # PASSED and the probe answered the Memory Trial with one sentence, which
+        # graded WRONG for -550 coins and -1 life. Probing is finished; five
+        # phrasings have failed and a win was only ever worth 1.2 points.
+        check("MEMORY_PROBE is None",
+              getattr(ce, "MEMORY_PROBE", None) is None,
+              f"MEMORY_PROBE={getattr(ce, 'MEMORY_PROBE', None)!r} answers the "
+              f"Memory Trial with a single phrasing, which has been graded wrong "
+              f"every time it has been tried. Cost of the last attempt: 800 points.")
     elif getattr(ce, "MEMORY_AUTO", False):
         print(f"  --    memento is in DIAGNOSTIC mode, answering {m!r}")
     else:

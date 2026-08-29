@@ -2420,7 +2420,25 @@ MEMORY_FORMAT = "shotgun"
 #   +550 -> pin it, done.
 #   -1   -> next run set "is", then "count". If all three fail, set this to None and
 #           keep the shotgun permanently.
-MEMORY_PROBE = "in_map"
+# PROBING IS OVER. None, permanently.
+#
+# The note above said "-1 -> next run set 'is', then 'count'". That plan was wrong,
+# and the run that killed it cost 800 points: "in_map" returned the single sentence
+# "There are 2 c4 in the map." and the grader rejected it, which is -550 coins AND
+# -1 life (-250 life bonus). 13,800 coins and 2 lives instead of 14,350 and 3.
+#
+# Five single or partial phrasings have now been graded WRONG:
+#     "The answer = 2"                          -1
+#     "The answer = 2, there 2 c4 in the map."  -1
+#     "There are 2 c4 challenges on the map."   -1
+#     "2"                                       -1
+#     "There are 2 c4 in the map."              -1   <- this run
+# while the full shotgun has scored +550 every single time it has been used.
+#
+# And the prize for a successful probe was never worth it. The shotgun is ~33 output
+# tokens against ~10 for one sentence, so at 19 challenges a win is 23/19 = 1.2
+# points. Risking 800 to win 1.2 is a 650:1 bad bet, and it has now lost twice.
+MEMORY_PROBE = None
 
 # ---------------------------------------------------------------------------
 # MEMENTO AS A FREE DIAGNOSTIC

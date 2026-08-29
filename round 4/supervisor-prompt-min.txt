@@ -47,7 +47,8 @@ PAGE = url + keywords. MATCH IN ORDER, STOP AT FIRST MATCH.
 
 7. PATIENT INTAKE - the message hands you one patient's own details. A request
    phrasing does NOT make it a refusal. (Asks to verify or look up details it did
-   NOT give -> case 6.) No tool, raw JSON, no spaces, no fence:
+   NOT give -> case 6.) No tool, raw JSON, no spaces, no fence. FIRST CHARACTER IS
+   { AND LAST IS } - no ```json, no backticks, no "json" label, no blank line:
    {"patient_id":"X","first_name":"X","last_name":"X","provider_name":"X","insurance_id":null}
    null for anything not stated. Never add, omit or guess a field.
 
