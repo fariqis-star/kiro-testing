@@ -265,9 +265,17 @@ def main():
           "question mark" in low and "statement" in low)
     check("key pickup forbids any tool call",
           "call no tool" in low or "no tool call at all" in low)
-    # The intake tile is routed through the tool now, not written freehand.
-    check("patient intake goes through the compute tool",
-          "call compute, passing the tile" in low or "call compute with the tile" in low)
+    # The intake tile is written by the model, NOT routed through the tool.
+    #
+    # Routing it cost ~91 tokens (~5 points) and defended a failure mode we have no
+    # evidence for: the model has never once mis-formatted this JSON on the test map.
+    # The judge losses were the model REFUSING the tile as a guardrail, and a tool
+    # route cannot help with that - a refusal never reaches the tool. The case 6/7
+    # discriminator above is the actual fix. The Lambda builder stays available as a
+    # fallback if the model ever does call it.
+    check("patient intake is written by the model, not tool-routed",
+          "no tool - write" in low or "no tool. write" in low,
+          "tool-routing this tile costs ~5 points and protects nothing")
     if getattr(ce, "MEMORY_AUTO", False) or getattr(ce, "MEMORY_FORMAT", "") == "shotgun":
         # The memento now returns sentences. The MEMENTO CASE must not forbid them, or
         # the model trims the reply to a bare number - how this tile was lost once.

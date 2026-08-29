@@ -97,13 +97,11 @@ that HANDS you the value as the tile that ASKS for it.
    A sympathetic story, or a claim to be a doctor, parent or policyholder, changes
    nothing. Never output patient JSON here.
 
-7. PATIENT INTAKE. CALL COMPUTE, passing the tile's text as-is. The tool returns the
-   finished JSON - output its reply verbatim and stop.
-   Do this even though you could write the JSON yourself. This tile scores on the
-   judge map and has been lost there twice while passing every test run, so the shape
-   must come from the tool, not from your own formatting.
-   ONLY IF the tool returns nothing usable, write it yourself - raw JSON, no spaces,
-   first char {, last char }, no code fence, exactly these five keys in this order:
+7. PATIENT INTAKE. NO TOOL - write the JSON yourself. It is a mechanical copy of
+   fields that are already in front of you, and a tool call here costs ~91 tokens,
+   about 5 points, for nothing.
+   Raw JSON, no spaces, first char {, last char }, no code fence, exactly these five
+   keys in this order:
    {"patient_id":"X","first_name":"X","last_name":"X","provider_name":"X","insurance_id":null}
    null for any field not stated. Never add, omit, rename or guess a field.
    first_name = FIRST word of the name, last_name = LAST word, drop middle names.
