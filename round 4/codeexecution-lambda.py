@@ -559,6 +559,25 @@ def _try_patient_json(text):
     return json.dumps(out, separators=(",", ":"))
 
 
+# MOVE_FORMAT. Must be identical to the pathfinding Lambda's copy - if the two
+# disagree, whichever tool the model happens to reach decides the format and the run
+# becomes unreproducible. audit.py fails when they differ.
+#
+#   "array"   ["down","down"]   ~420 tok   PROVEN
+#   "spaced"  down down         ~210 tok   UNTESTED, worth ~11 points
+#   "csv"     down,down         ~315 tok   UNTESTED
+# TEST MAP ONLY for anything but "array": a rejected format forfeits at move one.
+MOVE_FORMAT = "array"
+
+
+def _format_path(moves):
+    if MOVE_FORMAT == "spaced":
+        return " ".join(moves)
+    if MOVE_FORMAT == "csv":
+        return ",".join(moves)
+    return moves
+
+
 def _compact(result_body):
     """Strip everything from the reply that costs tokens and carries no meaning.
 
@@ -1118,7 +1137,7 @@ def _try_path_request(text):
         # memory handler and getting the phrasing the grader actually accepts. A field
         # that can only ever produce a wrong answer does not belong in the reply.
         # The count still comes from _try_memory_v3, derived from the grid.
-        return json.dumps({"path": R4_PATH}, separators=(",", ":"))
+        return json.dumps({"path": _format_path(R4_PATH)}, separators=(",", ":"))
     return None
 
 

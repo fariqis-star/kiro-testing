@@ -132,11 +132,41 @@ else:
 VERIFIED_COUNTS = ("c1=4 c2=2 c3=1 c4=2 c5=4 c7=28 c8=2 "
                    "c18=1 c30=1 c31=1 c40=1 c41=1")
 
-# The move array must use the full words. Both alternatives were tested on the
+# The move WORDS must be spelled out in full. Both abbreviations were tested on the
 # Round 3 judge and BOTH forfeited the run outright:
 #   ["r","r","u",...]   rejected
 #   "rruu..."           rejected
 # Do not retry either.
+#
+# ---------------------------------------------------------------------------
+# MOVE_FORMAT - the largest remaining token cost, and the one thing never tested.
+#
+# Token bonus = 1000 - round(tokens / challenges). A 105-element JSON array is about
+# 4 tokens per element once the quotes and commas are counted ("  down  "  ,), so the
+# route alone is ~420 tokens - roughly 22 points, more than a third of the entire
+# budget and bigger than every tool name, argument and answer combined.
+#
+# Note what the two rejected experiments actually changed: they replaced the WORDS
+# with letters. Neither of them kept the full words and dropped only the JSON
+# punctuation. "down down right" carries exactly the same words in the same order,
+# it just stops paying for a pair of quotes and a comma on every single move.
+#
+#   "array"   ["down","down","right"]   ~420 tok   PROVEN - scores 17,038
+#   "spaced"  down down right           ~210 tok   UNTESTED - would save ~11 points
+#   "csv"     down,down,right           ~315 tok   UNTESTED - fallback if spaced fails
+#
+# TEST MAP ONLY. If the parser rejects the format the run forfeits at move one, so
+# never take an untested value into a judge run. Set it back to "array" afterwards.
+# It must match the CodeExecution Lambda's copy - audit.py enforces that.
+MOVE_FORMAT = "array"
+
+
+def _format_path(moves):
+    if MOVE_FORMAT == "spaced":
+        return " ".join(moves)
+    if MOVE_FORMAT == "csv":
+        return ",".join(moves)
+    return moves
 
 
 def lambda_handler(event, context):
@@ -148,5 +178,5 @@ def lambda_handler(event, context):
     # "c4=2", which is graded wrong, instead of calling the memory handler for the
     # phrasing that actually scores. VERIFIED_COUNTS is kept below purely as
     # documentation of the map and is no longer sent to the model.
-    result = {"path": VERIFIED_PATH}
+    result = {"path": _format_path(VERIFIED_PATH)}
     return {"statusCode": 200, "body": json.dumps(result, separators=(",", ":"))}

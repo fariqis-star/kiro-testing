@@ -6,6 +6,7 @@ this competition, not just that the code imports.
 
 import importlib.util
 import json
+import re
 import sys
 
 GRID = [
@@ -152,10 +153,28 @@ def main():
 
     print("=== ROUTE ===")
     body = json.loads(pf.lambda_handler({}, None)["body"])
-    route = body["path"]
     fb = json.loads(run("find optimal path"))
-    check("both Lambdas return the same route", route == fb["path"],
-          f"{len(route)} vs {len(fb['path'])} moves")
+
+    # MOVE_FORMAT may emit the route as a list, a spaced line or a csv line. Normalise
+    # before walking it, and refuse to let the two Lambdas disagree - if they did, the
+    # format would depend on which tool the model happened to reach.
+    check("MOVE_FORMAT matches across both Lambdas",
+          ce.MOVE_FORMAT == pf.MOVE_FORMAT, f"{ce.MOVE_FORMAT} vs {pf.MOVE_FORMAT}")
+    if ce.MOVE_FORMAT != "array":
+        print(f"  !!    MOVE_FORMAT={ce.MOVE_FORMAT!r} is UNTESTED - test map only. A "
+              f"rejected format forfeits at move one. Set it back to 'array' for judge.")
+
+    def as_moves(v):
+        if isinstance(v, list):
+            return v
+        return [m for m in re.split(r'[,\s]+', v.strip()) if m]
+
+    route = as_moves(body["path"])
+    check("both Lambdas return the same route", route == as_moves(fb["path"]),
+          f"{len(route)} vs {len(as_moves(fb['path']))} moves")
+    check("every move is a full word",
+          all(m in ("up", "down", "left", "right") for m in route),
+          "abbreviated moves were rejected by the Round 3 judge")
     # Both replies must carry the PATH AND NOTHING ELSE. A "counts" summary used to
     # ride along, and the model would sometimes answer the Memory Trial by quoting it
     # ("c4=2") instead of calling the memory handler - a guaranteed wrong answer. The

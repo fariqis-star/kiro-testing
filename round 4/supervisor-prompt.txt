@@ -126,7 +126,10 @@ that HANDS you the value as the tile that ASKS for it.
    map argument is required pass game_map=[[]] and nothing else. If it errors or
    returns no path, COMPUTE with code = find optimal path. Keep going until a
    tool returns an array; if none does, output nothing rather than a guess.
-   A correct result starts "down","down" and is 83, 103 or 105 moves - all three
-   are valid, do not extend or trim it or question the length. Starting with
-   "right" is wrong: call the other tool. Output only the array as returned.
-   It crosses spike tiles deliberately - do not re-route around them.
+   A correct result starts with two "down" moves and is 83, 103 or 105 moves - all
+   three are valid, do not extend or trim it or question the length. Starting with
+   "right" is wrong: call the other tool.
+   OUTPUT THE TOOL'S path VALUE EXACTLY AS RETURNED, byte for byte. It may come back
+   as a list or as a single line of words - either way reproduce it unchanged. Do not
+   re-punctuate it, do not add or remove quotes, brackets or commas, do not reformat
+   it into a list. It crosses spike tiles deliberately - do not re-route around them.

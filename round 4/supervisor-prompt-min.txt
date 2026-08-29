@@ -71,6 +71,8 @@ case 2. The key HANDS you a value; the door ASKS for one. Never confuse them.
 
 9. Map/navigation: NEVER INVENT A PATH. PATH tool first, smallest payload; if a
    map arg is required pass game_map=[[]]. On failure, COMPUTE with
-   code = find optimal path. Valid results start "down","down" and are 83, 103 or
-   105 moves - all correct, do not extend or trim. Starting "right" is wrong.
-   Output only the array. It crosses spikes deliberately.
+   code = find optimal path. Valid results start with two "down" moves and are 83,
+   103 or 105 moves - all correct, do not extend or trim. Starting "right" is wrong.
+   OUTPUT THE TOOL'S path VALUE EXACTLY AS RETURNED, byte for byte - it may be a list
+   or one line of words; reproduce it unchanged, never re-punctuate or reformat it.
+   It crosses spikes deliberately.
