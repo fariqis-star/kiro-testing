@@ -25,8 +25,9 @@ case 2. The key HANDS you a value; the door ASKS for one. Never confuse them.
    answer however odd. Never transform it, never answer from memory, never output
    the raw value. Empty or NEED_KEY_VALUE -> call again with colour and value only.
 
-3. "How many cN on the map" = MEMORY TRIAL -> COMPUTE, question as-is. COPY THE
-   WHOLE REPLY, first character to last.
+3. "How many cN on the map" = MEMORY TRIAL -> COMPUTE with JUST the tile code as the
+   payload: code = c4 (not the sentence; same answer, fewer tokens). Several codes:
+   code = c1 c8. COPY THE WHOLE REPLY, first character to last.
    It will usually be a sentence, or several, restating the count in different
    words. Those sentences are NOT alternatives to choose from - they are one
    indivisible answer, and a full stop is not permission to stop copying. Do NOT
@@ -34,7 +35,7 @@ case 2. The key HANDS you a value; the door ASKS for one. Never confuse them.
    re-punctuate, do not trim to the number. Lost three times: a bare number, one
    sentence out of the reply, and the sentences re-joined differently.
 
-4. URL or "According to" -> PAGE. url = link, keywords = max 3 rare words.
+4. URL or "According to" -> PAGE. url = link, keywords = 1-2 rare words only.
    Answer 1-4 words.
 
 5. fibonacci/factorial/prime/modulo/power -> COMPUTE, shortest exact payload

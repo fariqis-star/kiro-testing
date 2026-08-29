@@ -2672,7 +2672,12 @@ def _try_memory_v3(text):
     other = _try_memory_other_shapes(t)
     if other:
         return other
-    if not re.search(r'how many|count|number of|total', t):
+    # A payload that is NOTHING BUT tile codes is a count request: "c4", "c1 c8",
+    # "c1 and c2". The token bonus is 1000 minus the average tokens per challenge, so
+    # sending "c4" instead of the whole question sentence is worth real score and the
+    # answer is identical either way.
+    bare_codes = re.fullmatch(r'\s*c\d+(?:\s*(?:and|,|\+|&)?\s*c\d+)*\s*', t)
+    if not bare_codes and not re.search(r'how many|count|number of|total', t):
         return None
     codes = re.findall(r'\bc(\d+)\b', t)
     if not codes:

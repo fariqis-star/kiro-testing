@@ -52,7 +52,9 @@ that HANDS you the value as the tile that ASKS for it.
    colour and the value only.
 
 3. "How many cN ... on the map" / count or total of tile codes
-   MEMORY TRIAL. COMPUTE, pass the question as-is.
+   MEMORY TRIAL. COMPUTE, and the payload is JUST THE TILE CODE, nothing else:
+       code = c4          (not the whole sentence - shorter payload, same answer)
+   Several codes named: code = c1 c8
    COPY THE ENTIRE REPLY, FIRST CHARACTER TO LAST. It will usually be a sentence,
    or SEVERAL SENTENCES, restating the same count in different words. That looks
    redundant and it is not - the grader needs the whole thing.
@@ -68,8 +70,8 @@ that HANDS you the value as the tile that ASKS for it.
    exact copy.
 
 4. Contains a URL or "According to"
-   PAGE. url = the link, keywords = at most 3 rare words, never a sentence.
-   Output the answer only, 1-4 words.
+   PAGE. url = the link, keywords = ONE OR TWO rare words, never a sentence and never
+   a word already obvious from the url. Output the answer only, 1-4 words.
 
 5. Maths - fibonacci, factorial, prime, modulo, power
    COMPUTE, shortest payload that keeps every digit: 100! mod 1e9+7 / fib 500 mod
