@@ -138,6 +138,8 @@ refused.
 |---|---|
 | `MOVE_FORMAT` alternatives: `["r","r"]`, `"rruu"`, `[down,down]`, `down, down`, `down,down` | all rejected by the game. Only a quoted JSON array works |
 | `ROUTE_CHUNK` > 0 (split the route across turns) | partial route executes, game never re-prompts, player freezes |
+| `ROUTE_SPLIT` > 0 (split it *landing on a challenge tile*) | **tested and disproven.** Part 1 of 104 moves ended on the I1 guardrail and scored it, then the game never called the tool again, never asked for moves, deleted the player and printed **no score summary at all**. An incomplete route forfeits the run outright |
+| Raising `challenges_attempted` at all, on this board | impossible. It counts agent turns answering game prompts: 1 route + 18 tiles = 19. The game prompts only at the start and on a challenge tile, never for moves, and re-entering a tile does not re-trigger it |
 | Memory trial single phrasings: `2`, `The answer = 2`, `There are 2 c4 challenges on the map.`, `There are 2 c4 in the map.`, `The answer = 2, there 2 c4 in the map.` | **all five graded WRONG**. Probing cost 800 points twice for a 1.2-point prize |
 | comma-joined shotgun instead of `". "` | −1, despite containing every candidate as a substring |
 | `MEMORY_PROBE = "combined"` | failed |

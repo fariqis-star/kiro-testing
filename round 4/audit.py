@@ -451,10 +451,14 @@ def main():
     # Splitting the route is an unproven attack on the denominator and lives in
     # experiment-chunking/. If it ever reaches the main build switched on, a run that
     # the game refuses to re-prompt loses the treasure bonus.
-    check("ROUTE_SPLIT ships disabled",
+    # DISPROVEN ON THE TEST MAP. An incomplete route FORFEITS THE RUN - part 1 ended on
+    # the I1 guardrail, scored it, and then the game removed the player and printed no
+    # score summary at all. Never enable this again.
+    check("ROUTE_SPLIT is 0",
           getattr(pf, "ROUTE_SPLIT", 0) == 0,
-          f"ROUTE_SPLIT={getattr(pf, 'ROUTE_SPLIT', 0)} - test-map only, see "
-          f"experiment-chunking/README.md")
+          f"ROUTE_SPLIT={getattr(pf, 'ROUTE_SPLIT', 0)}. An incomplete route does not "
+          f"make the game ask for more moves - it deletes the player and voids the "
+          f"score. Tested twice. See experiment-chunking/README.md")
     check("splitting rejoins to the proven route exactly",
           all([m for p in pf._route_split(pf.VERIFIED_PATH, n) for m in p]
               == pf.VERIFIED_PATH for n in (2, 5, 20, 53)),

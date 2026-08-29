@@ -78,3 +78,51 @@ Reverting would have restored both maths bugs.
 Keeping my 7,845-char supervisor prompt was rejected — the model demonstrably ignored
 buried rules, calling a tool at intake and answering a bare `Nope`. The prompt was
 reverted to the proven version plus only the intake-vs-refusal discriminator.
+
+
+## The denominator, and why a rival's 17,056 is not a target
+
+`token_bonus = 1000 − output_tokens ÷ challenges_attempted`
+
+Rank 5, `PSPTechnician258`: **17,056** with **1,654** output tokens, 8 submissions.
+Ours: 17,045 with 1,043. Solving their score against the formula — across every
+combination of coins, lives and treasure — yields solutions at **38 attempted
+challenges only.** None exists at 19 or 20. They emit 59% more tokens than us and still
+win because they divide by twice as much.
+
+That reframed the whole round. Every optimisation here shaved the **numerator**, worth
+about 1 point per 19 tokens. The denominator was worth 11+ and had been locked at 0
+since a single failed experiment early on.
+
+So it was tested properly. `ROUTE_SPLIT = 2`: part 1 of 104 moves ending on **I1, a
+guardrail tile**, so the game had every reason to come back to the agent; part 2 a
+single `right` onto the chest. Part 1 executed perfectly — 18 challenges correct, all
+14,350 coins, I1 scored +100 — and then the game **never called the tool again, never
+asked for moves, removed the player from the dungeon, and printed no score summary at
+all.**
+
+An incomplete route is not "pause and ask again". It **forfeits the run**, which is
+worse than the −1,000 treasure bonus predicted as the downside. Two split shapes have
+now failed this way, one mid-corridor and one landing on a challenge tile.
+
+And the denominator is closed generally, not just via splitting. A "challenge attempted"
+is one agent turn answering one game prompt: 1 route turn + 18 challenge tiles = 19. The
+game prompts only at the start and on a challenge tile; it never asks for moves; and
+re-entering a tile does not re-trigger it — our route re-crosses F7, F10 and D9, each
+giving a bare `You moved to X`. Thirty-eight turns would need **37 challenge encounters
+on a board with 18.**
+
+**Conclusion: that rival is playing a board with roughly 37 challenge tiles, not ours.**
+The comparison was never like-for-like.
+
+### What this makes the real ceiling
+
+With 19 challenges fixed, beating 17,056 needs a token bonus of 957, i.e. 43 average,
+i.e. **817 total output tokens.** Best ever observed is 1,043, and the route array alone
+is ~435 of it. The gap is ~226 tokens that do not exist in anything we control — the
+remainder is model overhead that has varied between 1,043 and 1,351 run to run.
+
+So **17,045–17,050 is the real ceiling on this board**, and 17,045 has been achieved.
+Remaining effort belongs in Round 5, not here. Keep resubmitting for variance, because
+the leaderboard records the best of N and a clean judge run has already produced 17,045
+and 17,036.

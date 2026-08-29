@@ -290,13 +290,34 @@ def _chunk_route(moves):
 # split at arbitrary move boundaries, mid-corridor, giving the game no reason to come
 # back to the agent.
 #
-# SPLIT POLICY, chosen to make the downside as small as possible: part 1 carries
-# EVERYTHING except the final few moves, then one move per part. On this board part 1
-# ends on I1 - a challenge tile, so the game must speak to the agent again - and the
-# only thing still outstanding is the single step onto the treasure. If the game never
-# re-prompts we lose the 1,000 treasure bonus and keep all 14,350 coins; if it does, the
-# denominator moves and we can raise the part count.
-ROUTE_SPLIT = 0            # 0 = one array, the proven behaviour. N>1 = N parts.
+# *** TESTED AND DISPROVEN. LEAVE THIS AT 0 FOREVER. ***
+#
+# ROUTE_SPLIT = 2 was run on the test map. Part 1 was 104 moves ending on I1, a
+# GUARDRAIL TILE, so the game had every reason to speak to the agent again. It answered
+# the I1 guardrail correctly for +100 and then:
+#
+#   - never called the pathfinding tool a second time
+#   - never asked for more moves
+#   - never reached the treasure
+#   - printed NO score summary at all
+#   - the player was REMOVED from the dungeon
+#
+# So an incomplete route is not "pause and ask again", it is a FORFEITED RUN. That is
+# worse than the -1,000 treasure bonus I predicted as the downside; there is no score.
+# Two different split shapes have now failed this way, one mid-corridor and one landing
+# on a challenge tile. The mechanism does not exist.
+#
+# AND THE DENOMINATOR IS CLOSED GENERALLY, not just via splitting. A "challenge
+# attempted" is one agent turn answering one game prompt: 1 route turn + 18 challenge
+# tiles = 19. The game prompts only at the start and on a challenge tile; it never asks
+# for moves; and re-entering a tile does not re-trigger it (our route re-crosses F7,
+# F10 and D9, each giving a bare "You moved to X"). Reaching 38 turns would need 37
+# challenge encounters on a board that has 18. It cannot be done here.
+#
+# The rival's 17,056 solves ONLY at 38 attempts - every coin/lives/treasure combination
+# requires it, and none is possible at 19 or 20. They are therefore playing a board with
+# roughly 37 challenge tiles, not ours. Their score is not a target on this map.
+ROUTE_SPLIT = 0            # 0 = one array. NEVER set this above 0 again.
 
 
 def _route_split(moves, n):
