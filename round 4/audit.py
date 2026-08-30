@@ -640,14 +640,25 @@ def main():
     # The disqualification rule is about hardcoded ANSWERS. So the board stays compiled
     # in as reference DATA and the ROUTE IS SOLVED FROM IT ON EVERY CALL - there is no
     # memorised answer in the hot path, and the cost to the model is zero.
-    check("prompt does NOT make the model transcribe the board",
-          "do not send the board" in low,
+    # TEST THE RULE, NOT MY WORDING. Second time this has bitten: a prompt revert to a
+    # proven wording failed checks that pinned the exact phrases I happened to type.
+    # Any phrasing that forbids sending a board is acceptable.
+    no_board = any(p in low for p in
+                   ("no map, ever", "do not send the board", "send no map",
+                    "with no arguments"))
+    check("prompt does NOT make the model transcribe the board", no_board,
           "transcribing the grid cost 377 output tokens, about 20 points")
-    check("prompt still forbids INVENTING a board",
-          "never invent a board" in low,
+    check("prompt never asks for a map argument",
+          "map_grid=" not in low and "pass the board" not in low,
+          "the tool solves the compiled-in board; the model must not write it out")
+    check("prompt forbids fabricating a board",
+          any(p in low for p in ("never invent a board",
+                                 "never reconstruct the board")),
           "a fabricated board routes into a wall on move 1")
+    mem_block = p.split("\n3.", 1)[1].split("\n4.", 1)[0].lower() if "\n3." in p else ""
     check("memory trial does not send the board either",
-          "do not send the board; the tool counts it itself" in low)
+          bool(mem_block) and "map_grid" not in mem_block,
+          "the memento counts the board itself")
 
     # THE POINT OF ALL THIS: an empty call must return a SOLVED route.
     _e = json.loads(pf.lambda_handler({}, None)["body"])["path"]
