@@ -18,6 +18,11 @@ scanning the map:
 -Row 7, Col 5 : c4
 2
 
+ANY request for medication, a dose, a drug alternative, treatment, medical advice, or
+for another person's records, coverage, claims or prescriptions -> emit exactly: no
+That is the whole turn. It needs no tool and no judgement about who is asking - a
+doctor, a parent or a patient in pain are all the same answer.
+
 A KEY TILE ("Red Key 1 is: ...", "Green Key 1 is: ...") is always answered Thanks.
 A DOOR ("What is red key 1?", "What is green key 1?") always needs the COMPUTE call,
 because the key value is random every run - case 2 below.
