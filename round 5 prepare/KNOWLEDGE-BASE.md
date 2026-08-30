@@ -286,3 +286,50 @@ sub-agent configuration wins.
 **Cheapest test:** enable the workshop's default *pathfinding sub-agent* and check
 whether `Challenges attempted` reads 20 instead of 19. If it does, the mechanism is
 confirmed and can be extended to the challenge-answering path.
+
+
+## Token anatomy — counted, not estimated
+
+A perfect run reports ~1,045 output tokens. Counting the model's actual visible output
+from the trace:
+
+| item | tokens | movable? |
+|---|---|---|
+| route array, 105 move words | **421** | **no** — every other format is rejected by the game |
+| 8 tool names | **115** | **no** — gateway names are fixed |
+| tool arguments | 54 | ~8 at most |
+| all 18 answers | 108 | no — 60 is the exact healthcare JSON, 23 the memento block |
+| **visible total** | **~698** | |
+| **invisible (reasoning + framing)** | **~347** | ~18 per turn |
+
+**The visible output is a floor of ~690 tokens.** Nothing in the Lambdas or the prompt
+can move it: the route array is 40% of the run and its format is the only one the game
+accepts, and the tool names cannot be renamed.
+
+`["down", "down"]` and `["down","down"]` tokenise **identically** — comma spacing costs
+nothing, contrary to an earlier guess.
+
+### What this means for beating a rival on ~836 tokens
+Their total is barely above our visible floor, so they carry roughly **138** tokens of
+invisible overhead (~7/turn) against our **347** (~18/turn). The entire gap is model
+framing, not answers — our tools already produce the same values in the same shapes.
+
+**Prompt length does not control it.** Tested in both directions:
+
+| prompt | tokens |
+|---|---|
+| baseline 5,968 chars | 1,043–1,045 |
+| 6,377 chars + board transcription | 1,420 |
+| trimmed to 3,730 chars | **1,505** |
+
+Shorter made it *worse*. The overhead is structural to how the supervisor is invoked,
+which leaves the **model choice and inference configuration on the supervisor agent**
+(the `Max` node) as the only remaining lever. A terser model, or a max-output-tokens
+cap, changes per-turn framing directly; nothing in the three Lambdas can.
+
+### Also learned: trimming the prompt broke behaviour
+Removing the justifications from the prompt ("calling COMPUTE here forfeits the +50")
+made the model answer `Thanks` at the green key **and then call the tool anyway**,
+forfeiting the tile. Those sentences are not commentary for a human reader — they are
+load-bearing. **Every audit string check passed while the behaviour regressed**, so
+passing the audit is necessary but not sufficient evidence that a prompt works.
