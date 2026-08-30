@@ -1,0 +1,48 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "p",
+    "version": "1.0.0",
+    "description": "Returns the full move path to the treasure."
+  },
+  "paths": {
+    "/p": {
+      "post": {
+        "operationId": "p",
+        "summary": "Get the complete move path from the current position to the treasure",
+        "description": "Returns the optimal ordered list of moves that collects every challenge and coin tile and ends on the treasure. Takes no arguments - the map is already known to this tool. Never send a map, grid, board or start position. Call this for any map, maze, path or navigation request.",
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {}
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The move path",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "array",
+                      "items": { "type": "string" },
+                      "description": "Ordered moves, each one of right/left/up/down"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
