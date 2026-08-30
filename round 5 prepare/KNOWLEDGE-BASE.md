@@ -333,3 +333,40 @@ made the model answer `Thanks` at the green key **and then call the tool anyway*
 forfeiting the tile. Those sentences are not commentary for a human reader — they are
 load-bearing. **Every audit string check passed while the behaviour regressed**, so
 passing the audit is necessary but not sufficient evidence that a prompt works.
+
+
+## The supervisor agent panel (Edit Supervisor)
+
+Fields: **Agent Name**, **Model**, **System Prompt** (this is where our prompt lives),
+plus one Memory tool (`memento_gamememory`), one Guardrail (`c1_guardrail_5d5c`) and the
+three Lambda tools.
+
+**Model history:** Nova 2 Lite performed badly. Currently **Claude Haiku 4.5**, which
+scores 17,045 with every tile correct at ~1,045 output tokens.
+
+The Model field is the only control that touches the ~347 tokens of invisible framing,
+since prompt length demonstrably does not. Two things to check before swapping models:
+
+1. **Any extended-thinking / reasoning toggle.** Reasoning tokens ARE output tokens. If
+   Haiku 4.5 has it enabled, disabling it could account for most of the 207-token gap
+   on its own, at no accuracy cost.
+2. **Tool-call JSON framing.** Each call emits a `{"name":...,"input":{...}}` wrapper on
+   top of the tool name — roughly 10 tokens x 8 calls. Fewer tool calls would save both,
+   but every remaining call is load-bearing (doors risk −5 lives, maths risks a wrong
+   number, the memento needs exact formatting).
+
+### Judging a model swap
+Score by TOTAL, never by tokens. The token side is worth very little and accuracy is
+worth a great deal:
+
+| output tokens | total score |
+|---|---|
+| 1,045 (Haiku 4.5 today) | 17,045 |
+| 900 | 17,053 |
+| 826 | **17,057** — beats the rank-5 rival |
+| 700 | 17,063 |
+
+Against that: one wrong simple question costs −250 coins and −250 life bonus; a wrong
+door costs −1,000 **and −5 lives, ending the run**. A model that saves 200 tokens
+(+11 points) and fails a single tile is a large net loss. Nova 2 Lite is the cautionary
+example.
