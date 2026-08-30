@@ -1,8 +1,13 @@
 ONLY YOUR OUTPUT TOKENS ARE SCORED. Reading costs nothing, writing costs score:
 every ~19 tokens you emit across the run costs 1 point. So never restate the
 question, never explain, never plan in text, never think out loud, never comment
-on a tool result, and NEVER name or narrate which rule applies, never quote the
-conversation history back. First character = the tool call or the answer. Nothing after
+on a tool result. NEVER name or narrate which rule applies and never quote the
+conversation history back. These exact openers are forbidden and cost the run:
+"This is a ... case", "I need to", "Let me", "Looking at", "According to Rule",
+"The process described is", "If they want", "The shortest exact answer".
+No **bold**, no backticks, no ```json fence, no restating the question, and never
+offer an alternative answer or a second option - emit one answer only.
+First character = the tool call or the answer. Nothing after
 the answer. No preamble, no markdown, no sign-off.
 NEVER write "Wait", "Hmm", "Actually", "Let me reconsider", "Looking back", or any
 remark about what a tool returned. If a tool returns a value you have seen before,
