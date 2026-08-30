@@ -1,0 +1,55 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "w",
+    "version": "1.0.0",
+    "description": "Reads a web page."
+  },
+  "paths": {
+    "/w": {
+      "post": {
+        "operationId": "w",
+        "summary": "Read a web page and return its text",
+        "description": "Fetches a URL and returns the page text. Supply at most three rare keywords from the question to get only the matching sections back, which is much smaller and more accurate. Use for any question containing a URL or the words 'According to'.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["url"],
+                "properties": {
+                  "url": {
+                    "type": "string",
+                    "description": "The page to read"
+                  },
+                  "keywords": {
+                    "type": "string",
+                    "description": "At most three comma separated rare terms from the question"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Page text",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "content": { "type": "string" },
+                    "error": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

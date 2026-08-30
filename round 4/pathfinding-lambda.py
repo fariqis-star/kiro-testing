@@ -248,13 +248,35 @@ def _format_path(moves):
 # The whole route must therefore be submitted in ONE array, which pins that ~435-token
 # turn to exactly one counted challenge and caps challenges attempted at tiles + 1.
 #
-# Which leaves the leaderboard unexplained, and worth being honest about: 17073 with
-# 1011 tokens is arithmetically IMPOSSIBLE at 19 challenges - every candidate coin
-# total it implies (14376, 14126, 14626 ...) fails to be a multiple of 50, and every
-# award in this game is. So those teams really did attempt more challenges than we
-# can. The likeliest remaining explanation is a different map: "Best Score" is a
-# personal best over the whole competition, and an earlier round with more challenge
-# tiles would raise the denominator honestly. Nothing on THIS map reproduces it.
+# *** LEADERBOARD NOW EXPLAINED - IT IS NOT THE DENOMINATOR. ***
+#
+# The scoring source (ai-league-community-edition/lambda/agentic-api/score_calculator.py)
+# shows the token penalty is scaled by a CUSTOM MODEL REDUCTION we did not know about:
+#
+#     penalty = (total_tokens / challenges_visited) * (1.0 - reduction)
+#     reduction: 0 models 0%, 1 -> 50%, 2 -> 70%, 3 -> 85%, 4 -> 92%, 5+ -> 95%
+#
+# Every posted score falls out EXACTLY at 19 challenges, coins 14350, 3 lives, treasure:
+#     BX Team        17091 @  568 tok -> 2 custom models (70%) -> bonus 991 -> 17091
+#     Bedrock Blitz  17073 @ 1011 tok -> 1 custom model  (50%) -> bonus 973 -> 17073
+#     #5             17056 @ ~836 tok -> 0 custom models       -> bonus 956 -> 17056
+#     us run 2       17045 @ 1036 tok -> 0 custom models       -> bonus 945 -> 17045
+#     us run 1       17033 @ 1275 tok -> 0 custom models       -> bonus 933 -> 17033
+#
+# Five for five, no residual. Nobody attempts 37 or 63 challenges; they buy the penalty
+# down. The "impossible coin total" argument above was sound but assumed reduction = 0.
+#
+# We CANNOT copy them: deploying a custom model fails on an account-level SageMaker
+# quota - the shared endpoint is at 200/200 InferenceComponents. So our ceiling is the
+# 0-model ceiling, and the ONLY remaining lever is total_tokens.
+#
+#     to beat 17056 at 0 models we need <= 835 total tokens (we are at 1036).
+#     target 800 for margin -> 17058.
+#
+# The route is ~420 of those tokens and is optimal AND incompressible (verified: an
+# independent TSP solve over all 46 required tiles with the key-before-door constraints
+# also returns 105 moves, so there is no shorter route either). The remaining spend is
+# tool-call scaffolding and the supervisor's reasoning budget - see TOKEN-BUDGET.md.
 ROUTE_CHUNK = 0
 
 
